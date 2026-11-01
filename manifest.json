@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "tide",
   "version": "0",
-  "description": "A tiling desktop environment for chromeOS: a window manager that places your windows, a launcher, and a dashboard.",
+  "description": "A tiling desktop environment for chromeOS: a window manager that places your windows, and a dashboard.",
   "background": {
     "service_worker": "src/background.js",
     "type": "module"

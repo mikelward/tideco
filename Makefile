@@ -22,7 +22,7 @@ TESTS = \
 	src/manifest_test.js \
 	src/package_test.js
 
-.PHONY: test lint smoke icons zip
+.PHONY: test lint smoke icons promo zip
 test:
 	@unlisted=$$(find src -name '*_test.js' | sort | while read -r f; do \
 		case " $(TESTS) " in *" $$f "*) ;; *) echo "$$f";; esac; done); \
@@ -40,6 +40,11 @@ smoke:
 # The PNG icons from icons/tileco.svg; needs what `make smoke` needs.
 icons:
 	node scripts/render-icons.js
+
+# The store's promo tiles from store/promo-*.svg; needs what `make icons`
+# needs, and Google Fonts for Inter. They stay out of the ZIP.
+promo:
+	node scripts/render-promo.js
 
 # The Chrome Web Store upload: manifest.json at the top, and nothing only
 # development needs. DIST picks where it goes. Its version is the number of

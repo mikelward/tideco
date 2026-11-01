@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { DEFAULT_SETTINGS, load, PER_MACHINE, pick, resolve, SETTINGS_KEY, settingsChanged, SHARED } from "./settings.js";
+import { DEFAULT_SETTINGS, load, PER_MACHINE, pick, resolve, SETTINGS_KEY, settingsChanged, SHARED, standingProblems } from "./settings.js";
 
 test("nothing stored means the defaults", () => {
   assert.deepEqual(resolve(undefined, undefined), { settings: DEFAULT_SETTINGS, errors: [] });
@@ -188,6 +188,14 @@ test("the standing list refuses none, a name twice ignoring case, and a bad name
   assert.deepEqual(bad(["in", " "]), ['standing: workspace 2, " ": a workspace needs a name']);
   assert.deepEqual(bad(["x".repeat(33)]), [`standing: workspace 1, "${"x".repeat(33)}": a workspace's name is at most 32 characters`]);
   assert.deepEqual(resolve({ standing: [] }).settings.standing, DEFAULT_SETTINGS.standing, "it keeps its default");
+});
+
+// The options page marks each field as you type, before anything is saved.
+test("each standing name's problem is its own, a repeat marking the later one", () => {
+  assert.deepEqual(standingProblems(["in", "re"]), ["", ""]);
+  assert.deepEqual(standingProblems(["in", "Re", " re ", ""]), ["", "", 'workspace 3, "re", is listed already', 'workspace 4, "": a workspace needs a name']);
+  assert.deepEqual(standingProblems(["a'b", "ok"]), [`workspace 1, "a'b": a workspace's name can't have quotes, backslashes or control characters`, ""]);
+  assert.deepEqual(standingProblems([]), [], "an empty list is the setting's to refuse");
 });
 
 test("home's apps are shared, the app keys' Calendar, Chat and YouTube Music by default", () => {

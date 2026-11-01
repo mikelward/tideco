@@ -2,14 +2,14 @@
 // to chrome.storage.sync; a bad one is reported, naming the setting, and
 // isn't saved.
 
-import { APP_COMMANDS } from "./apps.js";
+import { APP_COMMANDS, appLabel, withHomeApp } from "./apps.js";
 import { checklist } from "./keys.js";
 import { MOUSE_PAGE } from "./mouse.js";
 import { ITEMS, progress, SETUP_KEY, tick } from "./setup.js";
 import { EXTRAS as BASE_EXTRAS, extrasFor } from "./extras.js";
 import { DEFAULT_SITES } from "./unread.js";
 import { pattern } from "./watchers.js";
-import { DEFAULT_SETTINGS, PER_MACHINE, pick, resolve, SETTINGS_KEY, SHARED, START_MODES } from "./settings.js";
+import { DEFAULT_SETTINGS, PER_MACHINE, pick, resolve, SETTINGS_KEY, SHARED, standingProblems, START_MODES } from "./settings.js";
 import { osName, platform, TABS, TILE, worksUntiled } from "./platform.js";
 import { ACCESS as BRIDGE_ACCESS, bridgeText, STATUS_KEY as BRIDGE_KEY } from "./tabsbridge.js";
 
@@ -48,6 +48,34 @@ function button(text, label, onClick) {
   return b;
 }
 
+// A list row's arrows and ×, moving or taking out `tr` in `body`. Each then
+// calls `changed` with a function that puts the row back as it was.
+function orderCell(tr, body, changed) {
+  const back = () => {
+    const next = tr.nextElementSibling;
+    return () => body.insertBefore(tr, next);
+  };
+  const move = (by) => () => {
+    const to = by < 0 ? tr.previousElementSibling : tr.nextElementSibling?.nextElementSibling;
+    if (by < 0 && !to) return;
+    const undo = back();
+    body.insertBefore(tr, to ?? null);
+    changed(undo);
+  };
+  const order = document.createElement("td");
+  order.className = "order";
+  order.append(
+    button("↑", "Move up", move(-1)),
+    button("↓", "Move down", move(1)),
+    button("×", "Remove", () => {
+      const undo = back();
+      tr.remove();
+      changed(undo);
+    }),
+  );
+  return order;
+}
+
 function clockRow(c) {
   const tr = document.createElement("tr");
   const cells = [
@@ -56,22 +84,7 @@ function clockRow(c) {
     input(c.city, { className: "city", ariaLabel: "City", placeholder: "from the zone" }),
   ];
   cells[1].setAttribute("list", "zones");
-  const move = (by) => () => {
-    const to = by < 0 ? tr.previousElementSibling : tr.nextElementSibling?.nextElementSibling;
-    if (by < 0 && !to) return;
-    rows.insertBefore(tr, to ?? null);
-    save();
-  };
-  const order = document.createElement("td");
-  order.className = "order";
-  order.append(
-    button("↑", "Move up", move(-1)),
-    button("↓", "Move down", move(1)),
-    button("×", "Remove", () => {
-      tr.remove();
-      save();
-    }),
-  );
+  const order = orderCell(tr, rows, () => save());
   for (const c of cells) {
     const td = document.createElement("td");
     td.append(c);
@@ -211,10 +224,70 @@ function modeRow(mode, o) {
   return tr;
 }
 
-// The standing workspaces and home's apps have no fields yet, only the
-// JSON, so a save from the form keeps what's stored.
-let standing = DEFAULT_SETTINGS.standing;
+// The standing workspaces (§6.1), in order, the first being home. A move,
+// removal or addition that can't be saved is put back, so the list shows
+// what's saved; a name being edited stays as typed until it's fixed.
+const standingRows = $("standing").tBodies[0];
+
+function standingRow(name) {
+  const tr = document.createElement("tr");
+  const field = input(name, { className: "name", ariaLabel: "Standing workspace's name", spellcheck: false });
+  field.addEventListener("input", markStanding);
+  const home = Object.assign(document.createElement("td"), { className: "muted" });
+  const order = orderCell(tr, standingRows, async (undo) => {
+    if (!(await save())) undo();
+    markStanding();
+  });
+  const td = document.createElement("td");
+  td.append(field);
+  tr.append(td, home, order);
+  return tr;
+}
+
+const standingFields = () => [...standingRows.rows].map((tr) => tr.querySelector("input"));
+
+// Marks the first as home, and each name that can't be one as you type,
+// with why as its tooltip; saving says why too, naming the setting.
+function markStanding() {
+  const fields = standingFields();
+  const problems = standingProblems(fields.map((f) => f.value));
+  fields.forEach((f, i) => {
+    f.closest("tr").cells[1].textContent = i === 0 ? "home" : "";
+    f.setAttribute("aria-invalid", String(problems[i] !== ""));
+    f.title = problems[i];
+  });
+}
+
+// Home's apps (§6.1): a box for each app key, called by its app's name.
+// The list keeps its own order, which the boxes don't show.
 let homeApps = DEFAULT_SETTINGS.homeApps;
+
+function renderHomeApps(settings) {
+  homeApps = [...settings.homeApps];
+  $("home-apps").replaceChildren(
+    $("home-apps").querySelector("legend"),
+    ...APP_COMMANDS.map((command) => {
+      const box = Object.assign(document.createElement("input"), { type: "checkbox", checked: homeApps.includes(command) });
+      box.dataset.command = command;
+      box.addEventListener("change", async () => {
+        const previous = homeApps;
+        homeApps = withHomeApp(homeApps, command, box.checked);
+        if (!(await save())) {
+          homeApps = previous;
+          box.checked = !box.checked;
+        }
+      });
+      const label = document.createElement("label");
+      label.append(box, Object.assign(document.createElement("span"), { textContent: appLabel(command, settings.apps) }));
+      return label;
+    }),
+  );
+}
+
+// The boxes follow the apps' names as they're saved.
+function nameHomeApps(apps) {
+  for (const box of $("home-apps").querySelectorAll("input")) box.nextElementSibling.textContent = appLabel(box.dataset.command, apps);
+}
 
 // An emptied hour field is NaN, an error, not Number("")'s midnight.
 function fromForm() {
@@ -233,15 +306,17 @@ function fromForm() {
     const [share, count] = tr.querySelectorAll("input");
     return [tr.dataset.mode, { mfact: Number((num(share) / 100).toPrecision(12)), nmaster: num(count) }];
   }));
-  return { clocks, ...hours, apps, dimStrength: Number((strength / 100).toPrecision(12)), watched: [...watchedSites], defaultMode, modes, standing: [...standing], homeApps: [...homeApps] };
+  const standing = standingFields().map((f) => f.value.trim());
+  return { clocks, ...hours, apps, dimStrength: Number((strength / 100).toPrecision(12)), watched: [...watchedSites], defaultMode, modes, standing, homeApps: [...homeApps] };
 }
 
 function toForm(settings) {
   rows.replaceChildren(...settings.clocks.map(clockRow));
   $("dim-strength").value = Number((settings.dimStrength * 100).toPrecision(12));
   watchedSites = [...settings.watched];
-  standing = [...settings.standing];
-  homeApps = [...settings.homeApps];
+  standingRows.replaceChildren(...settings.standing.map(standingRow));
+  markStanding();
+  renderHomeApps(settings);
   renderWatched();
   renderPermissions();
   appRows.replaceChildren(...APP_COMMANDS.map((c) => appRow(c, settings.apps.find((a) => a.command === c))));
@@ -258,6 +333,7 @@ async function save(value = fromForm()) {
   if (found.length > 0) return false;
   await chrome.storage.sync.set({ [SETTINGS_KEY]: pick(settings, SHARED) });
   json.value = JSON.stringify(pick(settings, SHARED), null, 2);
+  nameHomeApps(settings.apps);
   return true;
 }
 
@@ -383,6 +459,16 @@ $("watch-form").addEventListener("submit", async (e) => {
     $("watch-site").value = "";
     renderWatched();
   }
+});
+
+// A standing workspace is added at the end, or refused, saying why.
+$("standing-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const tr = standingRow($("standing-name").value.trim());
+  standingRows.append(tr);
+  if (await save()) $("standing-name").value = "";
+  else tr.remove();
+  markStanding();
 });
 
 $("startup-form").addEventListener("submit", async (e) => {

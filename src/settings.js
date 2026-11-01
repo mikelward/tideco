@@ -178,19 +178,29 @@ function checkWheelStep(step) {
   return step;
 }
 
+// What's wrong with each of the standing workspaces' names, in order: ""
+// for a good one, else checkName's reason, or a name listed already,
+// ignoring case, for any but its first (§6.1). The options page marks each
+// field by it as you type.
+export function standingProblems(names) {
+  const seen = [];
+  return names.map((raw, i) => {
+    const { name, error } = checkName(raw);
+    if (error) return `workspace ${i + 1}, ${JSON.stringify(raw)}: ${error}`;
+    const twice = seen.some((n) => sameName(n, name));
+    seen.push(name);
+    return twice ? `workspace ${i + 1}, "${name}", is listed already` : "";
+  });
+}
+
 // The standing workspaces: at least one, each a valid name, none twice
 // ignoring case (§6.1).
 function checkStanding(names) {
   if (!Array.isArray(names)) throw new Error("must be a list");
   if (names.length === 0) throw new Error("must name at least one workspace, the first being home");
-  const seen = [];
-  for (const [i, raw] of names.entries()) {
-    const { name, error } = checkName(raw);
-    if (error) throw new Error(`workspace ${i + 1}, ${JSON.stringify(raw)}: ${error}`);
-    if (seen.some((n) => sameName(n, name))) throw new Error(`workspace ${i + 1}, "${name}", is listed already`);
-    seen.push(name);
-  }
-  return seen;
+  const problem = standingProblems(names).find((p) => p !== "");
+  if (problem) throw new Error(problem);
+  return names.map((n) => checkName(n).name);
 }
 
 // Home's apps: app keys, each once. A key with no app, or one whose app

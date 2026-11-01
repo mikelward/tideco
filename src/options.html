@@ -97,7 +97,19 @@
 
 <section data-chromeos>
 <h2>Workspaces</h2>
-<p class="muted">The layout each workspace starts in, and each layout's main windows. A change reaches every workspace, replacing what the grow, shrink and main-window keys set.</p>
+<p class="muted">The standing workspaces are always on the bar, in this order, even when empty. The first is home, which holds home's apps and only theirs, so moving another first makes it home. A name taken out of the list stays a workspace until it's empty.</p>
+<table id="standing">
+<thead><tr><th>Standing workspaces</th><th><span class="visually-hidden">Home</span></th><th><span class="visually-hidden">Order</span></th></tr></thead>
+<tbody></tbody>
+</table>
+<form id="standing-form" class="row">
+<input id="standing-name" placeholder="Add a workspace, such as docs" aria-label="Standing workspace to add" required>
+<button type="submit">Add</button>
+</form>
+<fieldset id="home-apps" class="home-apps">
+<legend>Home's apps, whose windows always join home</legend>
+</fieldset>
+<p class="muted layouts">The layout each workspace starts in, and each layout's main windows. A change reaches every workspace, replacing what the grow, shrink and main-window keys set.</p>
 <fieldset class="start">
 <legend>Start in</legend>
 <label>On an ultrawide display <select id="start-ultrawide"></select></label>

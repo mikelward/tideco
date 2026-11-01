@@ -164,6 +164,26 @@ export class Tileco {
     });
   }
 
+  // Enter in Search+Shift+W's prompt (§6.1): the window the dashboard opened
+  // over moves to workspace `name`, made if it's new, which then shows on the
+  // display you're on with that window focused, as tide's Super+Shift+Return.
+  // Home holds only its apps, and none is listed yet, so it's refused. Only
+  // the prompt's own dashboard can ask: no other has a window to move.
+  moveTo(name) {
+    return this.run(async () => {
+      await this.sync();
+      this.restored();
+      const s = this.state;
+      const id = s.moving;
+      if (id === undefined || !(id in s.windows)) throw new Error(`no window to move to ${name}: the prompt that asked has gone`);
+      if (ws.lookup(s, name) === ws.home(s)) throw new Error(`window ${id} can't go to ${name}: home holds only its own apps`);
+      this.state = ws.send(s, id, name);
+      const display = this.focusedDisplay();
+      this.showWorkspace(display, this.state.windows[id].ws);
+      await this.apply(this.activate(id, display));
+    });
+  }
+
   // A key or a click means the browser has finished restoring (§14.2), so
   // the workspaces kept for windows that never came back can go.
   restored() {
@@ -184,8 +204,9 @@ export class Tileco {
   }
 
   // What the dashboard and home window show: the workspaces in bar order,
-  // each display's workspace and layout, how many windows each workspace
-  // holds, and which hold a marked window, all by name.
+  // which of them are made, each display's workspace and layout, how many
+  // windows each workspace holds, and which hold a marked window, all by
+  // name.
   view() {
     const s = this.state;
     const displays = {};
@@ -196,7 +217,7 @@ export class Tileco {
     const bar = ws.barOrder(s);
     const counts = Object.fromEntries(bar.map((n) => [n, Object.hasOwn(s.workspaces, n) ? s.workspaces[n].windows.length : 0]));
     const urgent = [...new Set(s.marks.map((id) => s.windows[id]?.ws).filter((n) => n !== undefined))];
-    return { focusedDisplay: this.focusedDisplay() ?? null, displays, bar, counts, urgent, dim: this.dimOn() };
+    return { focusedDisplay: this.focusedDisplay() ?? null, displays, bar, made: [...s.made], counts, urgent, dim: this.dimOn() };
   }
 
   // Bring the state up to date with Chrome: displays, new and closed
@@ -293,8 +314,19 @@ export class Tileco {
       Object.entries(before?.unread ?? {}).filter(([, u]) => this.all.has(u.windowId)),
     );
     // The dashboard closes itself after a choice, or when you click away.
-    if (before?.dashboard !== undefined && this.all.has(before.dashboard)) s.dashboard = before.dashboard;
-    else delete s.dashboard;
+    // While it's open it remembers what it opened for, and the window
+    // Search+Shift+W's would move.
+    if (before?.dashboard !== undefined && this.all.has(before.dashboard)) {
+      s.dashboard = before.dashboard;
+      for (const key of ["dashboardFor", "moving"]) {
+        if (before[key] !== undefined) s[key] = before[key];
+        else delete s[key];
+      }
+    } else {
+      delete s.dashboard;
+      delete s.dashboardFor;
+      delete s.moving;
+    }
     s.homes = {};
     for (const [d, id] of Object.entries(this.state?.homes ?? {})) {
       if (!this.all.has(id)) continue;
@@ -454,6 +486,7 @@ export class Tileco {
     if (name === "workspace-home") return this.showWorkspace(display, ws.home(s));
     if (name === "workspace-last") return this.showWorkspace(display, ws.last(s, n));
     if (name === "popup") return this.dashboard(display);
+    if (name === "workspace-go") return this.dashboard(display, "go");
     if (name === "app-browser") return this.browser(display);
     if (name === "attention") return this.attention(display);
     if (name === "keep-awake") {
@@ -463,6 +496,7 @@ export class Tileco {
     const app = this.apps.find((a) => a.command === name);
     if (app) return this.app(app, display);
     if (!tracked && name !== "layout-next" && name !== "layout-prev") return null;
+    if (name === "workspace-move") return this.dashboard(display, "move", win);
 
     const sendTo = (to) => (to === null ? s : ws.send(s, win, to));
     if ((m = name.match(/^send-([1-9])$/))) this.state = sendTo(ws.nth(s, Number(m[1])));
@@ -551,10 +585,10 @@ export class Tileco {
   // The launcher page full screen on `display` (§6.2, §8.1): opened on that
   // display first, since Chrome won't take a position and a full-screen
   // state in one call.
-  async fullscreen(mode, display, focused) {
+  async fullscreen(mode, display, focused, extra = "") {
     const b = display.bounds;
     const w = await this.api.windows.create({
-      url: this.api.runtime.getURL(`src/launcher.html?mode=${mode}`),
+      url: this.api.runtime.getURL(`src/launcher.html?mode=${mode}${extra}`),
       type: "popup",
       focused,
       left: b.left,
@@ -568,16 +602,25 @@ export class Tileco {
 
   // The dashboard, from its key or the toolbar button: the launcher full
   // screen over the focused display. The key again closes it (§8.1).
-  async dashboard(display) {
+  // `how` is "tabs" for that, "go" for Search+W's name prompt, on the
+  // Workspaces scope, and "move" for Search+Shift+W's, which moves window
+  // `moving` (§6.1). A different one's key swaps it for that one.
+  async dashboard(display, how = "tabs", moving = null) {
     const s = this.state;
     if (s.dashboard !== undefined) {
       const id = s.dashboard;
+      const was = s.dashboardFor ?? "tabs";
       delete s.dashboard;
+      delete s.dashboardFor;
+      delete s.moving;
       await this.api.windows.remove(id);
-      return null;
+      if (was === how) return null;
     }
     const d = this.displays.find((x) => x.id === display) ?? this.displays[0];
-    s.dashboard = (await this.fullscreen("dashboard", d, true)).id;
+    const extra = { tabs: "", go: "&scope=workspaces", move: "&scope=workspaces&move=1" }[how];
+    s.dashboard = (await this.fullscreen("dashboard", d, true, extra)).id;
+    if (how !== "tabs") s.dashboardFor = how;
+    if (moving !== null) s.moving = moving;
     return null;
   }
 

@@ -502,6 +502,84 @@ test("a dashboard that closed itself is forgotten", async () => {
   assert.equal(chrome.wins.filter((w) => w.url === DASHBOARD).length, 1, "the next press opens a new one");
 });
 
+// The name prompt (§6.1) is the dashboard on its Workspaces scope.
+const PROMPT = `${DASHBOARD}&scope=workspaces`;
+const MOVE_PROMPT = `${PROMPT}&move=1`;
+
+test("Search+W opens the dashboard on its workspaces, and the key again closes it", async () => {
+  const { chrome, tileco } = await setup([HD], [on(HD, 1, { focused: true })]);
+  await tileco.command("workspace-go");
+  const [d] = chrome.wins.filter((w) => w.url === PROMPT);
+  assert.ok(d, "the prompt opened");
+  assert.equal(d.state, "fullscreen");
+  assert.equal(tileco.state.moving, undefined, "it moves no window");
+  await tileco.command("workspace-go");
+  assert.equal(chrome.wins.some((w) => w.url?.startsWith(DASHBOARD)), false);
+  // Another key's dashboard takes its place.
+  await tileco.command("workspace-go");
+  await tileco.command("popup");
+  assert.deepEqual(chrome.wins.filter((w) => w.url?.startsWith(DASHBOARD)).map((w) => w.url), [DASHBOARD]);
+});
+
+test("Enter in Search+W's prompt shows a new name, made", async () => {
+  const { chrome, tileco } = await setup([HD], [on(HD, 1, { focused: true })]);
+  await tileco.command("workspace-go");
+  await tileco.workspace("notes");
+  assert.equal(tileco.state.displays.hd, "notes");
+  assert.deepEqual(chrome.store.view.bar, ["in", "re", "oc", "me", "notes"]);
+  assert.equal(tileco.state.windows[1].ws, "in", "no window moved");
+});
+
+test("Search+Shift+W's prompt moves the window it opened over, which focus follows", async () => {
+  const { chrome, tileco } = await setup([HD], [on(HD, 1), on(HD, 2, { focused: true })]);
+  await tileco.command("workspace-move");
+  assert.ok(chrome.wins.find((w) => w.url === MOVE_PROMPT)?.focused, "the prompt has focus");
+  assert.equal(tileco.state.moving, 2);
+  await tileco.moveTo("notes");
+  assert.equal(tileco.state.windows[2].ws, "notes", "made and moved there");
+  assert.equal(tileco.state.displays.hd, "notes", "and shown");
+  assert.equal(chrome.win(2).focused, true);
+  assert.equal(chrome.win(1).state, "minimized", "home went with the switch");
+  // Once the prompt closes, nothing is left to move.
+  chrome.wins = chrome.wins.filter((w) => !w.url?.startsWith(DASHBOARD));
+  await tileco.event();
+  assert.equal(tileco.state.moving, undefined);
+  await assert.rejects(tileco.moveTo("re"), /no window to move/);
+  assert.equal(tileco.state.windows[2].ws, "notes");
+});
+
+test("Search+Shift+W's prompt takes an existing workspace by name", async () => {
+  const { tileco } = await setup([HD], [on(HD, 1), on(HD, 2, { focused: true })]);
+  await tileco.command("workspace-move");
+  await tileco.moveTo("oc");
+  assert.equal(tileco.state.windows[2].ws, "oc");
+  assert.equal(tileco.state.displays.hd, "oc");
+  assert.deepEqual(tileco.state.workspaces.oc.windows, [2]);
+});
+
+test("Search+Shift+W's prompt refuses home, which holds only its own apps", async () => {
+  const { chrome, tileco } = await setup([HD], [on(HD, 1, { focused: true })]);
+  await tileco.command("send-2");
+  await tileco.command("workspace-2");
+  await tileco.command("workspace-move");
+  const before = JSON.stringify(tileco.state);
+  await assert.rejects(tileco.moveTo("IN"), /home holds only its own apps/);
+  assert.equal(JSON.stringify(tileco.state), before, "nothing moved");
+  assert.ok(chrome.wins.some((w) => w.url === MOVE_PROMPT), "the prompt is still open");
+});
+
+test("Search+W's prompt can't move a window, and Search+Shift+W needs one", async () => {
+  const { chrome, tileco } = await setup([HD], [on(HD, 1, { focused: true })]);
+  await tileco.command("workspace-go");
+  await assert.rejects(tileco.moveTo("re"), /no window to move/);
+  assert.equal(tileco.state.windows[1].ws, "in");
+  await tileco.command("workspace-go");
+  // An empty workspace has only its home page, and nothing to move.
+  await tileco.command("workspace-3");
+  await tileco.command("workspace-move");
+  assert.equal(chrome.wins.some((w) => w.url === MOVE_PROMPT), false);
+});
+
 test("a tab chosen in the launcher comes forward with its window and workspace", async () => {
   const { chrome, tileco } = await setup([HD], [on(HD, 1, { focused: true }), on(HD, 2)]);
   await tileco.command("send-4");
@@ -520,6 +598,7 @@ test("the view lists each display's workspace and layout", async () => {
     focusedDisplay: "hd",
     displays: { hd: { workspace: "in", mode: "tile" }, uw: { workspace: "re", mode: "threecol" } },
     bar: ["in", "re", "oc", "me"],
+    made: ["in", "re"],
     counts: { in: 1, re: 1, oc: 0, me: 0 },
     urgent: [],
     dim: false,

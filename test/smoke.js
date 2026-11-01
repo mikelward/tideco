@@ -123,6 +123,7 @@ test("off chromeOS, the settings and dashboard keep only what places no window",
   const dash = await open("src/launcher.html?mode=dashboard&real-platform");
   await dash.page.waitForFunction(() => /only on chromeOS/.test(document.getElementById("title").innerText));
   assert.equal(await dash.page.locator("#workspaces button").count(), 0);
+  assert.deepEqual(await dash.page.locator(".scopes button:visible").allInnerTexts(), ["Launch", "Tabs"], "no Workspaces scope");
   await dash.page.locator('[data-scope="launch"]').click();
   await dash.page.locator("#query").fill("work");
   assert.doesNotMatch(await dash.page.locator("#results").innerText(), /Go to workspace/);
@@ -315,6 +316,51 @@ test("a click anywhere on the bar's logo, chips or clocks reaches one", async ()
   assert.deepEqual(errors, []);
 });
 
+// Search+W's name prompt (§6.1): the dashboard on its Workspaces scope,
+// where Enter on a new name makes it and shows it.
+test("the Workspaces scope lists the workspaces, and Enter on a new name shows it", async () => {
+  const { page, errors } = await open("src/launcher.html?mode=dashboard&scope=workspaces");
+  await page.evaluate(() => (window.close = () => {}));
+  await page.waitForSelector("#workspaces button");
+  assert.equal(await page.locator('.scopes [aria-selected="true"]').innerText(), "Workspaces");
+  await page.waitForFunction(() => document.querySelectorAll("#results li").length >= 4);
+  assert.deepEqual((await page.locator("#results .title").allInnerTexts()).slice(0, 4), ["in", "re", "oc", "me"]);
+  assert.match(await page.locator("#results li").first().locator(".kind").innerText(), /^home · /);
+  assert.equal(await page.locator("#query").getAttribute("placeholder"), "Go to the workspace named");
+  await page.locator("#query").fill("notes");
+  assert.deepEqual(await page.locator('#results li[aria-selected="true"] .title').allInnerTexts(), ["notes"]);
+  assert.equal(await page.locator('#results li[aria-selected="true"] .kind').innerText(), "new workspace");
+  await page.locator("#query").press("Enter");
+  await page.waitForFunction(() => [...document.querySelectorAll("#workspaces button")].some((b) => b.textContent === "notes"));
+  // Tab steps on to Launch.
+  await page.locator("#query").fill("");
+  await page.locator("#query").press("Tab");
+  assert.equal(await page.locator('.scopes [aria-selected="true"]').innerText(), "Launch");
+  // Back home, so the next tests see the standing workspaces alone.
+  await page.locator("#workspaces button", { hasText: /^in$/ }).click();
+  await page.waitForFunction(() => ![...document.querySelectorAll("#workspaces button")].some((b) => b.textContent === "notes"));
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
+// Search+Shift+W's prompt keeps to Workspaces, and refuses home.
+test("the move prompt keeps to Workspaces and refuses home, saying why", async () => {
+  const { page, errors } = await open("src/launcher.html?mode=dashboard&scope=workspaces&move=1");
+  await page.waitForSelector("#workspaces button");
+  assert.deepEqual(await page.locator(".scopes button:visible").allInnerTexts(), ["Workspaces"]);
+  assert.equal(await page.locator("#query").getAttribute("placeholder"), "Move this window to the workspace named");
+  await page.waitForFunction(() => document.querySelectorAll("#results li").length >= 3);
+  assert.deepEqual((await page.locator("#results .title").allInnerTexts()).slice(0, 3), ["re", "oc", "me"]);
+  await page.locator("#query").fill("IN");
+  assert.deepEqual(await page.locator("#results li .kind").allInnerTexts(), ["home holds only its own apps"]);
+  assert.equal(await page.locator("#results li").first().getAttribute("aria-disabled"), "true");
+  await page.locator("#query").press("Tab");
+  assert.equal(await page.locator('.scopes [aria-selected="true"]').innerText(), "Workspaces");
+  assert.equal(await page.locator("#keys").innerText(), "Enter to move the window there · ↑ ↓ to choose · Esc to clear or close");
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
 test("the bar's cup turns keep awake on and off, and says which", async () => {
   const { page, errors } = await open("src/launcher.html?mode=dashboard");
   const cup = page.locator("#keep-awake");
@@ -367,7 +413,7 @@ test("the footer names only the keys that work in each scope", async () => {
   await page.waitForSelector("#results li");
   assert.equal(await page.locator("#keys").innerText(), "Enter to run · ↑ ↓ to choose · Tab to switch to Tabs · Esc to clear or close");
   await page.locator('.scopes [data-scope="tabs"]').click();
-  assert.equal(await page.locator("#keys").innerText(), "Enter to allow tab search · Tab to switch to Launch · Esc to clear or close");
+  assert.equal(await page.locator("#keys").innerText(), "Enter to allow tab search · Tab to switch to Workspaces · Esc to clear or close");
   assert.deepEqual(errors, []);
 });
 

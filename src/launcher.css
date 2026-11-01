@@ -309,6 +309,9 @@ main {
   font: inherit;
   cursor: pointer;
 }
+.scopes button[hidden] {
+  display: none;
+}
 .scopes button[aria-selected="true"] {
   background: var(--accent);
   color: var(--on-accent);
@@ -349,6 +352,11 @@ main {
 }
 #results .icon.app {
   background: var(--accent);
+}
+/* A name the prompt can't take says why, and can't be chosen. */
+#results li[aria-disabled="true"] {
+  color: var(--muted);
+  cursor: default;
 }
 #results .title {
   overflow: hidden;

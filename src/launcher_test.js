@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { footerKeys, footerText, fuzzyScore, items, logoTapped, rank } from "./launcher.js";
+import { footerKeys, footerText, fuzzyScore, items, logoTapped, nextScope, opening, rank, workspaceRows } from "./launcher.js";
 
 test("a fuzzy match needs every query letter in order", () => {
   assert.equal(fuzzyScore("cal", "Google Calendar") > 0, true);
@@ -80,13 +80,15 @@ test("the footer names only the keys that work in each scope", () => {
   assert.deepEqual(footerKeys("tabs", { home: false, tabsAllowed: true }), [
     ["Enter", "go there"],
     ["↑ ↓", "choose"],
-    ["Tab", "switch to Launch"],
+    ["Tab", "switch to Workspaces"],
     ["Esc", "clear or close"],
   ]);
+  // Off chromeOS there's no Workspaces scope to switch to.
+  assert.deepEqual(footerKeys("tabs", { home: false, tabsAllowed: true, scopes: ["launch", "tabs"] })[2], ["Tab", "switch to Launch"]);
   // Without tab access the Tabs scope has one row, so nothing to choose.
   assert.deepEqual(footerKeys("tabs", { home: false, tabsAllowed: false }), [
     ["Enter", "allow tab search"],
-    ["Tab", "switch to Launch"],
+    ["Tab", "switch to Workspaces"],
     ["Esc", "clear or close"],
   ]);
   assert.equal(footerText(footerKeys("launch", { home: true, tabsAllowed: true })), "Enter to run · ↑ ↓ to choose · Tab to switch to Tabs · Esc to clear");
@@ -96,4 +98,85 @@ test("the footer names only the keys that work in each scope", () => {
 test("a tap on the logo closes the dashboard and brings home's launcher to Launch", () => {
   assert.equal(logoTapped({ home: false }), "close");
   assert.equal(logoTapped({ home: true }), "launch");
+});
+
+// The Workspaces scope (§6.1, §9.4), as the view describes the workspaces.
+const view = {
+  bar: ["in", "re", "oc", "me", "web", "docs"],
+  made: ["in", "re", "oc", "web", "docs"],
+  counts: { in: 2, re: 1, oc: 0, me: 0, web: 3, docs: 0 },
+  current: "docs",
+};
+const rows = (query, more = {}) => workspaceRows({ ...view, query, ...more }).map((r) => [r.kind, r.title, r.detail]);
+
+test("the Workspaces scope lists every workspace in bar order, with tide's words for each", () => {
+  assert.deepEqual(rows(""), [
+    ["workspace", "in", "home · 2 windows"],
+    ["workspace", "re", "1 window"],
+    ["workspace", "oc", "empty"],
+    ["workspace", "me", "not made yet"],
+    ["workspace", "web", "3 windows"],
+    ["workspace", "docs", "current"],
+  ]);
+  assert.deepEqual(workspaceRows({ ...view, query: "" })[3].workspace, "me", "Enter on one shows it by name");
+});
+
+test("typing filters the workspaces, a new name coming first, to be made", () => {
+  assert.deepEqual(rows("o"), [["new", "o", "new workspace"], ["workspace", "oc", "empty"], ["workspace", "docs", "current"]]);
+  // Trimmed, as the name is made.
+  const [made] = workspaceRows({ ...view, query: "  notes " });
+  assert.deepEqual([made.kind, made.workspace], ["new", "notes"]);
+  assert.deepEqual(rows("notes"), [["new", "notes", "new workspace"]], "nothing else matches");
+});
+
+test("a name typed in another case is that workspace's, first, with nothing to make", () => {
+  assert.deepEqual(rows("WEB")[0], ["workspace", "web", "3 windows"]);
+  assert.ok(!rows("WEB").some(([kind]) => kind === "new"));
+  // A standing one not made yet, too.
+  assert.deepEqual(rows("Me"), [["workspace", "me", "not made yet"]]);
+  // The exact name, then the others that match.
+  assert.deepEqual(rows("OC").map(([, title]) => title), ["oc", "docs"]);
+});
+
+test("a name that can't be one says why, in a row that can't be chosen", () => {
+  const [bad] = workspaceRows({ ...view, query: 'o"c' });
+  assert.deepEqual([bad.kind, bad.title, bad.workspace], ["refused", 'o"c', undefined]);
+  assert.match(bad.detail, /can't have quotes/);
+  assert.match(workspaceRows({ ...view, query: "x".repeat(33) })[0].detail, /at most 32 characters/);
+});
+
+test("moving a window, home is refused, saying why, and the rest are offered", () => {
+  assert.deepEqual(rows("", { move: true }).map(([, title]) => title), ["re", "oc", "me", "web", "docs"]);
+  assert.deepEqual(rows("IN", { move: true }), [["refused", "in", "home holds only its own apps"]]);
+  assert.deepEqual(rows("notes", { move: true }), [["new", "notes", "new workspace"]]);
+  // Going there is fine.
+  assert.deepEqual(rows("in")[0], ["workspace", "in", "home · 2 windows"]);
+});
+
+test("the page's address says how it opened: home, the dashboard, or a name prompt", () => {
+  assert.deepEqual(opening("?mode=home"), { home: true, scope: "launch", move: false });
+  assert.deepEqual(opening("?mode=dashboard"), { home: false, scope: "tabs", move: false });
+  assert.deepEqual(opening("?mode=dashboard&scope=workspaces"), { home: false, scope: "workspaces", move: false });
+  assert.deepEqual(opening("?mode=dashboard&scope=workspaces&move=1"), { home: false, scope: "workspaces", move: true });
+  assert.deepEqual(opening("?mode=home&scope=workspaces&move=1"), { home: true, scope: "launch", move: false }, "home's page moves nothing");
+});
+
+test("Tab steps through the scopes, Shift+Tab back, skipping those not shown", () => {
+  assert.equal(nextScope("launch"), "tabs");
+  assert.equal(nextScope("tabs"), "workspaces");
+  assert.equal(nextScope("workspaces"), "launch");
+  assert.equal(nextScope("launch", -1), "workspaces");
+  assert.equal(nextScope("tabs", 1, ["launch", "tabs"]), "launch");
+  assert.equal(nextScope("workspaces", 1, ["workspaces"]), "workspaces");
+});
+
+test("the Workspaces footer says where Enter goes, and the move prompt has no Tab", () => {
+  assert.equal(
+    footerText(footerKeys("workspaces", { home: false, tabsAllowed: true })),
+    "Enter to go there · ↑ ↓ to choose · Tab to switch to Launch · Esc to clear or close",
+  );
+  assert.equal(
+    footerText(footerKeys("workspaces", { home: false, tabsAllowed: false, move: true, scopes: ["workspaces"] })),
+    "Enter to move the window there · ↑ ↓ to choose · Esc to clear or close",
+  );
 });

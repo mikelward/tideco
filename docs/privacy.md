@@ -33,14 +33,6 @@ which Chrome Sync copies to your Google account if you have Sync turned on.
   a translucent overlay over windows you're not using, and it reads nothing
   from those pages.
 
-- **On Linux, your tabs, only if you allow "Tabs in tide's switcher"** in
-  its settings: each normal window's tabs, with their titles and addresses,
-  and which is active. tileco hands them to tide, the Linux desktop, through
-  its `tide-tabs` helper on the same computer, so tide's switcher can list
-  them. They go nowhere else, and tileco keeps none of them. Incognito
-  windows and site icons are left out. On Linux tileco doesn't tile, and
-  reads nothing else.
-
 ## What tileco keeps, and where
 
 - **On your Chromebook**, in `chrome.storage.local`:
@@ -68,10 +60,9 @@ which Chrome Sync copies to your Google account if you have Sync turned on.
 
 ## What tileco sends
 
-Nothing over the network. tileco makes no network requests of its own. On
-Linux, with tide's tab list allowed, the tabs go to tide's helper on the
-same computer, through Chrome's native messaging, and no further. Showing a tab's site
-icon in the launcher loads that icon the way Chrome's own tab strip does.
+Nothing over the network. tileco makes no network requests of its own.
+Showing a tab's site icon in the launcher loads that icon the way Chrome's
+own tab strip does.
 
 ## Permissions
 
@@ -87,7 +78,6 @@ and you can turn each off there again.
 | `tabs` (optional) | Tab titles and addresses, for tab search, restarts and Secure Shell's windows |
 | Each site in your unread counts list (optional) | Its unread count, from the page title |
 | All sites (optional) | Only for dimming inactive windows |
-| `nativeMessaging` (optional, Linux only) | Handing your tabs to tide's switcher, on the same computer |
 
 ## Changes and contact
 

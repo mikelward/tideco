@@ -12,7 +12,7 @@ import { addDefaultSites, DISMISSED_KEY, extrasFor, isOn } from "./extras.js";
 import { KEEP_AWAKE_KEY, isOn as keepingAwake, words as awakeWords } from "./keepawake.js";
 import { actions, footerKeys, footerText, items, limitFor, logoTapped, nextScope, opening, rank, SCOPE_ORDER, SECTION_KEY, settingsSections, workspaceRows } from "./launcher.js";
 import { load as loadSettings, SETTINGS_KEY } from "./settings.js";
-import { platform, TABS, TILE } from "./platform.js";
+import { platform, TILE } from "./platform.js";
 
 const SYMBOLS = { tile: "[]=", threecol: "|M|", twocol: "||=", monocle: "[M]" };
 const opened = opening(location.search);
@@ -122,13 +122,12 @@ async function refresh() {
   tabsAllowed = await chrome.permissions.contains({ permissions: ["tabs"] });
   // The dashboard opens on tabs only when it can show them.
   if (!home && !tabsAllowed && wasAllowed && scope === "tabs" && query.value === "") scope = "launch";
-  const [tabs, stored, { settings: current }, awake, dimGranted, { role }] = await Promise.all([
+  const [tabs, stored, { settings: current }, awake, dimGranted] = await Promise.all([
     tabsAllowed ? chrome.tabs.query({}) : [],
     chrome.storage.local.get(["state", "view"]),
     loadSettings(chrome.storage),
     keepingAwake(chrome.storage),
     chrome.permissions.contains(DIM_ACCESS),
-    where,
   ]);
   state = stored.state ?? null;
   view = stored.view ?? null;
@@ -142,7 +141,7 @@ async function refresh() {
   all = items({
     tabs,
     apps,
-    sections: settingsSections({ tiling, linux: role === TABS }),
+    sections: settingsSections({ tiling }),
     actions: actions({ keepAwake: awake, dim: tiling ? { granted: dimGranted, on: view?.dim === true } : null, key: keyOf }),
     commands,
     workspaceOf: (w) => state?.windows?.[w]?.ws ?? null,

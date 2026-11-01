@@ -62,9 +62,8 @@ export const SETTINGS_APP = "Tide Settings";
 
 // The options page's sections, each found from Launch by its name and what
 // it covers, and opened at its anchor, `id`. `chromeos` ones show only
-// there and `linux` only on Linux, as the options page shows them (§14.6).
+// there, as the options page shows them (§14.6).
 export const SETTINGS_SECTIONS = [
-  { id: "linux", name: "Tabs in tide's switcher", covers: "Linux native helper tide-tabs", linux: true },
   { id: "extras", name: "Extras", covers: "permissions allow tab search unread dim" },
   { id: "clocks-section", name: "Clocks", covers: "time zones cities daytime working hours" },
   { id: "setup-section", name: "Setup checklist", covers: "chromeOS settings", chromeos: true },
@@ -90,10 +89,10 @@ export function sectionToShow(hash, asked, ids) {
   return ids.includes(id) ? id : null;
 }
 
-// The sections shown where tileco runs: on chromeOS (`tiling`), or off it,
-// where `linux` adds Linux's own.
-export function settingsSections({ tiling = true, linux = false } = {}) {
-  return SETTINGS_SECTIONS.filter((s) => (tiling ? !s.linux : !s.chromeos && (!s.linux || linux)));
+// The sections shown where tileco runs: all of them on chromeOS (`tiling`),
+// and off it all but chromeOS's own.
+export function settingsSections({ tiling = true } = {}) {
+  return SETTINGS_SECTIONS.filter((s) => tiling || !s.chromeos);
 }
 
 // The Actions scope's own rows (§9.4), before the commands: keep awake,

@@ -10,9 +10,8 @@ import { EXTRAS as BASE_EXTRAS, extrasFor } from "./extras.js";
 import { DEFAULT_SITES } from "./unread.js";
 import { pattern } from "./watchers.js";
 import { DEFAULT_SETTINGS, PER_MACHINE, pick, resolve, SETTINGS_KEY, SHARED, standingProblems, START_MODES } from "./settings.js";
-import { osName, platform, TABS, TILE, worksUntiled } from "./platform.js";
+import { osName, platform, TILE, worksUntiled } from "./platform.js";
 import { SECTION_KEY, sectionToShow, SETTINGS_SECTIONS } from "./launcher.js";
-import { ACCESS as BRIDGE_ACCESS, bridgeText, STATUS_KEY as BRIDGE_KEY } from "./tabsbridge.js";
 
 const $ = (id) => document.getElementById(id);
 const rows = $("clocks").tBodies[0];
@@ -626,43 +625,12 @@ chrome.storage.onChanged.addListener((changes, area) => {
   showErrors(fresh.errors);
 });
 
-// Off chromeOS the tiling settings hide (§14.6), and Linux offers tide's tab
-// list too.
-async function renderBridge() {
-  const allowed = await chrome.permissions.contains(BRIDGE_ACCESS);
-  const status = allowed ? (await chrome.storage.session.get(BRIDGE_KEY))[BRIDGE_KEY] : null;
-  const { state, detail } = bridgeText(allowed, status);
-  $("bridge-state").textContent = state;
-  $("bridge-detail").textContent = detail;
-  $("bridge-detail").hidden = detail === "";
-  const toggle = $("bridge-toggle");
-  toggle.textContent = allowed ? "Turn off" : "Allow";
-  toggle.setAttribute("aria-label", `${toggle.textContent}: tabs in tide's switcher`);
-}
-
-$("bridge-toggle").addEventListener("click", async () => {
-  try {
-    if (await chrome.permissions.contains(BRIDGE_ACCESS)) await chrome.permissions.remove(BRIDGE_ACCESS);
-    else await chrome.permissions.request(BRIDGE_ACCESS);
-  } catch (e) {
-    showErrors([`Tabs in tide's switcher: ${e.message}`]);
-  }
-  renderBridge();
-});
-
+// Off chromeOS the tiling settings hide (§14.6).
 where.then((p) => {
   if (p.role === TILE) return;
   for (const el of document.querySelectorAll("[data-chromeos]")) el.hidden = true;
   $("untiled").hidden = false;
   $("untiled").textContent = `Changes apply as you make them, and follow you to every computer you sign in to. Tiling and workspaces work only on chromeOS, so on ${osName(p.os)} their keys do nothing and their settings aren't shown; the dashboard, its launcher and the app keys work here too.`;
-  if (p.role !== TABS) return;
-  $("linux").hidden = false;
-  renderBridge();
-  chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === "session" && changes[BRIDGE_KEY]) renderBridge();
-  });
-  chrome.permissions.onAdded.addListener(renderBridge);
-  chrome.permissions.onRemoved.addListener(renderBridge);
 });
 
 // A section Launch found (§9.4), or the address's anchor: scrolled to once

@@ -8,8 +8,7 @@ setup checklist sets the native chromeOS features (lock, launcher,
 notifications, screenshots, dark mode) to match.
 
 It tiles only on chromeOS. In Chrome or Brave elsewhere it keeps its
-dashboard and launcher but moves no window, and on Linux it lists the
-browser's tabs in tide's switcher ([SPEC.md](SPEC.md) §14.6).
+dashboard and launcher but moves no window ([SPEC.md](SPEC.md) §14.6).
 
 On the Chromebook it calls itself **tide**, with tide's wave logo, in
 `chrome://extensions`, the toolbar and its own pages; tileco is the name of

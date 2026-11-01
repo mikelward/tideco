@@ -23,8 +23,8 @@ page means the desktop on Linux, it says "tide on Linux".
 It **tiles only on chromeOS** (§14.6). Loaded in Chrome or Brave anywhere
 else, it lays out and moves no window, since that desktop has its own
 window manager. Its dashboard, launcher, app keys and keep awake still
-work there. On Linux it is also how tide's switcher lists the browser's
-tabs (tide §8.3).
+work there. tide's switcher gets Linux tabs from tide's own connector
+extension, not from tileco (tide §8.3).
 
 This document is milestone 1: what chromeOS allows, the decisions that
 follow, and what "done" means for each later milestone. Claims about chromeOS
@@ -1275,9 +1275,6 @@ program, so tileco's list is web addresses alone.
   - Each unread-count site's own origin (§10.3). Gmail, Chat and Calendar
     are one Allow.
   - `<all_urls>`, for dimming inactive windows (§10.1).
-- On Linux only, `tabs` and `nativeMessaging` together, for tide's
-  switcher (§14.6). They're asked for from their own Allow on the settings,
-  never on chromeOS.
 
 ### 14.2 Living with the service worker
 
@@ -1351,9 +1348,9 @@ development only. That shapes the design *(Web Store policy, secondary)*:
 
 - **One purpose**: window management. The clocks, keep-awake and attention
   belong to it as the desktop around the tiles; the listing says so.
-  Feeding tide's switcher the tabs on Linux (§14.6) is a second job, so the
-  listing's single purpose has to name it too, or the Linux part stays out
-  of the store build. That's the maintainer's call (TODO.md).
+  Feeding tide's switcher the tabs on Linux was a second job, so it moved
+  to tide's own connector extension (tide §8.3), and tileco asks for no
+  `nativeMessaging`.
 - **Every permission is justified in the listing** (PUBLISHING.md):
   `system.display` for layout, `scripting` for unread counts and dimming,
   `power` for keep awake, and, optional and asked for at runtime, `tabs`, each unread-count site,
@@ -1366,7 +1363,7 @@ development only. That shapes the design *(Web Store policy, secondary)*:
 
 tidal would ship on the **Play Store** (§20.4).
 
-### 14.6 Off chromeOS: no tiling, and tide's tabs on Linux
+### 14.6 Off chromeOS: no tiling
 
 tileco asks `chrome.runtime.getPlatformInfo()` which platform it's on, at
 each event, since Chrome answers at once.
@@ -1387,47 +1384,19 @@ each event, since Chrome answers at once.
   - The manifest's suggested keys stay. Each needs a default for the
     extension to install off chromeOS, and the tiling ones there do
     nothing; unbind them at `chrome://extensions/shortcuts`.
-- **Linux** (`linux`) also hands the tabs to tide's switcher (tide §8.3).
-  - A separate Allow on the settings asks for `tabs` and `nativeMessaging`.
-    Both may be optional: Chromium marks neither
-    `kFlagCannotBeOptional` (`chrome_api_permissions.cc`,
-    `extensions_api_permissions.cc`, `main` on 2026-11-01).
-  - The worker connects to the native-messaging host
-    `io.github.mikelward.tide.tabs`, tide's `tide-tabs`, which relays to
-    tide's shell. `setup` writes the host's manifest for each browser. It
-    allows the store's ID (PUBLISHING.md) and an unpacked checkout's, which
-    Chromium makes from the checkout's path, since the manifest has no
-    `key` to fix it. It sends every normal window's tabs, whole, on each
-    change, gathered over 100 ms: window ID, whether it's focused, its
-    title (its active tab's), and each tab's ID, title, address and whether
-    it's active. No favicons and no incognito windows.
-  - The host asks it to bring a tab up. It makes that tab active and
-    focuses its window. That's all the host can ask.
-  - The settings say whether it's connected, waiting for tide's shell, or
-    missing its host, and what to do.
-  - **The worker stays up.** An open native port keeps an MV3 worker
-    running from Chrome 105. On Chromium 153.0.8010.12 (Playwright 1.63)
-    with the real host, the worker was still running after 70 s idle, and
-    sent a tab change after it.
-  - **Reconnects.** A port that closes (no host, the host stopped) is
-    retried after 1 s, doubling to a minute. A worker that stops meanwhile
-    retries at its next start, or on its next tab event. The host keeps the
-    port open while the shell restarts, and the tabs show again in under a
-    second.
-  - Cost: none. No network call, and one small process per browser while
-    it runs. Without the host, or outside a tide session, the switcher just
-    lists no tabs, and the settings say why.
-- **Other platforms** (macOS, Windows): nothing more. The settings say
-  tiling works only on chromeOS.
+- **Linux** is no different. tide's switcher lists a Linux browser's tabs
+  through tide's own extension, the tide connector (tide §8.3). tileco
+  handed them over itself until 2026-11-01; that moved out so each
+  extension has one purpose.
 
 ## 15. Where things live
 
 | Repo | Gets |
 |---|---|
 | **tileco** (this) | The spec. The extension: worker, layout geometry, workspaces, the full-screen dashboard and home page with the launcher, options page with the checklist, attention and dim content scripts. Its tests. |
-| **tide** | Its layout fixtures (window counts → rectangles) are the reference tileco's geometry tests are checked against, copied with a note of the commit. `tide-tabs`, the native-messaging host and relay tileco's Linux tab list talks to, and the switcher's side of it (§14.6). |
+| **tide** | Its layout fixtures (window counts → rectangles) are the reference tileco's geometry tests are checked against, copied with a note of the commit. The tide connector, which lists Linux tabs in tide's switcher in tileco's place (§14.6). |
 | **conf** | The shared `clocks.json` and layouts settings, if tileco imports them (§13). Crostini needs nothing new: the Debian path already covers it. |
-| **scripts** | `setup` installs `tide-tabs`'s host manifest for Chrome and Brave, naming tileco's extension ID (§14.6). `setup` detects Crostini (`/dev/.cros_milestone` or `/opt/google/cros-containers`, *(unverified on a device)*) and skips the desktop: no KDE, no tide, no display manager (A.5). |
+| **scripts** | `setup` detects Crostini (`/dev/.cros_milestone` or `/opt/google/cros-containers`, *(unverified on a device)*) and skips the desktop: no KDE, no tide, no display manager (A.5). |
 
 ## 16. Milestones
 

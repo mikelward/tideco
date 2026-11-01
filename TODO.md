@@ -317,21 +317,12 @@ Guesses made on autopilot (2026-10-24), each cheap to undo.
     needs the keys.
   - The toolbar button opens the dashboard everywhere, and its tooltip off
     chromeOS says tiling and workspaces work only on chromeOS.
-- **The Linux tab list is one Allow for `tabs` and `nativeMessaging`
-  together** (2026-11-01), rather than reusing tab search's `tabs` grant:
-  one switch with one meaning. Reversible: `ACCESS` in `src/tabsbridge.js`.
-- **The whole tab list goes on every change**, gathered over 100 ms, rather
-  than diffs: a few KB per change, and nothing to get out of step after a
-  reconnect. Reversible: the protocol, with tide's `tide-tabs`.
-- **No incognito windows in tide's list**, even where you've allowed tileco
-  in incognito. Reversible: the filter in `tabsMessage`.
-- **Waiting: a `key` in the manifest** (needs the maintainer). Without it an
-  unpacked copy's ID comes from its folder's path, so `setup` allows both
-  that ID and the store's. The store item's public key (dashboard ›
-  Package › View public key) in `manifest.json`'s `key` would make every
-  copy `ajcfbfgjfglgofbepnkiimmmnaidfedl`; `make zip` would then have to
-  drop it, since the store has refused packages with one (from memory,
-  unchecked).
+- **tide's tab list left tileco** (2026-11-01): the Chrome Web Store
+  rejected the listing, and tiling on chromeOS plus tabs on Linux was two
+  purposes. tide's connector extension (tide's `connector/`) does the Linux
+  half now, so tileco has no `nativeMessaging`, no Linux settings section,
+  and on Linux behaves as on any platform but chromeOS. Reversible:
+  `src/tabsbridge.js` in git history.
 
 ## Later
 

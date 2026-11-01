@@ -80,18 +80,16 @@ test("every page says tide, not tileco, under tide's logo", async () => {
 // The real platform here is the machine's own, Linux in CI but macOS or
 // Windows on a developer's machine, and never chromeOS. Off chromeOS the
 // settings hide what only tiling uses and the dashboard lists no
-// workspaces; only Linux offers tide's tab list.
+// workspaces.
 const HOST_OS = { linux: "Linux", darwin: "macOS", win32: "Windows" }[process.platform];
-const ON_LINUX = process.platform === "linux";
 
-// Linux's own page, wherever the test runs.
-test("on Linux, the settings offer tide's tab list", async () => {
+// Linux's own page, wherever the test runs: tide's connector, not tileco,
+// lists its tabs, so it's like any platform but chromeOS.
+test("on Linux, the settings keep only what places no window", async () => {
   const { page, errors } = await open("src/options.html?os=linux");
-  await page.waitForSelector("#linux:not([hidden])");
-  assert.equal(await page.locator("h2:visible").first().innerText(), "Tabs in tide's switcher");
+  await page.waitForSelector("#untiled:not([hidden])");
+  assert.deepEqual(await page.locator("h2:visible").allInnerTexts(), ["Extras", "Clocks", "Keys", "Apps", "Import and export"]);
   assert.match(await page.locator("#untiled").innerText(), /only on chromeOS, so on Linux/);
-  await page.waitForFunction(() => document.getElementById("bridge-state").innerText === "Off");
-  assert.equal(await page.locator("#bridge-toggle").innerText(), "Allow");
   assert.equal(await page.locator("#setup").isVisible(), false);
   assert.deepEqual(errors, []);
   await page.close();
@@ -101,13 +99,8 @@ test("off chromeOS, the settings and dashboard keep only what places no window",
   const { page, errors } = await open("src/options.html?real-platform");
   await page.waitForSelector("#untiled:not([hidden])");
   const headings = await page.locator("h2:visible").allInnerTexts();
-  assert.deepEqual(headings, [...(ON_LINUX ? ["Tabs in tide's switcher"] : []), "Extras", "Clocks", "Keys", "Apps", "Import and export"]);
+  assert.deepEqual(headings, ["Extras", "Clocks", "Keys", "Apps", "Import and export"]);
   assert.match(await page.locator("#untiled").innerText(), new RegExp(`only on chromeOS, so on ${HOST_OS}`));
-  assert.equal(await page.locator("#linux").isVisible(), ON_LINUX);
-  if (ON_LINUX) {
-    await page.waitForFunction(() => document.getElementById("bridge-state").innerText === "Off");
-    assert.equal(await page.locator("#bridge-toggle").innerText(), "Allow");
-  }
   await page.waitForSelector("#permissions li");
   assert.equal(await page.locator("#permissions li").count(), 1, "tab search alone");
   await page.waitForSelector("#keys tbody tr");

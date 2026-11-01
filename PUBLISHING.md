@@ -133,13 +133,12 @@ In the [developer dashboard](https://chrome.google.com/webstore/devconsole):
    > A tiling desktop environment for chromeOS. Includes a tiling window
    > manager that automatically places your windows, a launcher to run apps
    > and open websites, and a dashboard to see world times and other useful
-   > info. On Linux, it lists your browser tabs in the switcher of tide, the
-   > Linux desktop it comes from.
+   > info.
 3. **Privacy:**
    - **Single purpose:** "Tiles and arranges Chrome and web app windows on
-     chromeOS into workspaces, as a tiling window manager does, and on
-     Linux lists your tabs in tide's switcher." One build serves both, so
-     the store's copy carries `nativeMessaging` too.
+     chromeOS into workspaces, as a tiling window manager does." Listing
+     tabs in tide's switcher on Linux is tide's connector extension's job
+     (tide's `connector/README.md`), not tileco's.
    - **Permission justifications**, one each:
      - `storage`: settings, and the workspace state that survives a
        restart.
@@ -156,10 +155,6 @@ In the [developer dashboard](https://chrome.google.com/webstore/devconsole):
        title. Asked for only when you allow it.
      - Optional all-sites access: dimming inactive windows, asked for only
        when you turn it on.
-     - Optional `nativeMessaging`, with optional `tabs`: on Linux only,
-       handing the tab list to tide's switcher through tide's `tide-tabs`
-       helper on the same computer (SPEC.md §14.6). Asked for only when
-       you allow it on the settings, never on chromeOS.
    - **Remote code:** no. tileco runs only the code in its package.
    - **Data use:** tileco sends nothing to its developer or anyone else.
      Chrome Sync carrying the shared settings is Chrome's, not tileco's, but

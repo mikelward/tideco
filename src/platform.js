@@ -2,17 +2,15 @@
 // the one platform whose windows Chrome's window API can lay out as a desktop.
 // Elsewhere the desktop has its own window manager, so tileco lays out and
 // moves nothing, but keeps its dashboard, launcher, app keys and keep awake
-// (untiled.js). On Linux it also hands this browser's tabs to tide's
-// switcher (tabsbridge.js).
+// (untiled.js). tide's own connector, not tileco, lists tabs in tide's
+// switcher on Linux (tide's SPEC.md §8.3).
 
 export const TILE = "tile";
-export const TABS = "tabs";
 export const INERT = "inert";
 
 // `os` is chrome.runtime.getPlatformInfo()'s `os`.
 export function roleOf(os) {
   if (os === "cros") return TILE;
-  if (os === "linux") return TABS;
   return INERT;
 }
 
@@ -38,8 +36,7 @@ export async function platform(api) {
 // a tiling key there does nothing to show it.
 export function actionTitle({ os, role }) {
   if (role === TILE) return "tide";
-  const why = `tide · tiling and workspaces work only on chromeOS, not ${osName(os)}`;
-  return role === TABS ? `${why}; tide's switcher can list these tabs` : why;
+  return `tide · tiling and workspaces work only on chromeOS, not ${osName(os)}`;
 }
 
 // The commands that work off chromeOS too: none of them lays out or moves a

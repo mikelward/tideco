@@ -124,8 +124,8 @@ test("frequent actions take no modifier but Search, and no two commands share a 
 test("every permission with an install warning is optional", () => {
   // power has no install warning, so keep awake (§11) needs no prompt.
   assert.deepEqual(manifest.permissions, ["storage", "system.display", "scripting", "power"]);
-  // nativeMessaging is asked for only on Linux, for tide's tab list (§14.6).
-  assert.deepEqual(manifest.optional_permissions, ["tabs", "nativeMessaging"]);
+  // No nativeMessaging: tide's own connector lists Linux tabs (§14.6).
+  assert.deepEqual(manifest.optional_permissions, ["tabs"]);
   assert.equal(manifest.content_scripts, undefined, "the title watcher is registered once its sites are allowed");
   assert.equal(manifest.host_permissions, undefined);
 });
@@ -265,12 +265,6 @@ test("background.js adds every listener while it first runs", async () => {
     "storage.onChanged",
     "system.display.onDisplayChanged",
     "tabs.onActivated",
-    "tabs.onAttached",
-    "tabs.onCreated",
-    "tabs.onDetached",
-    "tabs.onMoved",
-    "tabs.onRemoved",
-    "tabs.onReplaced",
     "tabs.onUpdated",
     "windows.onBoundsChanged",
     "windows.onCreated",

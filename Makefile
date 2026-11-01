@@ -13,7 +13,7 @@ TESTS = \
 	src/restart_test.js \
 	src/settings_test.js \
 	src/setup_test.js \
-	src/tabsbridge_test.js \
+	src/platform_test.js \
 	src/untiled_test.js \
 	src/unread_test.js \
 	src/watchers_test.js \

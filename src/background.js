@@ -5,33 +5,28 @@
 //
 // Each listener then waits for the platform (§14.6): only chromeOS tiles.
 // Elsewhere the dashboard, launcher, app keys and keep awake still work,
-// placing nothing, and on Linux the worker also runs tide's tab list.
+// placing nothing.
 
 import { remind } from "./mouse.js";
 import { load as loadSettings, settingsChanged } from "./settings.js";
 import { isWatched, serialized, syncWatchers } from "./watchers.js";
 import { DIM_ORIGINS, Tileco } from "./tileco.js";
-import { actionTitle, platform, TABS, TILE, worksUntiled } from "./platform.js";
-import { ACCESS as BRIDGE_ACCESS, TabsBridge } from "./tabsbridge.js";
+import { actionTitle, platform, TILE, worksUntiled } from "./platform.js";
 import { Untiled } from "./untiled.js";
 import { checkName } from "./workspaces.js";
 
 const tileco = new Tileco(chrome);
 const untiled = new Untiled(chrome);
-const bridge = new TabsBridge(chrome);
 // Asked afresh each time, which costs Chrome nothing to answer.
 const where = () => platform(chrome);
 // `f` runs only where `role` is this platform's.
 const on = (role, f) => (...args) => where().then((p) => (p.role === role ? f(...args) : undefined));
 const tiling = (f) => on(TILE, f);
-const tabs = (f) => on(TABS, f);
 const changed = tiling(() => tileco.event());
-const tabsChanged = tabs(() => bridge.changed());
 where().then((p) => {
   if (p.role === TILE) return;
   console.info(`tileco: ${actionTitle(p)}`);
   chrome.action.setTitle({ title: actionTitle(p) }).catch((e) => console.error("tileco: couldn't set the toolbar title:", e));
-  if (p.role === TABS) bridge.start().catch((e) => console.error("tileco: couldn't start tide's tab list:", e));
 });
 // The extra watched sites (§10.3) follow the settings and this Chromebook's
 // grants, one update at a time so an older one can't undo a newer one.
@@ -55,13 +50,9 @@ const commands = new Set(Object.keys(chrome.runtime.getManifest().commands));
 // and the toolbar's tooltip says why.
 const command = (name) => where().then((p) => (p.role === TILE ? tileco.command(name) : untiled.command(name)));
 chrome.commands.onCommand.addListener(command);
-const windowChanged = (...args) => {
-  changed(...args);
-  tabsChanged();
-};
-chrome.windows.onCreated.addListener(windowChanged);
-chrome.windows.onRemoved.addListener(windowChanged);
-chrome.windows.onFocusChanged.addListener(windowChanged);
+chrome.windows.onCreated.addListener(changed);
+chrome.windows.onRemoved.addListener(changed);
+chrome.windows.onFocusChanged.addListener(changed);
 chrome.windows.onBoundsChanged.addListener(changed);
 chrome.system.display.onDisplayChanged.addListener(changed);
 // Startup is a login on chromeOS, after which the mouse lines need running
@@ -81,16 +72,10 @@ chrome.runtime.onInstalled.addListener(({ reason }) => {
 });
 // A newly active tab needs the dim if its window has it, and so does a
 // dimmed tab that loaded a new page.
-chrome.tabs.onActivated.addListener((...args) => {
-  changed(...args);
-  tabsChanged();
-});
+chrome.tabs.onActivated.addListener(changed);
 chrome.tabs.onUpdated.addListener((tabId, info) => {
   if (info.status === "complete") tiling(() => tileco.tabLoaded(tabId))();
-  if ("title" in info || "url" in info) tabsChanged();
 });
-// The rest only tide's tab list needs.
-for (const e of ["onCreated", "onRemoved", "onMoved", "onAttached", "onDetached", "onReplaced"]) chrome.tabs[e].addListener(tabsChanged);
 // Granting all-sites access is turning the dim on (§10.1), even if the
 // popup that asked closed during the prompt.
 chrome.permissions.onAdded.addListener((granted) => {
@@ -99,14 +84,10 @@ chrome.permissions.onAdded.addListener((granted) => {
     else changed();
     watch();
   })();
-  tabs(() => bridge.start())();
 });
-chrome.permissions.onRemoved.addListener((removed) => {
+chrome.permissions.onRemoved.addListener(() => {
   changed();
   watch();
-  tabs(() => {
-    if (BRIDGE_ACCESS.permissions.some((p) => removed.permissions?.includes(p))) return bridge.stop();
-  })();
 });
 // A setting saved on the options page applies at once, not at the next
 // window event; tileco's own state writes aren't settings, so don't loop.

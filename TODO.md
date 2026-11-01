@@ -1,8 +1,38 @@
 # TODO
 
+## Named workspaces (SPEC.md §6.1)
+
+Replace the nine numbered workspaces with tide's named ones, a PR each:
+
+- [ ] The model: names in storage, standing ones and home, empty ones
+  removed once left, bar order; migrate a stored numbered state by naming
+  workspace 1 home and the others by their numbers' order after the
+  standing ones *(a guess)*. `src/workspaces.js`, with tests.
+- [ ] Keys: `Search+1…9` and `Search+Shift+1…9` as the Nth in bar order,
+  `Search+Home`, `Search+End`, and the `Search+W` / `Search+Shift+W`
+  commands, in `manifest.json` and `src/tileco.js`.
+- [ ] The dashboard's Workspaces scope and the name prompt, and the bar
+  and badge by name.
+- [ ] Home's apps, and the prompt for a new window on home.
+- [ ] Options: the standing list and home's apps.
+
 ## Decisions needing review
 
 Guesses made on autopilot (2026-10-24), each cheap to undo.
+
+- **Named workspaces' keys are `Search+W` and `Search+Shift+W`**
+  (2026-11-01), W for workspace, since Chrome can't bind tide's
+  `Super+Return`; `Search+Home` and `Search+End` are tide's. The
+  alternative is no keys for the prompt, only the dashboard's Workspaces
+  scope. Reversible: the commands in `manifest.json`.
+- **The name prompt is the dashboard's** (2026-11-01), opened on a
+  Workspaces scope, since an extension can't draw over another window.
+  Esc on a new window's prompt leaves it on home, where tide's closes it,
+  since Chrome can't ask a page to close politely. Reversible: SPEC.md
+  §6.1.
+- **A new window's default name is its title's first word** (2026-11-01),
+  tide's short name without `namePatterns`, which tileco has no setting
+  for yet. Reversible: SPEC.md §6.1.
 
 - **Keep awake is `Search+S`** (2026-10-31), as tide's and tilemo's
   `Super+S`, though chromeOS has select to speak there, and whether the

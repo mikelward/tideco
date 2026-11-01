@@ -14,6 +14,7 @@ import { DIM_ORIGINS, Tileco } from "./tileco.js";
 import { actionTitle, platform, TABS, TILE, worksUntiled } from "./platform.js";
 import { ACCESS as BRIDGE_ACCESS, TabsBridge } from "./tabsbridge.js";
 import { Untiled } from "./untiled.js";
+import { checkName } from "./workspaces.js";
 
 const tileco = new Tileco(chrome);
 const untiled = new Untiled(chrome);
@@ -117,7 +118,9 @@ chrome.storage.onChanged.addListener((changes) => {
 // The toolbar button opens the dashboard, as its key does (§8.1).
 chrome.action.onClicked.addListener(() => command("popup"));
 
-// The launcher runs commands too, but only ones the manifest declares. Pages on the watched origins report their titles (§10.3). The
+// The launcher runs commands too, but only ones the manifest declares, and
+// its bar shows a workspace by name, but only a valid name from tileco's own
+// pages. Pages on the watched origins report their titles (§10.3). The
 // popup turns the dim on and off, answering once it's done so the popup can
 // give back the access only after every page is undimmed.
 // Off chromeOS only the launcher's own asks apply, and only those that
@@ -146,6 +149,9 @@ function handle(message, sender, respond) {
   };
   // The launcher waits for each step before it closes itself (§9.4).
   if (commands.has(message?.command)) return done(tileco.command(message.command));
+  if (fromTileco && typeof message?.workspace === "string" && checkName(message.workspace).name === message.workspace) {
+    return done(tileco.workspace(message.workspace));
+  }
   if (fromTileco && Number.isInteger(message?.tabId) && Number.isInteger(message?.windowId)) {
     return done(tileco.activateTab(message.tabId, message.windowId));
   }

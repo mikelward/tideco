@@ -65,21 +65,22 @@ function renderBar() {
       .filter(([id]) => id !== display)
       .map(([, d]) => d.workspace),
   );
-  for (let n = 1; n <= 9; n++) {
+  // By name in bar order, the standing ones even before they're made (§6.1).
+  for (const name of view.bar ?? []) {
     const b = document.createElement("button");
-    b.textContent = n;
-    if (view.counts[n] > 0) b.classList.add("occupied");
-    if (elsewhere.has(n)) b.classList.add("elsewhere");
-    if (view.urgent?.includes(n)) b.classList.add("urgent");
-    if (here?.workspace === n) b.classList.add("current");
-    b.addEventListener("click", () => send({ command: `workspace-${n}` }));
+    b.textContent = name;
+    if (view.counts[name] > 0) b.classList.add("occupied");
+    if (elsewhere.has(name)) b.classList.add("elsewhere");
+    if (view.urgent?.includes(name)) b.classList.add("urgent");
+    if (here?.workspace === name) b.classList.add("current");
+    b.addEventListener("click", () => send({ workspace: name }));
     nav.append(b);
   }
   const layout = document.createElement("span");
   layout.className = "layout";
   layout.textContent = SYMBOLS[here?.mode] ?? "";
   nav.append(layout);
-  $("title").textContent = here?.workspace ? `Workspace ${here.workspace}${home ? " · empty" : ""}` : "";
+  $("title").textContent = here?.workspace ? `${here.workspace}${home ? " · empty" : ""}` : "";
 }
 
 // Keep awake's cup (§11): faint while off, in the accent color while on, and

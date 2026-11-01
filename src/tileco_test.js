@@ -3,6 +3,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { Tileco } from "./tileco.js";
 import { FakeChrome, HD, UW } from "./fake_chrome.js";
+import * as ws from "./workspaces.js";
+import { DEFAULT_MODE_SETTINGS } from "./workspaces.js";
 
 const HOME = "chrome-extension://tileco/src/launcher.html?mode=home";
 const DASHBOARD = "chrome-extension://tileco/src/launcher.html?mode=dashboard";
@@ -91,7 +93,7 @@ test("switching workspaces minimizes the old windows and restores them on return
   assert.equal(chrome.win(2).state, "minimized");
   chrome.open(on(HD, 9, { focused: true }));
   await tileco.event();
-  assert.deepEqual(chrome.box(9), { x: 0, y: 0, w: 1920, h: 1032 }, "a new window joins workspace 2");
+  assert.deepEqual(chrome.box(9), { x: 0, y: 0, w: 1920, h: 1032 }, "a new window joins re");
   await tileco.command("workspace-1");
   assert.equal(chrome.win(1).state, "normal");
   assert.equal(chrome.win(2).state, "normal");
@@ -123,7 +125,7 @@ test("restoring a window from a hidden workspace brings its workspace", async ()
   chrome.win(1).state = "normal";
   chrome.focus(1);
   await tileco.event();
-  assert.equal(tileco.state.displays.hd, 4);
+  assert.equal(tileco.state.displays.hd, "me");
   assert.equal(chrome.win(2).state, "minimized");
   assert.deepEqual(chrome.box(1), { x: 0, y: 0, w: 1920, h: 1032 });
 });
@@ -132,7 +134,7 @@ test("dragging a window to the other display moves it to the workspace there", a
   const { chrome, tileco } = await setup([HD, UW], [on(HD, 1, { focused: true }), on(HD, 2), on(UW, 3)]);
   Object.assign(chrome.win(2), { left: 3000, top: 100 });
   await tileco.event();
-  assert.deepEqual(tileco.state.workspaces[2].windows, [3, 2]);
+  assert.deepEqual(tileco.state.workspaces.re.windows, [3, 2]);
   assert.deepEqual(chrome.box(1), { x: 0, y: 0, w: 1920, h: 1032 });
   assert.equal(chrome.box(2).x >= 1920, true);
 });
@@ -163,7 +165,7 @@ test("a window that refuses to minimize doesn't stop the switch", async () => {
   assert.equal(chrome.win(3).state, "minimized");
   assert.equal(1 in tileco.state.windows, false, "tileco leaves it alone from now on");
   await tileco.event();
-  assert.equal(tileco.state.displays.hd, 2, "the next sync doesn't read it as a restore");
+  assert.equal(tileco.state.displays.hd, "re", "the next sync doesn't read it as a restore");
   assert.equal(chrome.win(2).state, "minimized");
 });
 
@@ -190,7 +192,7 @@ test("Secure Shell's popup windows tile; other popups float", async () => {
     on(HD, 2, { type: "popup", url: "chrome-extension://iodihamcpbpeioajjeobimgagajmlibd/html/nassh.html" }),
     on(HD, 3, { type: "popup", url: "https://accounts.example.com/signin" }),
   ]);
-  assert.deepEqual(tileco.state.workspaces[1].windows, [1, 2]);
+  assert.deepEqual(tileco.state.workspaces.in.windows, [1, 2]);
   assert.deepEqual(chrome.box(2), { x: 1056, y: 0, w: 864, h: 1032 });
   assert.equal(3 in tileco.state.windows, false);
 });
@@ -200,7 +202,7 @@ test("focus-next and swap-master follow the stack", async () => {
   await tileco.command("focus-next");
   assert.equal(chrome.win(2).focused, true);
   await tileco.command("swap-master");
-  assert.deepEqual(tileco.state.workspaces[1].windows, [2, 1, 3]);
+  assert.deepEqual(tileco.state.workspaces.in.windows, [2, 1, 3]);
   assert.equal(chrome.box(2).x, 0, "window 2 is the master now");
 });
 
@@ -220,10 +222,10 @@ test("grow widens the master by 0.025", async () => {
 
 test("state survives the worker stopping", async () => {
   const { chrome, tileco } = await setup([HD], [on(HD, 1, { focused: true }), on(HD, 2)]);
-  await tileco.command("send-5");
+  await tileco.command("send-4");
   const fresh = new Tileco(chrome);
   await fresh.event();
-  assert.equal(fresh.state.windows[1].ws, 5);
+  assert.equal(fresh.state.windows[1].ws, "me");
   assert.equal(chrome.win(1).state, "minimized");
 });
 
@@ -231,7 +233,7 @@ test("a closed window leaves its workspace", async () => {
   const { chrome, tileco } = await setup([HD], [on(HD, 1, { focused: true }), on(HD, 2)]);
   chrome.wins = chrome.wins.filter((w) => w.id !== 2);
   await tileco.event();
-  assert.deepEqual(tileco.state.workspaces[1].windows, [1]);
+  assert.deepEqual(tileco.state.workspaces.in.windows, [1]);
   assert.deepEqual(chrome.box(1), { x: 0, y: 0, w: 1920, h: 1032 });
 });
 
@@ -275,11 +277,11 @@ test("a floating window moves with its workspace to the other display", async ()
   chrome.focus(1);
   await tileco.event();
   await tileco.command("workspace-2");
-  // The displays swapped, so workspace 1 and its floating window are on the ultrawide.
-  assert.equal(tileco.state.displays.uw, 1);
+  // The displays swapped, so home and its floating window are on the ultrawide.
+  assert.equal(tileco.state.displays.uw, "in");
   assert.deepEqual(chrome.box(2), { x: 1920 + 100, y: 50, w: 400, h: 300 });
   await tileco.event();
-  assert.equal(tileco.state.windows[2].ws, 1, "the next sync doesn't read it as a drag");
+  assert.equal(tileco.state.windows[2].ws, "in", "the next sync doesn't read it as a drag");
 });
 
 test("connecting a display shows its workspace's windows", async () => {
@@ -288,7 +290,7 @@ test("connecting a display shows its workspace's windows", async () => {
   assert.equal(chrome.win(1).state, "minimized");
   chrome.displaysList = [HD, UW];
   await tileco.event();
-  assert.equal(tileco.state.displays.uw, 2);
+  assert.equal(tileco.state.displays.uw, "re");
   assert.equal(tileco.state.windows[1].minimizedByYou, false);
   assert.equal(chrome.win(1).state, "normal");
   assert.equal(chrome.box(1).x >= 1920, true, "on the new display");
@@ -300,8 +302,8 @@ test("disconnecting a display hides its workspace instead of moving it", async (
   // chromeOS moves the ultrawide's window onto the remaining display.
   Object.assign(chrome.win(2), { left: 100, top: 100 });
   await tileco.event();
-  assert.equal(tileco.state.displays.hd, 1, "the remaining display keeps its workspace");
-  assert.equal(tileco.state.windows[2].ws, 2);
+  assert.equal(tileco.state.displays.hd, "in", "the remaining display keeps its workspace");
+  assert.equal(tileco.state.windows[2].ws, "re");
   assert.equal(chrome.win(2).state, "minimized");
   assert.deepEqual(chrome.box(1), { x: 0, y: 0, w: 1920, h: 1032 });
 });
@@ -309,8 +311,8 @@ test("disconnecting a display hides its workspace instead of moving it", async (
 test("a focused popup on the other display makes commands act there", async () => {
   const { chrome, tileco } = await setup([HD, UW], [on(HD, 1), on(UW, 2), on(UW, 3, { type: "popup", focused: true })]);
   await tileco.command("workspace-3");
-  assert.equal(tileco.state.displays.uw, 3);
-  assert.equal(tileco.state.displays.hd, 1);
+  assert.equal(tileco.state.displays.uw, "oc");
+  assert.equal(tileco.state.displays.hd, "in");
 });
 
 test("a floating window on a hidden workspace comes up on the display that shows it", async () => {
@@ -321,11 +323,11 @@ test("a floating window on a hidden workspace comes up on the display that shows
   chrome.focus(3);
   await tileco.event();
   await tileco.command("workspace-4");
-  assert.equal(tileco.state.displays.uw, 4);
+  assert.equal(tileco.state.displays.uw, "me");
   assert.equal(chrome.win(2).state, "normal");
   assert.deepEqual(chrome.box(2), { x: 1920 + 100, y: 50, w: 400, h: 300 });
   await tileco.event();
-  assert.equal(tileco.state.windows[2].ws, 4, "the next sync leaves it on workspace 4");
+  assert.equal(tileco.state.windows[2].ws, "me", "the next sync leaves it on me");
 });
 
 test("an app key opens a new window even when the app has one", async () => {
@@ -337,22 +339,22 @@ test("an app key opens a new window even when the app has one", async () => {
   chrome.focus(2);
   await tileco.event();
   await tileco.command("send-4");
-  // The open Calendar window is on hidden workspace 4.
+  // The open Calendar window is on hidden workspace me.
   chrome.focus(1);
   await tileco.event();
   await tileco.command("app-calendar");
-  assert.equal(tileco.state.displays.hd, 1, "it stays on this workspace");
+  assert.equal(tileco.state.displays.hd, "in", "it stays on this workspace");
   assert.deepEqual(opened(chrome), [{ url: "https://calendar.google.com/", type: "popup" }]);
   const [{ id }] = chrome.created.filter((c) => c.url === "https://calendar.google.com/");
   assert.equal(chrome.win(id).focused, true, "the new window, not the old one");
-  assert.deepEqual(tileco.state.workspaces[1].windows, [id]);
+  assert.deepEqual(tileco.state.workspaces.in.windows, [id]);
 });
 
 test("an app key's popup tiles like an app, and each press opens another", async () => {
   const { chrome, tileco } = await setup([HD], [on(HD, 1, { focused: true })]);
   await tileco.command("app-chat");
   assert.deepEqual(opened(chrome), [{ url: "https://chat.google.com/", type: "popup" }]);
-  assert.deepEqual(tileco.state.workspaces[1].windows, [1, 2], "the popup tiles like an app");
+  assert.deepEqual(tileco.state.workspaces.in.windows, [1, 2], "the popup tiles like an app");
   assert.equal(chrome.box(2).x, 1056);
   await tileco.command("app-chat");
   assert.equal(opened(chrome).length, 2, "the second press opens another");
@@ -376,7 +378,7 @@ test("the browser key opens a new browser window even with one open", async () =
   await tileco.command("app-browser");
   assert.deepEqual(opened(chrome), [{ url: undefined, type: "normal" }]);
   assert.equal(chrome.win(3).focused, true);
-  assert.deepEqual(tileco.state.workspaces[1].windows, [1, 2, 3]);
+  assert.deepEqual(tileco.state.workspaces.in.windows, [1, 2, 3]);
 });
 
 test("other popups stay untracked", async () => {
@@ -432,7 +434,7 @@ test("switching one display's workspace focuses only that display's home", async
   chrome.focus(hdHome().id);
   await tileco.event();
   await tileco.command("workspace-3");
-  assert.equal(tileco.state.displays.hd, 3);
+  assert.equal(tileco.state.displays.hd, "oc");
   assert.equal(hdHome().focused, true, "focus stays on the display you switched");
 });
 
@@ -456,11 +458,16 @@ test("the last window leaving a workspace brings the home window", async () => {
   assert.equal(homes(chrome).length, 1);
 });
 
-test("the badge shows the focused display's workspace", async () => {
-  const { chrome, tileco } = await setup([HD], [on(HD, 1, { focused: true })]);
-  assert.equal(chrome.badge, "1");
-  await tileco.command("workspace-7");
-  assert.equal(chrome.badge, "7");
+test("the badge shows the focused display's workspace, cut to four characters", async () => {
+  const chrome = new FakeChrome({ displays: [HD], windows: [on(HD, 1, { focused: true })] });
+  chrome.syncStore.settings = { standing: ["in", "reading", "ñandúes"] };
+  const tileco = new Tileco(chrome);
+  await tileco.event();
+  assert.equal(chrome.badge, "in");
+  await tileco.command("workspace-2");
+  assert.equal(chrome.badge, "read");
+  await tileco.command("workspace-3");
+  assert.equal(chrome.badge, "ñand", "characters, not bytes");
 });
 
 test("the dashboard opens full screen on the focused display, and its key closes it", async () => {
@@ -481,8 +488,8 @@ test("a command from the dashboard acts on the window you were last in", async (
   await tileco.command("popup");
   assert.ok(chrome.wins.find((w) => w.url === DASHBOARD).focused, "the dashboard has focus");
   await tileco.command("send-3");
-  assert.equal(tileco.state.windows[2].ws, 3, "the window behind the dashboard moved");
-  assert.equal(tileco.state.windows[1].ws, 1);
+  assert.equal(tileco.state.windows[2].ws, "oc", "the window behind the dashboard moved");
+  assert.equal(tileco.state.windows[1].ws, "in");
 });
 
 test("a dashboard that closed itself is forgotten", async () => {
@@ -502,7 +509,7 @@ test("a tab chosen in the launcher comes forward with its window and workspace",
   await tileco.event();
   await tileco.tabLoaded(0);
   await tileco.activateTab(10, 1);
-  assert.equal(tileco.state.displays.hd, 4, "its workspace comes up");
+  assert.equal(tileco.state.displays.hd, "me", "its workspace comes up");
   assert.equal(chrome.win(1).focused, true);
   assert.deepEqual(chrome.tabUpdates, [{ id: 10, active: true }]);
 });
@@ -511,11 +518,96 @@ test("the view lists each display's workspace and layout", async () => {
   const { chrome } = await setup([HD, UW], [on(HD, 1, { focused: true }), on(UW, 2)]);
   assert.deepEqual(chrome.store.view, {
     focusedDisplay: "hd",
-    displays: { hd: { workspace: 1, mode: "tile" }, uw: { workspace: 2, mode: "threecol" } },
-    counts: { 1: 1, 2: 1, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0 },
+    displays: { hd: { workspace: "in", mode: "tile" }, uw: { workspace: "re", mode: "threecol" } },
+    bar: ["in", "re", "oc", "me"],
+    counts: { in: 1, re: 1, oc: 0, me: 0 },
     urgent: [],
     dim: false,
   });
+});
+
+test("the view lists a made workspace after the standing ones, and drops it once it's empty", async () => {
+  const { chrome, tileco } = await setup([HD], [on(HD, 1, { focused: true }), on(HD, 2)]);
+  await tileco.workspace("web");
+  assert.deepEqual(chrome.store.view.bar, ["in", "re", "oc", "me", "web"]);
+  assert.deepEqual(chrome.store.view.displays.hd.workspace, "web");
+  await tileco.workspace("in");
+  assert.deepEqual(chrome.store.view.bar, ["in", "re", "oc", "me"]);
+  assert.equal("web" in tileco.state.workspaces, false);
+});
+
+test("Search+1…9 go by bar order, and a number past the last does nothing", async () => {
+  const { chrome, tileco } = await setup([HD], [on(HD, 1, { focused: true }), on(HD, 2)]);
+  await tileco.command("workspace-5");
+  assert.equal(tileco.state.displays.hd, "in", "four workspaces, so 5 does nothing");
+  assert.equal(chrome.win(1).state, "normal");
+  await tileco.command("send-5");
+  assert.equal(tileco.state.windows[1].ws, "in");
+  await tileco.command("send-4");
+  assert.equal(tileco.state.windows[1].ws, "me", "Search+Shift+4 makes me");
+  await tileco.command("workspace-4");
+  assert.equal(tileco.state.displays.hd, "me");
+});
+
+test("the workspace steps stop at either end of the bar", async () => {
+  const { tileco } = await setup([HD], [on(HD, 1, { focused: true }), on(HD, 2)]);
+  await tileco.command("workspace-prev");
+  assert.equal(tileco.state.displays.hd, "in", "no wrap before home");
+  await tileco.command("send-prev");
+  assert.equal(tileco.state.windows[1].ws, "in");
+  for (let i = 0; i < 5; i++) await tileco.command("workspace-next");
+  assert.equal(tileco.state.displays.hd, "me", "no wrap after the last");
+  await tileco.command("workspace-prev");
+  assert.equal(tileco.state.displays.hd, "oc");
+});
+
+test("Search+Home shows home, and Search+End the last other workspace", async () => {
+  const { tileco } = await setup([HD], [on(HD, 1, { focused: true })]);
+  await tileco.command("workspace-last");
+  assert.equal(tileco.state.displays.hd, "in", "nothing else shown yet");
+  await tileco.command("workspace-3");
+  await tileco.command("workspace-2");
+  await tileco.command("workspace-home");
+  assert.equal(tileco.state.displays.hd, "in");
+  await tileco.command("workspace-last");
+  assert.equal(tileco.state.displays.hd, "re", "from home, the last one");
+  await tileco.command("workspace-last");
+  assert.equal(tileco.state.displays.hd, "oc", "from there, the one before");
+  await tileco.command("workspace-last");
+  assert.equal(tileco.state.displays.hd, "re", "so presses toggle between two");
+});
+
+test("a click on the bar shows a workspace by name, ignoring case", async () => {
+  const { chrome, tileco } = await setup([HD], [on(HD, 1, { focused: true })]);
+  await tileco.workspace("OC");
+  assert.equal(tileco.state.displays.hd, "oc");
+  assert.equal(chrome.win(1).state, "minimized");
+  assert.deepEqual(chrome.store.view.bar, ["in", "re", "oc", "me"]);
+});
+
+test("a state stored with numbered workspaces loads with names", async () => {
+  const chrome = new FakeChrome({ displays: [HD], windows: [on(HD, 1, { focused: true }), on(HD, 2, { state: "minimized" })] });
+  const empty = () => ({ windows: [], layout: null, modes: structuredClone(DEFAULT_MODE_SETTINGS), focused: null });
+  const workspaces = Object.fromEntries([1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => [n, empty()]));
+  workspaces[1].windows = [1];
+  workspaces[6].windows = [2];
+  chrome.store.state = {
+    displays: { hd: 1 },
+    workspaces,
+    windows: { 1: { ws: 1, minimizedByYou: false, floating: false }, 2: { ws: 6, minimizedByYou: false, floating: false } },
+    marks: [],
+    unread: {},
+    homes: {},
+  };
+  const tileco = new Tileco(chrome);
+  await tileco.event();
+  assert.equal(tileco.state.displays.hd, "in");
+  assert.equal(tileco.state.windows[2].ws, "6");
+  assert.equal(chrome.win(2).state, "minimized", "6 stays hidden");
+  assert.deepEqual(chrome.store.view.bar, ["in", "re", "oc", "me", "6"]);
+  await tileco.command("workspace-5");
+  assert.equal(tileco.state.displays.hd, "6");
+  assert.equal(chrome.win(2).state, "normal");
 });
 
 test("a rising unread count marks its window, and Search+Tab goes there", async () => {
@@ -529,16 +621,16 @@ test("a rising unread count marks its window, and Search+Tab goes there", async 
   await tileco.command("send-4");
   chrome.focus(1);
   await tileco.event();
-  // Chat sits alone on hidden workspace 4.
+  // Chat sits alone on hidden workspace me.
   await tileco.title(20, 2, "Chat");
   assert.deepEqual(tileco.state.marks, [], "a first title with no count marks nothing");
   await tileco.title(20, 2, "Chat (1)");
   assert.deepEqual(tileco.state.marks, [2]);
   assert.ok(chrome.updates.some((u) => u.id === 2 && u.drawAttention), "its shelf icon flashes");
   assert.equal(chrome.badgeColor, "#e5a50a", "the badge turns amber");
-  assert.deepEqual(chrome.store.view.urgent, [4]);
+  assert.deepEqual(chrome.store.view.urgent, ["me"]);
   await tileco.command("attention");
-  assert.equal(tileco.state.displays.hd, 4, "its workspace comes up");
+  assert.equal(tileco.state.displays.hd, "me", "its workspace comes up");
   assert.equal(chrome.win(2).focused, true);
   assert.deepEqual(tileco.state.marks, []);
   assert.equal(chrome.badgeColor, "#3584e4");
@@ -772,10 +864,10 @@ test("after a browser restart, windows go back to their workspaces by their tabs
   const after = new Tileco(chrome);
   await after.event();
   const s = after.state;
-  assert.equal(s.windows[12].ws, 3, "Gmail went back to workspace 3");
+  assert.equal(s.windows[12].ws, "oc", "Gmail went back to oc");
   assert.equal(chrome.win(12).state, "minimized", "which isn't showing");
   assert.equal(s.windows[13].floating, true, "the floating window still floats");
-  assert.deepEqual(s.workspaces[1].windows, [13, 11, 14], "the stack order holds, and the new window joins the end");
+  assert.deepEqual(s.workspaces.in.windows, [13, 11, 14], "the stack order holds, and the new window joins the end");
   assert.equal(1 in s.windows, false);
 });
 
@@ -789,13 +881,49 @@ test("after a restart, windows Chrome restores one at a time still find their wo
   chrome.open(on(HD, 11, { url: "https://github.com/", focused: true }));
   const after = new Tileco(chrome);
   await after.event();
-  assert.equal(after.state.windows[11].ws, 1);
-  assert.equal(after.state.restoring[1].ws, 3, "Gmail's window waits for its return");
+  assert.equal(after.state.windows[11].ws, "in");
+  assert.equal(after.state.restoring[1].ws, "oc", "Gmail's window waits for its return");
   chrome.open(on(HD, 12, { url: "https://mail.google.com/" }));
   await after.event();
-  assert.equal(after.state.windows[12].ws, 3, "Gmail went back to workspace 3");
+  assert.equal(after.state.windows[12].ws, "oc", "Gmail went back to oc");
   assert.equal(chrome.win(12).state, "minimized");
   assert.equal(after.state.restoring, undefined, "nothing is left waiting");
+});
+
+test("after a restart, a made workspace waits with its window", async () => {
+  const { chrome, tileco } = await setup([HD], [
+    on(HD, 1, { focused: true, url: "https://mail.google.com/" }),
+    on(HD, 2, { url: "https://github.com/" }),
+  ]);
+  // Sent there by name, as the name prompt will.
+  tileco.state = ws.send(tileco.state, 1, "mail");
+  await tileco.apply();
+  assert.equal(tileco.state.windows[1].ws, "mail");
+  chrome.wins = [];
+  chrome.open(on(HD, 11, { url: "https://github.com/", focused: true }));
+  const after = new Tileco(chrome);
+  await after.event();
+  assert.ok("mail" in after.state.workspaces, "kept for Gmail's window, which isn't back");
+  chrome.open(on(HD, 12, { url: "https://mail.google.com/" }));
+  await after.event();
+  assert.equal(after.state.windows[12].ws, "mail");
+  assert.deepEqual(chrome.store.view.bar, ["in", "re", "oc", "me", "mail"]);
+});
+
+test("after a restart, a made workspace whose window never came back goes once the wait ends", async () => {
+  const { chrome, tileco } = await setup([HD], [
+    on(HD, 1, { focused: true, url: "https://mail.google.com/" }),
+    on(HD, 2, { url: "https://github.com/" }),
+  ]);
+  tileco.state = ws.send(tileco.state, 1, "mail");
+  await tileco.apply();
+  chrome.wins = [];
+  chrome.open(on(HD, 11, { url: "https://github.com/", focused: true }));
+  const after = new Tileco(chrome);
+  await after.event();
+  assert.ok("mail" in after.state.workspaces);
+  await after.command("focus-next");
+  assert.equal("mail" in after.state.workspaces, false);
 });
 
 test("after a restart, a window still matches after its page changed with the dim off", async () => {
@@ -822,7 +950,7 @@ test("after a restart, a popup tileco doesn't manage can't take a window's place
   chrome.open(on(HD, 12, { url: "https://mail.google.com/", focused: true }));
   const after = new Tileco(chrome);
   await after.event();
-  assert.equal(after.state.windows[12].ws, 3, "the tab window got Gmail's place");
+  assert.equal(after.state.windows[12].ws, "oc", "the tab window got Gmail's place");
   assert.equal(11 in after.state.windows, false);
 });
 
@@ -836,7 +964,7 @@ test("after a restart, an app popup that comes back late is still the app's", as
   await after.event();
   chrome.open(on(HD, 12, { type: "popup", url: "https://calendar.google.com/" }));
   await after.event();
-  assert.equal(after.state.windows[12].ws, 3, "Calendar went back to workspace 3");
+  assert.equal(after.state.windows[12].ws, "oc", "Calendar went back to oc");
   assert.equal(chrome.win(12).state, "minimized");
   assert.ok(after.state.appPopups.includes(12), "it still tiles as Calendar's");
 });
@@ -848,10 +976,10 @@ test("after a restart, a first window that matches nothing doesn't end the wait"
   chrome.open(on(HD, 11, { url: "https://example.com/new", focused: true }));
   const after = new Tileco(chrome);
   await after.event();
-  assert.equal(after.state.windows[11].ws, 1, "the new window joins the showing workspace");
+  assert.equal(after.state.windows[11].ws, "in", "the new window joins the showing workspace");
   chrome.open(on(HD, 12, { url: "https://mail.google.com/" }));
   await after.event();
-  assert.equal(after.state.windows[12].ws, 3, "Gmail still went back to workspace 3");
+  assert.equal(after.state.windows[12].ws, "oc", "Gmail still went back to oc");
   assert.equal(chrome.win(12).state, "minimized");
 });
 
@@ -869,7 +997,7 @@ test("after a restart, a command ends the wait for windows that never came back"
   assert.equal(after.state.restoring, undefined);
   chrome.open(on(HD, 12, { url: "https://mail.google.com/" }));
   await after.event();
-  assert.equal(after.state.windows[12].ws, 1, "a window opened later is just new");
+  assert.equal(after.state.windows[12].ws, "in", "a window opened later is just new");
 });
 
 test("after a restart, a sync before Chrome restores any window keeps them all waiting", async () => {
@@ -883,14 +1011,14 @@ test("after a restart, a sync before Chrome restores any window keeps them all w
   chrome.sessionStore = {};
   const after = new Tileco(chrome);
   await after.event();
-  assert.equal(after.state.restoring[1].ws, 3, "Gmail's window waits for its return");
-  assert.equal(after.state.restoring[2].ws, 1, "and so does GitHub's");
+  assert.equal(after.state.restoring[1].ws, "oc", "Gmail's window waits for its return");
+  assert.equal(after.state.restoring[2].ws, "in", "and so does GitHub's");
   chrome.open(on(HD, 21, { url: "https://github.com/", focused: true }));
   chrome.open(on(HD, 22, { url: "https://mail.google.com/" }));
   await after.event();
-  assert.equal(after.state.windows[22].ws, 3, "Gmail went back to workspace 3");
+  assert.equal(after.state.windows[22].ws, "oc", "Gmail went back to oc");
   assert.equal(chrome.win(22).state, "minimized");
-  assert.equal(after.state.windows[21].ws, 1);
+  assert.equal(after.state.windows[21].ws, "in");
   assert.equal(after.state.restoring, undefined, "nothing is left waiting");
 });
 
@@ -901,7 +1029,7 @@ test("closing every window one by one, then opening one, matches nothing", async
   await tileco.event();
   chrome.open(on(HD, 2, { url: "https://mail.google.com/", focused: true }));
   await tileco.event();
-  assert.equal(tileco.state.windows[2].ws, 1, "a new window joins the workspace showing");
+  assert.equal(tileco.state.windows[2].ws, "in", "a new window joins the workspace showing");
 });
 
 test("dragging the master's edge sets the main share, and the stack follows", async () => {
@@ -910,7 +1038,7 @@ test("dragging the master's edge sets the main share, and the stack follows", as
   // You drag the master's right edge to x = 1344, 70% of 1920.
   chrome.win(1).width = 1344;
   await tileco.event();
-  assert.equal(tileco.state.workspaces[1].modes.tile.mfact, 0.7);
+  assert.equal(tileco.state.workspaces.in.modes.tile.mfact, 0.7);
   assert.deepEqual(chrome.box(1), { x: 0, y: 0, w: 1344, h: 1032 });
   assert.deepEqual(chrome.box(2), { x: 1344, y: 0, w: 576, h: 516 });
   assert.deepEqual(chrome.box(3), { x: 1344, y: 516, w: 576, h: 516 });
@@ -920,7 +1048,7 @@ test("dragging a stack window's left edge sets the main share too", async () => 
   const { chrome, tileco } = await setup([HD], [on(HD, 1, { focused: true }), on(HD, 2)]);
   Object.assign(chrome.win(2), { left: 768, width: 1152 });
   await tileco.event();
-  assert.equal(tileco.state.workspaces[1].modes.tile.mfact, 0.4);
+  assert.equal(tileco.state.workspaces.in.modes.tile.mfact, 0.4);
   assert.deepEqual(chrome.box(1), { x: 0, y: 0, w: 768, h: 1032 });
 });
 
@@ -929,7 +1057,7 @@ test("a resize the share can't follow is put back", async () => {
   // The master's left edge is the screen's.
   Object.assign(chrome.win(1), { left: 200, width: 856 });
   await tileco.event();
-  assert.equal(tileco.state.workspaces[1].modes.tile.mfact, 0.55);
+  assert.equal(tileco.state.workspaces.in.modes.tile.mfact, 0.55);
   assert.deepEqual(chrome.box(1), { x: 0, y: 0, w: 1056, h: 1032 });
 });
 
@@ -937,7 +1065,7 @@ test("moving a window without resizing it leaves the share", async () => {
   const { chrome, tileco } = await setup([HD], [on(HD, 1, { focused: true }), on(HD, 2)]);
   Object.assign(chrome.win(2), { left: 900, top: 50 });
   await tileco.event();
-  assert.equal(tileco.state.workspaces[1].modes.tile.mfact, 0.55);
+  assert.equal(tileco.state.workspaces.in.modes.tile.mfact, 0.55);
   assert.deepEqual(chrome.box(2), { x: 1056, y: 0, w: 864, h: 1032 });
 });
 
@@ -947,7 +1075,7 @@ test("a window resized by a change in the work area isn't a drag", async () => {
   chrome.displaysList = [{ ...HD, workArea: { left: 0, top: 0, width: 1920, height: 1080 } }];
   chrome.win(1).width = 1300;
   await tileco.event();
-  assert.equal(tileco.state.workspaces[1].modes.tile.mfact, 0.55);
+  assert.equal(tileco.state.workspaces.in.modes.tile.mfact, 0.55);
 });
 
 test("a floating window's resize sets nothing", async () => {
@@ -955,7 +1083,7 @@ test("a floating window's resize sets nothing", async () => {
   await floatAt(chrome, tileco, 3, 100, 100);
   chrome.win(3).width = 700;
   await tileco.event();
-  assert.equal(tileco.state.workspaces[1].modes.tile.mfact, 0.55);
+  assert.equal(tileco.state.workspaces.in.modes.tile.mfact, 0.55);
 });
 
 test("a window back from maximized isn't read as resized", async () => {
@@ -965,7 +1093,7 @@ test("a window back from maximized isn't read as resized", async () => {
   // chromeOS puts it back somewhere of its own choosing.
   Object.assign(chrome.win(1), { state: "normal", left: 0, width: 1500 });
   await tileco.event();
-  assert.equal(tileco.state.workspaces[1].modes.tile.mfact, 0.55);
+  assert.equal(tileco.state.workspaces.in.modes.tile.mfact, 0.55);
   assert.deepEqual(chrome.box(1), { x: 0, y: 0, w: 1056, h: 1032 });
 });
 
@@ -1019,7 +1147,7 @@ test("at login, Start at login's addresses open in order, tiled and unfocused", 
     { url: "https://chat.google.com/", type: "popup" },
   ]);
   const [a, b] = chrome.created.filter((c) => c.url !== HOME).map((c) => c.id);
-  assert.deepEqual(tileco.state.workspaces[1].windows, [1, a, b], "they join the showing workspace's stack");
+  assert.deepEqual(tileco.state.workspaces.in.windows, [1, a, b], "they join the showing workspace's stack");
   assert.ok(tileco.state.appPopups.includes(a) && tileco.state.appPopups.includes(b), "they tile as app windows");
   assert.equal(chrome.win(1).focused, true, "none takes focus");
   assert.equal(chrome.box(a).x > 0, true, "tiled beside the window you're in");
@@ -1042,10 +1170,10 @@ test("Start at login's windows don't take the places of windows Chrome restores"
   const after = new Tileco(chrome);
   await after.startAtLogin();
   const started = chrome.created.at(-1).id;
-  assert.equal(after.state.windows[started].ws, 1, "the started window joins the showing workspace");
-  assert.equal(after.state.restoring[1].ws, 3, "Gmail's old window still waits");
+  assert.equal(after.state.windows[started].ws, "in", "the started window joins the showing workspace");
+  assert.equal(after.state.restoring[1].ws, "oc", "Gmail's old window still waits");
   chrome.open(on(HD, 50, { url: "https://mail.google.com/" }));
   await after.event();
-  assert.equal(after.state.windows[50].ws, 3, "the restored window goes back to workspace 3");
-  assert.equal(after.state.windows[started].ws, 1);
+  assert.equal(after.state.windows[50].ws, "oc", "the restored window goes back to oc");
+  assert.equal(after.state.windows[started].ws, "in");
 });

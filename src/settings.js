@@ -5,12 +5,13 @@
 import { APP_COMMANDS, DEFAULT_APPS } from "./apps.js";
 import { checkZone, DAY, DEFAULT_CLOCKS, WORK } from "./clocks.js";
 import { DEFAULT_SITES } from "./unread.js";
+import { checkName, DEFAULT_STANDING, sameName } from "./workspaces.js";
 
 export const SETTINGS_KEY = "settings";
 
 // What follows you to every Chromebook, in storage.sync, and what each one
 // keeps for its own displays, in storage.local.
-export const SHARED = ["clocks", "day", "work", "apps", "dimStrength", "watched", "defaultMode", "modes"];
+export const SHARED = ["clocks", "day", "work", "apps", "dimStrength", "watched", "defaultMode", "modes", "standing"];
 export const PER_MACHINE = ["singleRules", "ultrawideAspect", "wheelStep", "startup"];
 
 export function pick(settings, keys) {
@@ -33,6 +34,9 @@ export const DEFAULT_SETTINGS = {
     threecol: { mfact: 0.5, nmaster: 1 },
     twocol: { mfact: 0.72, nmaster: 2 },
   },
+  // The standing workspaces, always listed, the first being home (§6.1),
+  // as tide's workspaces.json.
+  standing: DEFAULT_STANDING,
   // Per machine, as they depend on its displays (§5.2).
   singleRules: [{ minAspect: 2.1, width: 0.8 }],
   ultrawideAspect: 2.1,
@@ -172,6 +176,21 @@ function checkWheelStep(step) {
   return step;
 }
 
+// The standing workspaces: at least one, each a valid name, none twice
+// ignoring case (§6.1).
+function checkStanding(names) {
+  if (!Array.isArray(names)) throw new Error("must be a list");
+  if (names.length === 0) throw new Error("must name at least one workspace, the first being home");
+  const seen = [];
+  for (const [i, raw] of names.entries()) {
+    const { name, error } = checkName(raw);
+    if (error) throw new Error(`workspace ${i + 1}, ${JSON.stringify(raw)}: ${error}`);
+    if (seen.some((n) => sameName(n, name))) throw new Error(`workspace ${i + 1}, "${name}", is listed already`);
+    seen.push(name);
+  }
+  return seen;
+}
+
 export const START_MODES = ["tile", "threecol", "twocol", "monocle"];
 
 // Objects merge key by key onto what's there (§13), as tide's do.
@@ -208,7 +227,7 @@ function checkModes(value, current) {
   return modes;
 }
 
-const CHECKS = { clocks: checkClocks, day: checkHours, work: checkHours, apps: checkApps, singleRules: checkSingleRules, ultrawideAspect: (a) => checkAspect(a), dimStrength: checkStrength, watched: checkWatched, defaultMode: checkDefaultMode, modes: checkModes, wheelStep: checkWheelStep, startup: checkStartup };
+const CHECKS = { clocks: checkClocks, day: checkHours, work: checkHours, apps: checkApps, singleRules: checkSingleRules, ultrawideAspect: (a) => checkAspect(a), dimStrength: checkStrength, watched: checkWatched, defaultMode: checkDefaultMode, modes: checkModes, wheelStep: checkWheelStep, startup: checkStartup, standing: checkStanding };
 
 // Settings from what's stored: `sync` then `local`, each an object or
 // undefined. Returns {settings, errors}, an error for each bad or unknown

@@ -87,6 +87,7 @@ nav {
   align-items: center;
 }
 nav button {
+  white-space: nowrap;
   min-width: 26px;
   height: 26px;
   border: 1px solid transparent;

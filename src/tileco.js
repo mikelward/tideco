@@ -148,25 +148,44 @@ export class Tileco {
   command(name) {
     return this.run(async () => {
       await this.sync();
-      // Pressing a key means the browser has finished restoring (§14.2).
-      delete this.state.restoring;
+      this.restored();
       const focus = await this.perform(name);
       await this.apply(focus);
     });
   }
 
+  // A click on the bar's workspace `name` (§8.1): it shows on the display
+  // you're on, made if it's new.
+  workspace(name) {
+    return this.run(async () => {
+      await this.sync();
+      this.restored();
+      await this.apply(this.showWorkspace(this.focusedDisplay(), name));
+    });
+  }
+
+  // A key or a click means the browser has finished restoring (§14.2), so
+  // the workspaces kept for windows that never came back can go.
+  restored() {
+    if (!this.state.restoring) return;
+    delete this.state.restoring;
+    this.state = ws.prune(this.state);
+  }
+
+  // A state stored before workspaces had names takes them here (§6.1).
   async load() {
     if (this.state) return;
     const stored = await this.api.storage.local.get(STATE_KEY);
-    this.state = stored[STATE_KEY] || null;
+    this.state = ws.migrate(stored[STATE_KEY] || null, this.settings.standing);
   }
 
   async save() {
     await this.api.storage.local.set({ [STATE_KEY]: this.state, [VIEW_KEY]: this.view() });
   }
 
-  // What the popup and home window show: each display's workspace and
-  // layout, and how many windows each workspace holds.
+  // What the dashboard and home window show: the workspaces in bar order,
+  // each display's workspace and layout, how many windows each workspace
+  // holds, and which hold a marked window, all by name.
   view() {
     const s = this.state;
     const displays = {};
@@ -174,19 +193,20 @@ export class Tileco {
       const n = ws.showing(s, d.id);
       displays[d.id] = { workspace: n, mode: n === null ? null : this.modeOf(n, d) };
     }
-    const counts = {};
-    for (let n = 1; n <= ws.WORKSPACES; n++) counts[n] = s.workspaces[n].windows.length;
+    const bar = ws.barOrder(s);
+    const counts = Object.fromEntries(bar.map((n) => [n, Object.hasOwn(s.workspaces, n) ? s.workspaces[n].windows.length : 0]));
     const urgent = [...new Set(s.marks.map((id) => s.windows[id]?.ws).filter((n) => n !== undefined))];
-    return { focusedDisplay: this.focusedDisplay() ?? null, displays, counts, urgent, dim: this.dimOn() };
+    return { focusedDisplay: this.focusedDisplay() ?? null, displays, bar, counts, urgent, dim: this.dimOn() };
   }
 
   // Bring the state up to date with Chrome: displays, new and closed
   // windows, and what you did to windows yourself since the last step.
   async sync() {
-    await this.load();
     // The options page reports bad settings; here the defaults stand in.
+    // Before loading the state, whose migration names home from them.
     this.settings = (await loadSettings(this.api.storage)).settings;
     this.apps = this.settings.apps;
+    await this.load();
     this.displays = await this.api.system.display.getInfo();
     // Before matching windows after a restart, which reads their addresses.
     this.tabsAllowed = await this.api.permissions.contains({ permissions: ["tabs"] });
@@ -202,7 +222,8 @@ export class Tileco {
       await this.api.storage.session.set({ [SEEN_KEY]: true });
       this.seenWindow = true;
     }
-    let s = before ? ws.setDisplays(before, ids) : ws.create(ids);
+    const standing = this.settings.standing;
+    let s = before ? ws.setDisplays(ws.setStanding(before, standing), ids) : ws.create(ids, standing);
     // Workspaces from before this setting existed began with the defaults.
     const modes = { ...ws.DEFAULT_MODE_SETTINGS, ...this.settings.modes };
     if (JSON.stringify(s.modesFrom ?? ws.DEFAULT_MODE_SETTINGS) !== JSON.stringify(modes)) s = ws.setModes(s, modes);
@@ -256,7 +277,10 @@ export class Tileco {
     s.appPopups = [...appPopups].filter((id) => this.windows.has(id));
     s.refused = [...refused];
     if (Object.keys(waiting).length > 0) s.restoring = waiting;
-    else delete s.restoring;
+    else if (s.restoring) {
+      delete s.restoring;
+      s = ws.prune(s);
+    }
     // What a window is, should the browser restart and renumber it.
     for (const w of wins) {
       if (!(w.id in s.windows)) continue;
@@ -309,8 +333,11 @@ export class Tileco {
       // windows tileco hasn't seen.
       state = structuredClone(stored);
       for (const [id, { appPopup, ...info }] of Object.entries(stored.restoring)) {
-        state.windows[id] = info;
-        state.workspaces[info.ws].windows.push(Number(id));
+        // A waiting window keeps its workspace from going (§6.1), but one
+        // from a state that lost it goes home.
+        const n = Object.hasOwn(state.workspaces, info.ws) ? info.ws : ws.home(state);
+        state.windows[id] = { ...info, ws: n };
+        state.workspaces[n].windows.push(Number(id));
       }
       waiting = stored.restoring;
       candidates = all.filter((w) => !(w.id in stored.windows));
@@ -338,6 +365,9 @@ export class Tileco {
       ...[...renames].filter(([from]) => waiting[from].appPopup).map(([, to]) => to),
     ];
     const left = Object.fromEntries(Object.entries(waiting).filter(([id]) => !renames.has(Number(id))));
+    // The windows still waiting keep their workspaces while this sync drops
+    // them from the windows it sees.
+    if (Object.keys(left).length > 0) state.restoring = left;
     return { state, renamed: new Set(renames.values()), waiting: left };
   }
 
@@ -413,14 +443,16 @@ export class Tileco {
     const remembered = n === null ? null : s.workspaces[n].focused;
     const win = this.focusedWindow() ?? (remembered !== null && ws.isShown(s, remembered) ? remembered : null);
     const tracked = win !== null && win in s.windows;
-    const step = (k) => ((((n ?? 1) - 1 + k) % ws.WORKSPACES) + ws.WORKSPACES) % ws.WORKSPACES + 1;
     const disp = this.displays.find((d) => d.id === display);
     const mode = n === null || !disp ? null : this.modeOf(n, disp);
 
+    // The steps and numbers go by bar order, stopping at its ends (§6.1).
     let m;
-    if ((m = name.match(/^workspace-([1-9])$/))) return this.showWorkspace(display, Number(m[1]));
-    if (name === "workspace-next") return this.showWorkspace(display, step(1));
-    if (name === "workspace-prev") return this.showWorkspace(display, step(-1));
+    if ((m = name.match(/^workspace-([1-9])$/))) return this.showWorkspace(display, ws.nth(s, Number(m[1])));
+    if (name === "workspace-next") return this.showWorkspace(display, ws.step(s, n, 1));
+    if (name === "workspace-prev") return this.showWorkspace(display, ws.step(s, n, -1));
+    if (name === "workspace-home") return this.showWorkspace(display, ws.home(s));
+    if (name === "workspace-last") return this.showWorkspace(display, ws.last(s, n));
     if (name === "popup") return this.dashboard(display);
     if (name === "app-browser") return this.browser(display);
     if (name === "attention") return this.attention(display);
@@ -432,9 +464,10 @@ export class Tileco {
     if (app) return this.app(app, display);
     if (!tracked && name !== "layout-next" && name !== "layout-prev") return null;
 
-    if ((m = name.match(/^send-([1-9])$/))) this.state = ws.send(s, win, Number(m[1]));
-    else if (name === "send-next") this.state = ws.send(s, win, step(1));
-    else if (name === "send-prev") this.state = ws.send(s, win, step(-1));
+    const sendTo = (to) => (to === null ? s : ws.send(s, win, to));
+    if ((m = name.match(/^send-([1-9])$/))) this.state = sendTo(ws.nth(s, Number(m[1])));
+    else if (name === "send-next") this.state = sendTo(ws.step(s, n, 1));
+    else if (name === "send-prev") this.state = sendTo(ws.step(s, n, -1));
     else if (name === "focus-next") return ws.neighbor(s, win, 1);
     else if (name === "focus-prev") return ws.neighbor(s, win, -1);
     else if (name === "move-next") this.state = ws.moveInStack(s, win, 1);
@@ -505,10 +538,11 @@ export class Tileco {
     s.dimmed = [...dimmed];
   }
 
-  // The toolbar badge shows the focused display's workspace (§8.1).
+  // The toolbar badge shows the focused display's workspace (§8.1), its name
+  // cut to the four characters a badge has room for.
   async badge() {
     const n = ws.showing(this.state, this.focusedDisplay());
-    await this.api.action?.setBadgeText({ text: n === null ? "" : String(n) });
+    await this.api.action?.setBadgeText({ text: n === null ? "" : [...n].slice(0, 4).join("") });
     // Amber while another workspace holds a marked window (§8.1).
     const elsewhere = this.state.marks.some((id) => this.state.windows[id] && this.state.windows[id].ws !== n);
     await this.api.action?.setBadgeBackgroundColor({ color: elsewhere ? BADGE_ATTENTION : BADGE });
@@ -658,11 +692,13 @@ export class Tileco {
     this.switchedTo = undefined;
   }
 
+  // Show workspace `n` on `display`; null, as a number past the last or a
+  // step past an end gives, shows nothing.
   showWorkspace(display, n) {
-    if (display === undefined) return null;
+    if (display === undefined || n === null) return null;
     this.switchedTo = display;
     this.state = ws.show(this.state, display, n);
-    const w = this.state.workspaces[n];
+    const w = this.state.workspaces[ws.showing(this.state, display)];
     // The remembered window, unless you've minimized it since.
     const remembered = w.focused !== null && ws.isShown(this.state, w.focused) ? w.focused : null;
     return remembered ?? ws.tiled(this.state, display)[0] ?? null;

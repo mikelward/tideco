@@ -151,10 +151,13 @@ test("every command in the manifest does something", async () => {
         { id: 2, left: 500, top: 0, width: 400, height: 300 },
       ],
     });
+    // Nine workspaces, so Search+9 has one to go to.
+    chrome.syncStore.settings = { standing: ["in", "re", "oc", "me", "w5", "w6", "w7", "w8", "w9"] };
     const tileco = new Tileco(chrome);
     await tileco.event();
-    // Removing a master needs a second one to remove, and going or sending
-    // to workspace 1 needs to start somewhere else.
+    // Removing a master needs a second one to remove; going or sending to
+    // home, or back a step, needs to start somewhere else; and going to the
+    // last workspace needs one shown before.
     if (name === "master-remove") await tileco.command("master-add");
     // Search+Tab with nothing marked goes back to the last window you were in.
     if (name === "attention") {
@@ -163,7 +166,11 @@ test("every command in the manifest does something", async () => {
       chrome.focus(1);
       await tileco.event();
     }
-    if (name.endsWith("-1")) {
+    if (name === "workspace-last") {
+      await tileco.command("workspace-2");
+      await tileco.command("workspace-1");
+    }
+    if (name.endsWith("-1") || ["workspace-prev", "send-prev", "workspace-home"].includes(name)) {
       await tileco.command("workspace-2");
       chrome.open({ id: 9, left: 0, top: 0, width: 400, height: 300 });
       chrome.focus(9);
@@ -296,6 +303,8 @@ for (const os of ["linux", "mac", "win"]) {
     let answer = "none";
     await fire(w, "runtime.onMessage", { command: "workspace-2" }, launcher, (a) => (answer = a));
     assert.equal(answer, false);
+    await fire(w, "runtime.onMessage", { workspace: "re" }, launcher, (a) => (answer = a));
+    assert.equal(answer, false, "and so is a click on a workspace");
     await fire(w, "runtime.onMessage", { tabId: 12, windowId: 3 }, launcher, (a) => (answer = a));
     assert.equal(answer, true);
     assert.deepEqual(w.calls.filter(([name]) => name === "tabs.update"), [["tabs.update", 12, { active: true }]]);
@@ -310,4 +319,22 @@ test("on chromeOS, a key still tiles", async () => {
   assert.ok(!w.calls.some(([name]) => name === "action.setTitle"), "chromeOS keeps the manifest's title");
   await fire(w, "commands.onCommand", "popup");
   assert.ok(w.calls.some(([name]) => name === "windows.create"), "the dashboard opens");
+});
+
+// The bar's click shows a workspace by name (§8.1), asked by tileco's own
+// pages alone, and only by a valid name.
+test("on chromeOS, the bar shows a workspace by name, asked by tileco's pages only", async () => {
+  const w = await startWorker("cros");
+  const badges = () => w.calls.filter(([name]) => name === "action.setBadgeText").map(([, arg]) => arg.text);
+  const launcher = { url: "chrome-extension://tileco/src/launcher.html?mode=dashboard" };
+  const site = { url: "https://example.com/", tab: { id: 5, windowId: 6, url: "https://example.com/" } };
+  let answer = "none";
+  await fire(w, "runtime.onMessage", { workspace: "oc" }, site, (a) => (answer = a));
+  assert.equal(answer, undefined, "a website can't");
+  await fire(w, "runtime.onMessage", { workspace: 'o"c' }, launcher, (a) => (answer = a));
+  assert.equal(answer, undefined, "nor a name that isn't one");
+  assert.ok(!badges().includes("oc"));
+  await fire(w, "runtime.onMessage", { workspace: "oc" }, launcher, (a) => (answer = a));
+  assert.equal(answer, true);
+  assert.equal(badges().at(-1), "oc");
 });

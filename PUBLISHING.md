@@ -79,7 +79,13 @@ What the first upload needs:
   changing an SVG in `store/`, `make promo` renders them again, with Inter
   from Google Fonts. They're the store's alone, so `make zip` leaves them
   out.
-- **Screenshots.** At least one, 1280×800 or 640×400. Take them on the
+- **Screenshots.** At least one, 1280×800 or 640×400. One is done:
+  `store/screenshot-threecol.png`, three Chrome windows in the three-column
+  layout, the master in the middle at half the width. It's composed, not
+  captured: `store/screenshot-threecol.html` draws each window at the box
+  `src/geometry.js` arranges for three windows in a 1280×752 work area,
+  above chromeOS's shelf, and `make promo` renders it. Real captures from
+  the Chromebook are better still. Take them on the
   Chromebook (Search+Ctrl+Show windows takes a screenshot).
 - **A developer account.** Register at the
   [Chrome Web Store developer dashboard](https://chrome.google.com/webstore/devconsole)

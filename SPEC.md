@@ -1182,9 +1182,25 @@ Crostini runs kitty, the shell config and the terminal tools, so `conf` and
   and main-window count, under tide's names (`defaultMode`, `modes`). A
   change reaches every workspace and replaces what the keys set there, as
   in tide.
-  The standing workspaces (`standing`, §6.1) and home's apps (`homeApps`)
-  are checked and shared, but set only by import so far: the page has no
-  fields for them yet, and a save from it keeps what's stored.
+  Above those, as on tide's Workspaces page, the section lists the
+  **standing workspaces** (`standing`, §6.1) and **home's apps**
+  (`homeApps`), both shared:
+  - The standing workspaces are a list of names, in order, the first
+    marked "home", so moving another first makes it home. A name is edited
+    in place, the arrows move one and × takes it out. One typed in the
+    field at the foot ("Add a workspace, such as docs") is added at the
+    end with Enter.
+  - A name that can't be one, or one listed already, ignoring case, is
+    marked as you type, with why as its tooltip. Saving it is refused, and
+    the page says why, naming the setting, as for any other. So is taking
+    out the last one. A refused addition, move or removal is put back; a
+    refused edit stays as typed, to fix.
+  - An edited name is a new entry, not a renamed workspace: the old one
+    keeps its windows, as a name taken out does *(a guess)*.
+  - Home's apps are a box for each app key, called by its app's name
+    (§9.1), or "App 3, off" for a key with none, which follows a name
+    changed under Apps. A box ticked adds its key at the end of the list,
+    so an imported order stays.
 
 ### 13.1 Start at login
 

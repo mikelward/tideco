@@ -97,6 +97,22 @@ input.label {
 .hours input {
   width: 6ch;
 }
+#standing {
+  width: auto;
+}
+#standing input {
+  width: 24ch;
+}
+#standing input[aria-invalid="true"] {
+  border-color: var(--error);
+}
+.home-apps input {
+  width: auto;
+  margin-right: 6px;
+}
+.layouts {
+  margin-top: 16px;
+}
 #modes {
   width: auto;
   margin-top: 8px;

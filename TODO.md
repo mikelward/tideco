@@ -16,7 +16,11 @@ Replace the nine numbered workspaces with tide's named ones, a PR each:
   by the prompt until its apps are listed.
 - [x] Home's apps, and the prompt for a new window on home. The
   `homeApps` setting, its options-page fields still to come.
-- [ ] Options: the standing list and home's apps.
+- [x] Options: the standing list and home's apps, in the Workspaces
+  section.
+
+All five are built, tested with FakeChrome and the smoke test; what's left
+is trying them on a Chromebook, with M2's device checks.
 
 ## Decisions needing review
 
@@ -113,6 +117,17 @@ Guesses made on autopilot (2026-10-24), each cheap to undo.
   tide's follows a title that changes. The alternative is following the
   title through `storage.onChanged`. Reversible: `ask` in
   `src/tileco.js`.
+- **A standing name edited on the options page is a new entry**
+  (2026-11-01), not a rename: the old workspace keeps its windows as an
+  ordinary one, as a name taken out does, so editing home's name makes a
+  new, empty home. tide's page has no edit, only add and remove. The
+  alternative is names you can only add and take out, as tide's.
+  Reversible: `standingRow` in `src/optionsview.js`.
+- **An app key with no app can still be one of home's** (2026-11-01): its
+  box reads "App 3, off" and can be ticked, since `homeApps` names keys,
+  so the app you give it later is home's. The alternative is hiding or
+  disabling the box until the key has an app. Reversible:
+  `renderHomeApps` in `src/optionsview.js`.
 
 - **Keep awake is `Search+S`** (2026-10-31), as tide's and tilemo's
   `Super+S`, though chromeOS has select to speak there, and whether the

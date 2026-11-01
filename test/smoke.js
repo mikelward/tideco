@@ -161,18 +161,114 @@ test("the options page renders every section and saves changes", async () => {
   assert.equal(await page.locator("#errors").isHidden(), true, await page.locator("#errors").innerText());
 });
 
-// The standing workspaces and home's apps have no fields yet (§13), so a
-// save from the form keeps what's stored.
+// The standing workspaces and home's apps show in their fields (§13), so a
+// save from another field keeps what's stored.
 test("a save from the form keeps the standing workspaces and home's apps", async () => {
   await worker.evaluate(() => chrome.storage.sync.set({ settings: { standing: ["mail", "code"], homeApps: ["app-meet"] } }));
   const { page, errors } = await open("src/options.html");
   await page.waitForSelector("#setup li");
   await page.waitForFunction(() => /"app-meet"/.test(document.getElementById("json")?.value ?? ""));
+  assert.deepEqual(await page.locator("#standing tbody input").evaluateAll((l) => l.map((i) => i.value)), ["mail", "code"]);
+  assert.deepEqual(await page.locator("#home-apps input:checked").evaluateAll((l) => l.map((i) => i.dataset.command)), ["app-meet"]);
   await page.locator("#dim-strength").fill("30");
   await page.locator("#dim-strength").dispatchEvent("change");
   await page.waitForFunction(async () => (await chrome.storage.sync.get("settings")).settings?.dimStrength === 0.3);
   const { settings } = await worker.evaluate(() => chrome.storage.sync.get("settings"));
   assert.deepEqual([settings.standing, settings.homeApps], [["mail", "code"], ["app-meet"]]);
+  assert.deepEqual(errors, []);
+  await worker.evaluate(() => chrome.storage.sync.remove("settings"));
+  await page.close();
+});
+
+// The Workspaces section (§13): the standing list, home first, and a box
+// for each of home's apps, called by its app's name.
+test("the standing workspaces and home's apps are edited, saved and kept", async () => {
+  const { page, errors } = await open("src/options.html");
+  await page.waitForSelector("#home-apps input");
+  const names = () => page.locator("#standing tbody input").evaluateAll((l) => l.map((i) => i.value));
+  const homeMark = () => page.locator("#standing tbody tr").evaluateAll((l) => l.map((tr) => tr.cells[1].textContent));
+  const stored = async () => (await worker.evaluate(() => chrome.storage.sync.get("settings"))).settings;
+  assert.deepEqual(await names(), ["in", "re", "oc", "me"]);
+  assert.deepEqual(await homeMark(), ["home", "", "", ""]);
+  assert.deepEqual(await page.locator("#home-apps label").allInnerTexts(), ["Google Calendar", "Google Chat", "Google Meet", "YouTube Music"]);
+  // Added at the end, with Enter.
+  await page.locator("#standing-name").fill(" docs ");
+  await page.locator("#standing-name").press("Enter");
+  await page.waitForFunction(async () => (await chrome.storage.sync.get("settings")).settings?.standing?.length === 5);
+  assert.equal(await page.locator("#standing-name").inputValue(), "");
+  // Moved first, it's home.
+  const row = (i) => page.locator("#standing tbody tr").nth(i);
+  await row(1).getByRole("button", { name: "Move up" }).click();
+  await page.waitForFunction(async () => (await chrome.storage.sync.get("settings")).settings?.standing?.[0] === "re");
+  assert.deepEqual(await homeMark(), ["home", "", "", "", ""]);
+  // Edited in place, and taken out.
+  await row(2).locator("input").fill("code");
+  await row(2).locator("input").dispatchEvent("change");
+  await page.waitForFunction(async () => (await chrome.storage.sync.get("settings")).settings?.standing?.includes("code"));
+  await row(3).getByRole("button", { name: "Remove" }).click();
+  await page.waitForFunction(async () => (await chrome.storage.sync.get("settings")).settings?.standing?.length === 4);
+  assert.deepEqual((await stored()).standing, ["re", "in", "code", "docs"]);
+  // Home's apps: Meet in, Chat out.
+  await page.getByLabel("Google Meet").check();
+  await page.getByLabel("Google Chat").uncheck();
+  await page.waitForFunction(async () => JSON.stringify((await chrome.storage.sync.get("settings")).settings?.homeApps) === JSON.stringify(["app-calendar", "app-music", "app-meet"]));
+  // A box follows its app's name as it's saved.
+  const meetName = page.locator('#apps tr[data-command="app-meet"] input.name');
+  await meetName.fill("Gmail");
+  await meetName.dispatchEvent("change");
+  await page.waitForFunction(() => [...document.querySelectorAll("#home-apps label")].some((l) => l.innerText === "Gmail"));
+  assert.equal(await page.getByLabel("Gmail", { exact: true }).isChecked(), true);
+
+  // Kept across a reload.
+  await page.reload();
+  await page.waitForSelector("#home-apps input");
+  assert.deepEqual(await names(), ["re", "in", "code", "docs"]);
+  assert.deepEqual(await homeMark(), ["home", "", "", ""]);
+  assert.deepEqual(await page.locator("#home-apps input:checked").evaluateAll((l) => l.map((i) => i.dataset.command)), ["app-calendar", "app-meet", "app-music"]);
+  assert.deepEqual(errors, []);
+  assert.equal(await page.locator("#errors").isHidden(), true, await page.locator("#errors").innerText());
+  await worker.evaluate(() => chrome.storage.sync.remove("settings"));
+  await page.close();
+});
+
+// A name twice, ignoring case, a bad name, or no standing workspace at all
+// is refused, naming the setting, and what's stored stays.
+test("a standing workspace listed twice is refused, saying why, and isn't saved", async () => {
+  const { page, errors } = await open("src/options.html");
+  await page.waitForSelector("#home-apps input");
+  const names = () => page.locator("#standing tbody input").evaluateAll((l) => l.map((i) => i.value));
+  const stored = async () => (await worker.evaluate(() => chrome.storage.sync.get("settings"))).settings?.standing;
+  // Added: refused, and not left in the list.
+  await page.locator("#standing-name").fill("RE");
+  await page.locator("#standing-name").press("Enter");
+  await page.waitForSelector("#errors:not([hidden])");
+  assert.equal(await page.locator("#errors").innerText(), 'standing: workspace 5, "RE", is listed already');
+  assert.deepEqual(await names(), ["in", "re", "oc", "me"]);
+  assert.equal(await page.locator("#standing-name").inputValue(), "RE", "kept to fix");
+  // Edited: marked as you type, refused on change.
+  const field = page.locator("#standing tbody tr").nth(3).locator("input");
+  await field.fill("In");
+  assert.equal(await field.getAttribute("aria-invalid"), "true");
+  assert.equal(await field.getAttribute("title"), 'workspace 4, "In", is listed already');
+  await field.dispatchEvent("change");
+  await page.waitForFunction(() => /workspace 4, "In", is listed already/.test(document.getElementById("errors").innerText));
+  await field.fill('say "hi"');
+  await field.dispatchEvent("change");
+  await page.waitForFunction(() => /can't have quotes/.test(document.getElementById("errors").innerText));
+  assert.equal(await stored(), undefined, "nothing saved");
+  await field.fill("me");
+  await field.dispatchEvent("change");
+  await page.waitForFunction(() => document.getElementById("errors").hidden);
+  assert.equal(await field.getAttribute("aria-invalid"), "false");
+  // Taking out the last one is refused and put back.
+  for (let left = 4; left > 1; left--) {
+    await page.locator("#standing tbody tr").first().getByRole("button", { name: "Remove" }).click();
+    await page.waitForFunction(async (n) => (await chrome.storage.sync.get("settings")).settings?.standing?.length === n, left - 1);
+  }
+  await page.locator("#standing tbody tr").first().getByRole("button", { name: "Remove" }).click();
+  await page.waitForFunction(() => /standing: must name at least one workspace/.test(document.getElementById("errors").innerText));
+  assert.deepEqual(await names(), ["me"]);
+  assert.deepEqual(await stored(), ["me"]);
   assert.deepEqual(errors, []);
   await worker.evaluate(() => chrome.storage.sync.remove("settings"));
   await page.close();

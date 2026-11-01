@@ -186,10 +186,6 @@ Guesses made on autopilot (2026-10-24), each cheap to undo.
   reconnect. Reversible: the protocol, with tide's `tide-tabs`.
 - **No incognito windows in tide's list**, even where you've allowed tileco
   in incognito. Reversible: the filter in `tabsMessage`.
-- **Waiting: the store's single purpose for Linux** (needs the maintainer).
-  Either the listing names the Linux tab list as part of the purpose, or
-  the store build drops `nativeMessaging` and Linux loads tileco unpacked
-  (PUBLISHING.md §5).
 - **Waiting: a `key` in the manifest** (needs the maintainer). Without it an
   unpacked copy's ID comes from its folder's path, so `setup` allows both
   that ID and the store's. The store item's public key (dashboard ›

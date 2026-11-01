@@ -1,5 +1,5 @@
 ---
-last_modified: 2026-10-26
+last_modified: 2026-11-01
 ---
 
 # tileco: design spec (milestone 1)
@@ -11,6 +11,14 @@ Chrome and installed web app windows, owns its own workspaces, and dims the
 windows you're not in. A **checklist** sets the native chromeOS shortcuts and
 settings to the tide key map where the OS can do the job better than an
 extension can.
+
+On the Chromebook it **calls itself tide**, under tide's wave logo: its name
+in `chrome://extensions`, the shortcuts page and the toolbar tooltip, its
+pages' titles and text, and its icon (tide's two waves in white on the
+accent blue, `#3584e4`). tileco stays the name of the repository and the
+code, and nothing that names it changes: file names, storage keys, command
+IDs and the extension's ID, so settings and key bindings carry over. Where a
+page means the desktop on Linux, it says "tide on Linux".
 
 This document is milestone 1: what chromeOS allows, the decisions that
 follow, and what "done" means for each later milestone. Claims about chromeOS
@@ -712,8 +720,9 @@ Instead:
 - **The shelf** at the bottom, as chromeOS puts it, holds the status area:
   network, volume, Bluetooth, battery, notifications and the local clock.
   That's tide's right-hand side, native.
-- **tileco's toolbar icon** shows the current workspace number as its badge,
-  amber when another workspace holds a window wanting attention. The icon
+- **tileco's toolbar icon**, tide's waves (see the top), shows the current
+  workspace number as its badge, amber when another workspace holds a
+  window wanting attention. The icon
   is on every browser window's toolbar and pinned, and is absent in web app
   windows, which have no toolbar.
 - **tileco's dashboard**, from `Search+Space` or the toolbar icon, is the home

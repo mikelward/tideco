@@ -4,6 +4,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { Tileco } from "./tileco.js";
 import { FakeChrome, HD } from "./fake_chrome.js";
+import { EXTRAS } from "./extras.js";
+import { ITEMS } from "./setup.js";
 
 const manifest = JSON.parse(readFileSync(new URL("../manifest.json", import.meta.url)));
 
@@ -27,6 +29,44 @@ test("every icon the manifest names is a PNG of its size", () => {
   const all = { ...manifest.icons, ...manifest.action.default_icon };
   assert.ok(manifest.icons["128"], "the store needs a 128 px icon");
   for (const [size, path] of Object.entries(all)) assert.deepEqual(pngSize(path), [Number(size), Number(size)], path);
+});
+
+// The extension shows itself as tide; tileco is only the repo's and the
+// code's name, which users never see.
+const PAGES = ["src/launcher.html", "src/options.html", "src/mouse.html"];
+const page = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+
+test("the name Chrome shows, in chrome://extensions, the toolbar and the shortcuts, is tide", () => {
+  assert.equal(manifest.name, "tide");
+  assert.equal(manifest.action.default_title, "tide");
+  const shown = [manifest.name, manifest.short_name, manifest.description, manifest.action.default_title,
+    ...Object.values(manifest.commands).map((c) => c.description)];
+  for (const s of shown) assert.doesNotMatch(s ?? "", /tileco/i);
+});
+
+test("no page's title or text says tileco", () => {
+  for (const path of PAGES) {
+    const html = page(path);
+    assert.match(/<title>([^<]*)<\/title>/.exec(html)?.[1] ?? "", /^tide\b/, `${path}'s title`);
+    // Tag names and attributes hold file names, which keep tileco; the text between them is shown.
+    const text = html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<[^>]*>/g, " ");
+    assert.doesNotMatch(text, /tileco/i, path);
+  }
+});
+
+test("every page's tab shows tide's logo, at a size the manifest names", () => {
+  for (const path of PAGES) {
+    const href = /<link rel="icon" href="\.\.\/([^"]+)">/.exec(page(path))?.[1];
+    assert.ok(Object.values(manifest.icons).includes(href), `${path}: ${href}`);
+  }
+});
+
+test("no setup item or extra says tileco", () => {
+  for (const item of [...EXTRAS, ...ITEMS]) {
+    for (const [key, value] of Object.entries(item)) {
+      if (typeof value === "string" && key !== "id") assert.doesNotMatch(value, /tileco/i, `${item.id ?? item.title}.${key}`);
+    }
+  }
 });
 
 test("at most four commands suggest a key, as Chromium allows", () => {

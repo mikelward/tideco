@@ -2,20 +2,21 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>tileco settings</title>
+<title>tide settings</title>
+<link rel="icon" href="../icons/tileco-32.png">
 <link rel="stylesheet" href="options.css">
 <script type="module" src="optionsview.js"></script>
 </head>
 <body>
 <main>
-<h1>tileco settings</h1>
+<h1>tide settings</h1>
 <p class="muted">Changes apply as you make them. Layouts stay on this Chromebook; the rest follow you to every one you sign in to.</p>
 <p id="overrides" class="muted" hidden></p>
 <div id="errors" role="alert" hidden></div>
 
 <section>
 <h2>Extras</h2>
-<p class="muted">tileco tiles your windows and runs your workspaces without any of these. Each needs Chrome's permission, which it asks for when you click Allow, and you can turn each off again here.</p>
+<p class="muted">tide tiles your windows and runs your workspaces without any of these. Each needs Chrome's permission, which it asks for when you click Allow, and you can turn each off again here.</p>
 <ul id="permissions" class="checklist"></ul>
 </section>
 
@@ -37,14 +38,14 @@
 
 <section>
 <h2>Setup checklist</h2>
-<p class="muted">chromeOS settings that bring it closer to tide. tileco can't change them for you, so each says where to go; tick them off as you go. The ticks stay on this Chromebook.</p>
+<p class="muted">chromeOS settings that bring this Chromebook closer to tide on Linux. tide can't change them for you, so each says where to go; tick them off as you go. The ticks stay on this Chromebook.</p>
 <p id="setup-summary"></p>
 <ul id="setup" class="checklist"></ul>
 </section>
 
 <section>
 <h2>Keys</h2>
-<p class="muted">Chrome binds four keys when tileco installs; the rest you bind once at <code>chrome://extensions/shortcuts</code>. This list says which are still to do, and updates when you come back.</p>
+<p class="muted">Chrome binds four keys when tide installs; the rest you bind once at <code>chrome://extensions/shortcuts</code>. This list says which are still to do, and updates when you come back.</p>
 <p><span id="keys-summary"></span> <button id="open-shortcuts" type="button">Open the shortcuts page</button></p>
 <table id="keys">
 <thead><tr><th>Command</th><th>Key</th><th>Bound to</th></tr></thead>
@@ -63,7 +64,7 @@
 
 <section>
 <h2>Start at login on this Chromebook</h2>
-<p class="muted">Websites tileco opens each time you log in, in this order, as app windows on the workspace you're on, without taking focus. A change takes effect at the next login. The list stays on this Chromebook.</p>
+<p class="muted">Websites tide opens each time you log in, in this order, as app windows on the workspace you're on, without taking focus. A change takes effect at the next login. The list stays on this Chromebook.</p>
 <ol id="startup"></ol>
 <form id="startup-form" class="row">
 <input id="startup-site" type="url" placeholder="https://mail.google.com" aria-label="Website to open at login" required>
@@ -73,7 +74,7 @@
 
 <section>
 <h2>Unread counts</h2>
-<p class="muted">tileco highlights a window when a site's unread count goes up in its title, like "Inbox (3)". Gmail, Chat and Calendar are here to start with, and you can add other sites. Chrome asks for access to each site you add, on this Chromebook.</p>
+<p class="muted">tide highlights a window when a site's unread count goes up in its title, like "Inbox (3)". Gmail, Chat and Calendar are here to start with, and you can add other sites. Chrome asks for access to each site you add, on this Chromebook.</p>
 <ul id="watched"></ul>
 <form id="watch-form" class="row">
 <input id="watch-site" type="url" placeholder="https://app.example.com" aria-label="Site to show unread counts for" required>
@@ -115,7 +116,7 @@
 
 <section>
 <h2>Mouse on this Chromebook</h2>
-<p class="muted">A longer step per wheel click than Settings offers, set from crosh (Ctrl+Alt+T), which needs <code>chrome://flags/#gesture-properties-dbus-service</code> enabled once. chromeOS forgets it at each reboot, so with a step here, tileco opens a page with the lines to copy at each login. Leave it empty for no reminder.</p>
+<p class="muted">A longer step per wheel click than Settings offers, set from crosh (Ctrl+Alt+T), which needs <code>chrome://flags/#gesture-properties-dbus-service</code> enabled once. chromeOS forgets it at each reboot, so with a step here, tide opens a page with the lines to copy at each login. Leave it empty for no reminder.</p>
 <div class="row">
 <label>Step per click <input id="wheel-step" type="number" step="any" min="1" max="1000" placeholder="off"></label>
 <button id="show-mouse" type="button">Show the lines</button>
@@ -124,7 +125,7 @@
 
 <section>
 <h2>Import and export</h2>
-<p class="muted">The settings as JSON, in the shape of tide's config, to copy between machines or keep in a dotfiles repo.</p>
+<p class="muted">The settings as JSON, in the shape of tide's config on Linux, to copy between machines or keep in a dotfiles repo.</p>
 <textarea id="json" rows="10" spellcheck="false" aria-label="Settings as JSON"></textarea>
 <div class="row">
 <button id="import" type="button">Import</button>

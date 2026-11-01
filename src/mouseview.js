@@ -24,7 +24,7 @@ async function loadStep() {
   const { settings, errors } = await load(chrome.storage);
   step = settings.wheelStep;
   const found = errors.filter((e) => e.startsWith("wheelStep"));
-  if (step === null && found.length === 0) found.push("This Chromebook has no wheel step set; set one in tileco's settings, under Mouse.");
+  if (step === null && found.length === 0) found.push("This Chromebook has no wheel step set; set one in tide's settings, under Mouse.");
   showErrors(found);
   render();
 }

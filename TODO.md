@@ -19,11 +19,30 @@ Guesses made on autopilot (2026-10-24), each cheap to undo.
   Do not disturb, and an extension can't reach chromeOS's Do not disturb.
   The alternative is a presenter command that holds keep awake alone, as
   tide does without its notification server. Reversible: a command.
-- **The bar's logo is tide's two waves, not tileco's own icon**
-  (2026-10-31), so the bar reads the same on tide, tilemo and tileco;
-  tileco's icon stays the toolbar button's and the store's. The
-  alternative is a small copy of `icons/tileco.svg`. Reversible: the SVG
-  in `src/launcher.html`.
+- **The bar's logo is tide's two waves** (2026-10-31), so the bar reads
+  the same on tide, tilemo and tileco. Since 2026-11-01 the extension's
+  icon is the same waves. Reversible: the SVG in `src/launcher.html`.
+- **The extension calls itself tide** (2026-11-01): name, toolbar tooltip,
+  command descriptions, page titles and text. The icon is the waves in
+  white on `#3584e4`, tide's `accent-bg`, the old icon's blue, at 6.5x
+  tide's 16 px paths with a 1.75 stroke so the 16 px icon stays legible;
+  the alternative is tide's 1.5 stroke. Reversible: `manifest.json`, the
+  pages, and `icons/tileco.svg` plus `make icons`.
+- **File names keep tileco** (2026-11-01): `icons/tileco-*.png`,
+  `tileco.svg`, `tileco.js`, the ZIP's name, so nothing a user stored or
+  bound moves. `icons/tileco-alt.svg`, the old T's alternative, is left as
+  it was, unused. The alternative is renaming the icon files to `tide-*`
+  and deleting the alt. Reversible: a rename.
+- **Console messages keep their `tileco:` prefix** (2026-11-01): they're
+  for whoever debugs the worker, not shown on a page. The alternative is
+  `tide:`. Reversible: a search and replace.
+- **Pages get a tab icon** (2026-11-01), `icons/tileco-32.png`, so a
+  settings or home tab shows the waves. Reversible: the `<link rel="icon">`
+  in each page.
+- **"tide on Linux" where a page means the desktop** (2026-11-01), now
+  that the extension is tide too: the setup checklist's lock item and the
+  settings' setup and import text. The alternative is plain "tide".
+  Reversible: `src/setup.js` and `src/options.html`.
 - **Start at login is per Chromebook, and websites only** (2026-10-31),
   as tide's `startup.local.json` is per machine; an extension can't run a
   program. The alternative is a synced list. Reversible: move `startup`

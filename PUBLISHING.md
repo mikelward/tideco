@@ -41,8 +41,8 @@ Chrome loads an extension from a folder, as it is. There's no build step.
    work through the **Setup checklist**.
 
 To try a change: update the folder (unzip again, or `git pull`), then click
-the reload arrow on tileco's card in `chrome://extensions`. Reloading resets
-tileco's worker, not your settings.
+the reload arrow on tileco's card, named tide, in `chrome://extensions`.
+Reloading resets tileco's worker, not your settings.
 
 To see errors: on tileco's card, **Errors** lists what the worker threw, and
 **Inspect views › service worker** opens its console. A page's own console
@@ -56,10 +56,16 @@ Search+Space, the dim, and that Android and Linux windows are left alone.
 
 What the first upload needs:
 
-- **Icons.** Done: `icons/tileco.svg` (three columns under a bar of
-  workspaces and a clock, a T), rendered to the 16, 32, 48 and 128 px PNGs
-  the manifest names. After changing the SVG, `make icons` renders them
-  again. The store's own listing icon is the 128 px one.
+- **Icons.** Done: `icons/tileco.svg` (tide's two waves in white on the
+  accent blue), rendered to the 16, 32, 48 and 128 px PNGs the manifest
+  names and the pages use as their tab icon. After changing the SVG,
+  `make icons` renders them again with Playwright's Chromium, as
+  `make smoke` uses. The store's own listing icon is the 128 px one.
+- **Name.** The manifest's `name` is `tide`, so the store lists it as tide:
+  the store takes the name from the package, not the dashboard. The
+  dashboard's description, screenshots and promo images are typed or
+  uploaded there, so say tide in those too. The ZIP, the repository and
+  the privacy URL keep tileco.
 - **A privacy policy URL.** Done: [docs/privacy.md](docs/privacy.md),
   which GitHub Pages serves from `docs/` at
   `https://mikelward.github.io/tileco/privacy`. Give the store that URL. It
@@ -144,4 +150,4 @@ which answers "not found" until the first submission is published.
 Once it's published, a Chromebook installs it from the store like any
 extension, and updates arrive on their own within a few hours of approval.
 Remove the unpacked copy from `chrome://extensions` first, or you'll have
-two tilecos fighting over the same windows.
+two copies fighting over the same windows.

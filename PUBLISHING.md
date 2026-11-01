@@ -103,9 +103,15 @@ In the [developer dashboard](https://chrome.google.com/webstore/devconsole):
 
 1. **New item** (or, for an update, the item's **Package** tab ›
    **Upload new package**), and choose the ZIP.
-2. **Store listing:** the description (README.md's first paragraph is a
-   start), category (Productivity, or Tools), language, the icon and the
-   screenshots.
+2. **Store listing:** the description, category (Productivity, or Tools),
+   language, the icon and the screenshots. The store shows the manifest's
+   `description` as the summary, at most 132 characters, above the
+   listing's own. Keep the two telling the same story. The listing's:
+
+   > A tiling desktop environment for chromeOS. Includes a tiling window
+   > manager that automatically places your windows, a launcher to run apps
+   > and open websites, and a dashboard to see world times and other useful
+   > info.
 3. **Privacy:**
    - **Single purpose:** "Tiles and arranges Chrome and web app windows on
      chromeOS into workspaces, as a tiling window manager does."

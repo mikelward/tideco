@@ -10,6 +10,11 @@ const manifest = JSON.parse(readFileSync(new URL("../manifest.json", import.meta
 // The keys Chromium accepts for a command (ui/base/accelerators/command.cc).
 const KEYS = /^([A-Z0-9]|Comma|Period|Up|Down|Left|Right|Insert|Delete|Home|End|PageUp|PageDown|Space|Tab)$/;
 
+// Chrome and the Web Store refuse a description over 132 characters.
+test("the description fits the store's summary", () => {
+  assert.ok(manifest.description.length <= 132, `${manifest.description.length} characters`);
+});
+
 test("the options page exists and opens in a tab", () => {
   assert.deepEqual(manifest.options_ui, { page: "src/options.html", open_in_tab: true });
   const html = readFileSync(new URL(`../${manifest.options_ui.page}`, import.meta.url), "utf8");

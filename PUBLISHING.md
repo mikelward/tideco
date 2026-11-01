@@ -72,6 +72,13 @@ What the first upload needs:
   says what tileco reads, keeps and sends, including that Chrome Sync copies
   the shared settings to your Google account when Sync is on. Update it
   when tileco starts reading or keeping something new.
+- **Promo tiles.** Done: `store/promo-small.png` (440×280) and
+  `store/promo-marquee.png` (1400×560), tileco's first icon, the T of three
+  columns under a bar of workspaces and a clock, beside the name tide and
+  what it does. Upload them under the listing's graphic assets. After
+  changing an SVG in `store/`, `make promo` renders them again, with Inter
+  from Google Fonts. They're the store's alone, so `make zip` leaves them
+  out.
 - **Screenshots.** At least one, 1280×800 or 640×400. Take them on the
   Chromebook (Search+Ctrl+Show windows takes a screenshot).
 - **A developer account.** Register at the

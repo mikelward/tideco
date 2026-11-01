@@ -9,7 +9,12 @@ import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 
 const STORE = fileURLToPath(new URL("../store/", import.meta.url));
-const TILES = { "promo-small": [440, 280], "promo-marquee": [1400, 560] };
+const TILES = {
+  "promo-small": [440, 280],
+  "promo-marquee": [1400, 560],
+  "promo-small-alt": [440, 280],
+  "promo-marquee-alt": [1400, 560],
+};
 const FONT = "https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=block";
 
 // Fails unless Inter's faces at these weights were registered and loaded.

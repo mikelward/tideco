@@ -66,8 +66,10 @@ Contents:
   columns**, **two columns + stack**, **monocle**. Layout per workspace.
 - A lone window centered at **80%** width on an ultrawide, **100%** on 16:9
   or 16:10.
-- Nine **workspaces** on `Search+1…9`, sending a window on
-  `Search+Shift+1…9`, stepping on `Search+Page Up/Down` (§7.2).
+- Named **workspaces**, as tide's (tide §6.5): a home workspace and the
+  standing ones always listed, others named as you make them; going to
+  one or moving a window there by name, `Search+1…9` for the Nth in
+  order, stepping on `Search+Page Up/Down` (§6.1, §7.2).
 - The tide **key map**, with Search as Super, for every action chromeOS lets
   tileco or the OS bind.
 - **Inactive windows dimmed** as the focus cue.
@@ -294,7 +296,7 @@ tileco doesn't wait on the answer.
 
 Extensions can't see desks (§2.3), so a tiler running across desks tiles the
 windows of every desk together. That's chrometile's bug. tileco therefore keeps
-its own nine workspaces and **switches by minimizing** the windows of the
+its own named workspaces and **switches by minimizing** the windows of the
 workspace you leave and restoring those of the one you enter (§6). This is
 how chromewm did it.
 
@@ -360,8 +362,8 @@ off-ramp.
 | Tile, three-column, two columns + stack, monocle (tide §6.1) | tileco layouts over Chrome and web app windows (§5) | **partial**: not Android or Linux windows |
 | Lone window 80% on ultrawide, 100% otherwise | tileco, per display, from `workArea` aspect | **yes** |
 | Layout per workspace | tileco state per workspace (§6) | **yes** |
-| 9 workspaces, Search+1…9 / Shift (KDE, tide §6.6) | tileco workspaces by minimize (§3.2) | **partial**: keys need a Chrome window focused; Android/Linux windows on every workspace |
-| One workspace per monitor from a shared pool (tide §6.5) | tileco: nine shared workspaces, one showing per display (§6.1) | **partial**, same caveats |
+| Named workspaces, home first; go and move by name; the Nth on Search+1…9 / Shift (tide §6.5, §6.6) | tileco workspaces by minimize (§3.2), named as tide's (§6.1) | **partial**: keys need a Chrome window focused; Android/Linux windows on every workspace; the name prompt is the dashboard's, not a window over the app |
+| One workspace per monitor from a shared pool (tide §6.5) | tileco: shared named workspaces, one showing per display (§6.1) | **partial**, same caveats |
 | Dim inactive, 0.07 (tide §6.2; KDE 0.15) | an overlay injected into the page of each unfocused window (§10.1) | **partial**: page only, not tab strip or title bar; not over `chrome://` pages |
 | No borders, no gaps | chromeOS draws its own frames; tileco margin 0 | **partial** |
 | Maximize, fullscreen, restore (tide §6.3) | native Alt+=, fullscreen key, rebound to Search+Up/Shift+Up/Down in the Shortcuts app | **yes** |
@@ -481,8 +483,32 @@ them over their parent, which is what tide's §6.4 asks for.
 
 ### 6.1 Model
 
-- Nine workspaces, numbered 1–9, shared across displays, as in tide
-  (§6.5). Each display shows one at a time.
+- **Workspaces have names, not numbers,** as tide's (tide §6.5) and
+  tilemo's (tilemo §6.1). A workspace exists once it has a name. They're
+  listed, on the dashboard's bar and its Workspaces scope (§8.1, §9.4), in
+  bar order: the standing workspaces, then the rest in the order they
+  were made.
+- **Standing workspaces** are a setting, a list of names on the options
+  page (§13), "in", "re", "oc" and "me" by default, as tide's
+  `workspaces.json`.
+  - They're always listed, made or not. Each is made the first time you
+    show it or move a window to it, and never removed, even when empty.
+  - An empty list, or a name listed twice, ignoring case, is refused on
+    the options page, naming it.
+- **The first is the home workspace,** "in" by default, whatever the list
+  names first. tileco makes it at start. It can't be removed or renamed.
+  It holds the apps you keep open all day, and only theirs (below).
+- **The others are made by naming them** (the name prompt, below) and
+  follow the standing ones, in the order they were made. An empty one is
+  removed once no display shows it. One holding only windows you
+  minimized isn't empty.
+- **A name** is one line, trimmed, at most 32 characters, with no quotes
+  (`"`, `'`, `` ` ``), backslashes or control characters, as on tide. It
+  reaches storage, the badge, the pages and logs, so nothing needs quoting.
+  Names are compared ignoring case, and keep the case they were made
+  with, so `RE` is the standing `re`.
+- Shared across displays, as in tide (§6.5). Each display shows one at a
+  time.
 - Each workspace stores, in `chrome.storage.local` (§14.2):
   - its windows in tile order;
   - its layout, `mfact` and master count;
@@ -490,7 +516,43 @@ them over their parent, which is what tide's §6.4 asks for.
 - Each window belongs to exactly one workspace, and carries one flag:
   **minimized by you**, set when it's minimized while its workspace is
   showing.
-- A new window joins the workspace showing on the display it opens on.
+- A new window joins the workspace showing on the display it opens on,
+  except a window of one of home's apps, which always joins home.
+
+**The home workspace's apps** are the web apps you keep open all day: the
+app keys' Calendar, Chat and YouTube Music by default, and mail where §9.1
+lists it. A window is one of them when its tab's URL is on that app's
+site, as the app keys find an existing window (§9.1). The list is a
+setting beside the standing workspaces.
+
+**The name prompt** is tide's (tide §6.5), on the dashboard (§8.1), since
+an extension page is the only place tileco can take typing:
+
+- It's the dashboard opened on its **Workspaces** scope, with the field
+  asking for a name: the typed name first, when no workspace has it yet,
+  then the workspaces that match it, scored as the launcher scores. Enter
+  on the top row makes a new name; `↓` picks an existing one.
+- **`Search+W`** (tide: `Super+Return`) opens it to go to a workspace,
+  moving no window. Enter shows the workspace, making it if it's new; Esc
+  stays put. Home is offered.
+- **`Search+Shift+W`** (tide: `Super+Shift+Return`) opens it for the
+  focused window. Enter moves the window there, making the workspace if
+  it's new, and shows it; Esc leaves it. Home is refused for a window that
+  isn't one of its apps.
+- **A new window on home** that isn't one of home's apps opens it too,
+  once the window is focused, with the field starting as the window's
+  short name, selected: the first word of its tab's title, as tide's
+  short name without `namePatterns` *(a guess, to confirm)*. Enter moves
+  the window there; Esc leaves it on home, since tileco can't close a
+  window politely *(differs from tide, whose Esc closes it)*.
+- One prompt at a time. One asked for while another is open waits.
+
+**`Search+Home`** shows home, and **`Search+End`** the last workspace
+other than home you showed, as tide's `Super+Home` and `Super+End`.
+**`Search+1…9`** shows the Nth workspace in bar order, so `Search+1` is
+home, and **`Search+Shift+1…9`** moves the focused window to the Nth,
+staying put, as tide's `Super+1…9` (tide §6.6). A number past the last
+workspace does nothing.
 
 **One rule decides what's on screen.** A window is shown if and only if its
 workspace is showing on some display and you haven't minimized it.
@@ -507,8 +569,8 @@ workspace is showing on some display and you haven't minimized it.
 
 | Operation | State change | Focus |
 |---|---|---|
-| **Show N** (`Search+N`) on display D | D shows N. If N was showing on another display, that display takes D's old workspace (a swap, as in tide). | N's stored window |
-| **Send** a window to N (`Search+Shift+N`) | The window moves to the end of N's stack. If N is showing on any display, the window appears there at once; if not, it's hidden. | stays put, as in tide |
+| **Show** workspace W on display D: `Search+W`'s prompt, the Workspaces scope, `Search+Home`, `Search+End`, `Search+1…9`, a click on the bar | D shows W, making it if it's a standing one not made yet. If W was showing on another display, that display takes D's old workspace (a swap, as in tide). | W's stored window |
+| **Move** a window to W: `Search+Shift+W`'s prompt, which then shows W; `Search+Shift+1…9` and `Search+Shift+Page Up/Down`, which stay put | The window moves to the end of W's stack, a new name making W first, at the end of the list. If W is showing on any display, the window appears there at once; if not, it's hidden. | the prompt: that window, as tide's move; the keys: stays put, as tide's `Super+Shift+1…9` |
 | **Activate** a window: a tab from the launcher (§9.4), `Search+Tab` (§10.3) | If its workspace isn't showing, show it on the focused display, as Show N. Clear the window's minimized-by-you flag. | that window |
 | **Moved to another display** by you: the native `Search+Alt+M`, or a drag ending with the window's center on another display, seen as an `onBoundsChanged` tileco didn't cause | The window joins the end of the stack of the workspace showing on that display. | that window |
 | **Minimize** by you | Set the flag. | chromeOS picks |
@@ -522,7 +584,7 @@ page** there instead: an extension page in a `popup` window, opened on that
 display and then made full screen. It shows:
 
 - tide's bar across the top: tide's wave logo, workspaces, layout, the
-  workspace number and the clocks (§8.1);
+  workspace's name and the clocks (§8.1);
 - the launcher (§9.4), focused on its **Launch** scope, ready to type;
 - every zone's day, the next clock change and a month calendar (§8.2).
 
@@ -580,7 +642,9 @@ Bound by tileco, unless the column says the Shortcuts app:
 |---|---|---|
 | tap Search | launcher | native |
 | `Search+L` | lock | native |
-| `Search+1…9` / `Search+Shift+1…9` | go to / send to workspace | tileco |
+| `Search+W` / `Search+Shift+W` (tide: `Super+Return` / `Super+Shift+Return`) | go to a workspace / move the window to one, by name: the name prompt (§6.1) | tileco |
+| `Search+Home` / `Search+End` | home / the last workspace other than home | tileco |
+| `Search+1…9` / `Search+Shift+1…9` | go to / move the window to the Nth workspace in bar order, home first | tileco |
 | `Search+Page Up` / `Page Down` (tide: `Super+Left` / `Right`) | previous / next workspace | tileco (Search+arrows are Home/End and Page Up/Down; §7.2) |
 | `Search+Shift+Page Up` / `Page Down` | send to previous / next workspace | tileco |
 | `Search+J` / `K`, with Shift | focus / move down and up the stack | tileco |
@@ -692,11 +756,11 @@ Search+Alt and Search+Ctrl are allowed too, and untried unless listed.
 | T | reserved: the terminal (§1) | | |
 | U | | | |
 | V | OS: clipboard history | | |
-| W | | | |
+| W | tileco: go to a workspace by name | tileco: move the window to a workspace by name | |
 | X | OS: picture-in-picture | | |
 | Y | tileco: app 4 (YouTube Music) | | |
 | Z | OS: window layout menu | | |
-| 1–9 | tileco: go to workspace | tileco: send to workspace | |
+| 1–9 | tileco: go to the Nth workspace | tileco: move the window to the Nth workspace | |
 | 0 | | | |
 | Comma | tileco: previous layout | | |
 | Period | tileco: next layout | | |
@@ -705,7 +769,7 @@ Search+Alt and Search+Ctrl are allowed too, and untried unless listed.
 | Left / Right | OS, locked: Home / End | OS, locked: select to line start / end | |
 | Up / Down | OS, locked: Page Up / Page Down | OS, locked | |
 | Page Up / Down | tileco: previous / next workspace | tileco: send to previous / next workspace | |
-| Home / End | | | |
+| Home / End | tileco: home / the last other workspace | | |
 | Insert / Delete | | | |
 
 Search+Ctrl+S opens the Shortcuts app itself, and Search+Esc the task manager (Esc can't be a tileco key anyway). Search+S, Search+V, Search+X and Search+Z may be removable too: whether the
@@ -727,7 +791,8 @@ Instead:
   network, volume, Bluetooth, battery, notifications and the local clock.
   That's tide's right-hand side, native.
 - **tileco's toolbar icon**, tide's waves (see the top), shows the current
-  workspace number as its badge, amber when another workspace holds a
+  workspace's name as its badge, cut to its first four characters, the
+  most a badge shows, amber when another workspace holds a
   window wanting attention. The icon
   is on every browser window's toolbar and pinned, and is absent in web app
   windows, which have no toolbar.
@@ -1264,7 +1329,7 @@ each event, since Chrome answers at once.
 |---|---|---|
 | **M1** | This spec | agreed; open questions answered |
 | **M2** | Device checks + layouts | every *(unverified)* claim in §2, §7.2, §9 and §11 is checked on a Chromebook, with the chromeOS version, and this spec updated. The four layouts and the lone-window rule tile Chrome and web app windows on the laptop panel and on an ultrawide. Frame offsets are measured and tiles meet. State survives the worker sleeping and a browser restart. |
-| **M3** | Workspaces + keys | nine workspaces switch and send on one and two displays, with the home window on empty ones. Every key in §7.1 is bound or listed by the checklist. App keys open a new window of each web app and profile. |
+| **M3** | Workspaces + keys | named workspaces, home first and the standing ones always listed, switch and move by name and by number on one and two displays, with the home window on empty ones. Every key in §7.1 is bound or listed by the checklist. App keys open a new window of each web app and profile. |
 | **M4** | Dashboard, clocks, attention | the dashboard shows workspaces and urgency from live state, the clocks follow tide's rules across a DST fixture, and a Chat message marks its window and `Search+Tab` goes there. |
 | **M5** | Dim + settings | the optional dim works and is off without the permission. The options page edits everything live, syncs, and imports tide's JSON. |
 | **M6** | Linux | `setup` runs in Crostini; the nested-sway experiment is tried and written up, keep or drop. |

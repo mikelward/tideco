@@ -82,9 +82,10 @@ What the first upload needs:
 - **Screenshots.** At least one, 1280×800 or 640×400. One is done:
   `store/screenshot-threecol.png`, three Chrome windows in the three-column
   layout, the master in the middle at half the width. It's composed, not
-  captured: `store/screenshot-threecol.html` draws each window at the box
-  `src/geometry.js` arranges for three windows in a 1280×752 work area,
-  above chromeOS's shelf, and `make promo` renders it. Real captures from
+  captured: `store/screenshot-threecol.html` draws tide's bar with the
+  dashboard's own markup and `src/launcher.css`, and each window at the box
+  `src/geometry.js` arranges for three windows in the 1280×764 below it,
+  and `make promo` renders it. Real captures from
   the Chromebook are better still. Take them on the
   Chromebook (Search+Ctrl+Show windows takes a screenshot).
 - **A developer account.** Register at the

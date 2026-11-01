@@ -98,59 +98,65 @@
     "send-prev": {
       "description": "Send the window to the previous workspace (Search+Shift+PageUp)"
     },
+    "workspace-home": {
+      "description": "Go to the home workspace (Search+Home)"
+    },
+    "workspace-last": {
+      "description": "Go to the last workspace other than home (Search+End)"
+    },
     "workspace-1": {
-      "description": "Go to workspace 1 (Search+1)"
+      "description": "Go to the 1st workspace in the bar (Search+1)"
     },
     "workspace-2": {
-      "description": "Go to workspace 2 (Search+2)"
+      "description": "Go to the 2nd workspace in the bar (Search+2)"
     },
     "workspace-3": {
-      "description": "Go to workspace 3 (Search+3)"
+      "description": "Go to the 3rd workspace in the bar (Search+3)"
     },
     "workspace-4": {
-      "description": "Go to workspace 4 (Search+4)"
+      "description": "Go to the 4th workspace in the bar (Search+4)"
     },
     "workspace-5": {
-      "description": "Go to workspace 5 (Search+5)"
+      "description": "Go to the 5th workspace in the bar (Search+5)"
     },
     "workspace-6": {
-      "description": "Go to workspace 6 (Search+6)"
+      "description": "Go to the 6th workspace in the bar (Search+6)"
     },
     "workspace-7": {
-      "description": "Go to workspace 7 (Search+7)"
+      "description": "Go to the 7th workspace in the bar (Search+7)"
     },
     "workspace-8": {
-      "description": "Go to workspace 8 (Search+8)"
+      "description": "Go to the 8th workspace in the bar (Search+8)"
     },
     "workspace-9": {
-      "description": "Go to workspace 9 (Search+9)"
+      "description": "Go to the 9th workspace in the bar (Search+9)"
     },
     "send-1": {
-      "description": "Send the window to workspace 1 (Search+Shift+1)"
+      "description": "Send the window to the 1st workspace in the bar (Search+Shift+1)"
     },
     "send-2": {
-      "description": "Send the window to workspace 2 (Search+Shift+2)"
+      "description": "Send the window to the 2nd workspace in the bar (Search+Shift+2)"
     },
     "send-3": {
-      "description": "Send the window to workspace 3 (Search+Shift+3)"
+      "description": "Send the window to the 3rd workspace in the bar (Search+Shift+3)"
     },
     "send-4": {
-      "description": "Send the window to workspace 4 (Search+Shift+4)"
+      "description": "Send the window to the 4th workspace in the bar (Search+Shift+4)"
     },
     "send-5": {
-      "description": "Send the window to workspace 5 (Search+Shift+5)"
+      "description": "Send the window to the 5th workspace in the bar (Search+Shift+5)"
     },
     "send-6": {
-      "description": "Send the window to workspace 6 (Search+Shift+6)"
+      "description": "Send the window to the 6th workspace in the bar (Search+Shift+6)"
     },
     "send-7": {
-      "description": "Send the window to workspace 7 (Search+Shift+7)"
+      "description": "Send the window to the 7th workspace in the bar (Search+Shift+7)"
     },
     "send-8": {
-      "description": "Send the window to workspace 8 (Search+Shift+8)"
+      "description": "Send the window to the 8th workspace in the bar (Search+Shift+8)"
     },
     "send-9": {
-      "description": "Send the window to workspace 9 (Search+Shift+9)"
+      "description": "Send the window to the 9th workspace in the bar (Search+Shift+9)"
     },
     "keep-awake": {
       "description": "Toggle keep awake (Search+S)"

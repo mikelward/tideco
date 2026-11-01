@@ -4,15 +4,16 @@
 
 Replace the nine numbered workspaces with tide's named ones, a PR each:
 
-- [ ] The model: names in storage, standing ones and home, empty ones
+- [x] The model: names in storage, standing ones and home, empty ones
   removed once left, bar order; migrate a stored numbered state by naming
   workspace 1 home and the others by their numbers' order after the
   standing ones *(a guess)*. `src/workspaces.js`, with tests.
-- [ ] Keys: `Search+1…9` and `Search+Shift+1…9` as the Nth in bar order,
-  `Search+Home`, `Search+End`, and the `Search+W` / `Search+Shift+W`
-  commands, in `manifest.json` and `src/tileco.js`.
-- [ ] The dashboard's Workspaces scope and the name prompt, and the bar
-  and badge by name.
+- [x] Keys: `Search+1…9` and `Search+Shift+1…9` as the Nth in bar order,
+  `Search+Home` and `Search+End`, in `manifest.json` and `src/tileco.js`.
+  The bar and badge by name came with them.
+- [ ] The `Search+W` / `Search+Shift+W` commands, the dashboard's
+  Workspaces scope and the name prompt. Until then a workspace other than
+  the standing ones is made only by migration or a new display.
 - [ ] Home's apps, and the prompt for a new window on home.
 - [ ] Options: the standing list and home's apps.
 
@@ -33,6 +34,29 @@ Guesses made on autopilot (2026-10-24), each cheap to undo.
 - **A new window's default name is its title's first word** (2026-11-01),
   tide's short name without `namePatterns`, which tileco has no setting
   for yet. Reversible: SPEC.md §6.1.
+- **A stored numbered state keeps its numbers as names** (2026-11-01):
+  workspace 1 becomes home, and each other one holding a window or showing
+  becomes a made workspace named by its number, after the standing ones,
+  so nothing moves; the empty hidden ones go. The alternative is moving
+  every window to home, or numbered ones onto the standing names in order.
+  Reversible: `migrate` in `src/workspaces.js`.
+- **A display with nothing left to show gets the lowest free number**
+  (2026-11-01): when every listed workspace already shows on another
+  display, a new one shows a new workspace named "1", "2", and so on, as
+  tide can't say. The alternative is no workspace there until you pick
+  one. Reversible: `freshName` in `src/workspaces.js`.
+- **A name dropped from the standing list is an ordinary workspace**
+  (2026-11-01): it stays, after the standing ones, while it holds a window
+  or shows, then goes. The alternative is moving its windows home.
+  Reversible: `tidy` in `src/workspaces.js`.
+- **Standing names are trimmed, not refused for spaces** (2026-11-01), as
+  the clocks' labels are; tide refuses a name with space around it. The
+  alternative is tide's refusal. Reversible: `checkStanding` in
+  `src/settings.js`.
+- **`Search+End` remembers the workspaces you show** (2026-11-01): a key,
+  a click or a window brought up, but not one a swap moves onto the other
+  display. The alternative counts every display's changes. Reversible:
+  `show` in `src/workspaces.js`.
 
 - **Keep awake is `Search+S`** (2026-10-31), as tide's and tilemo's
   `Super+S`, though chromeOS has select to speak there, and whether the

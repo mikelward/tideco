@@ -101,7 +101,7 @@ test("layouts are set per Chromebook, and checked", () => {
 
 test("pick keeps the shared settings apart from this Chromebook's", () => {
   const all = resolve().settings;
-  assert.deepEqual(Object.keys(pick(all, SHARED)), ["clocks", "day", "work", "apps", "dimStrength", "watched", "defaultMode", "modes"]);
+  assert.deepEqual(Object.keys(pick(all, SHARED)), ["clocks", "day", "work", "apps", "dimStrength", "watched", "defaultMode", "modes", "standing"]);
   assert.deepEqual(Object.keys(pick(all, PER_MACHINE)), ["singleRules", "ultrawideAspect", "wheelStep", "startup"]);
 });
 
@@ -167,4 +167,25 @@ test("Start at login refuses what isn't a web address, and repeats", () => {
   assert.deepEqual(bad(["gmail"]), ['startup: address 1, "gmail", isn\'t a URL']);
   assert.deepEqual(bad(["chrome://settings"]), ['startup: address 1, "chrome://settings", must be a website']);
   assert.deepEqual(bad(["https://mail.google.com", "https://mail.google.com/"]), ["startup: address 2, https://mail.google.com/, is listed already"]);
+});
+
+test("the standing workspaces are shared, in, re, oc and me by default, home first", () => {
+  assert.ok(SHARED.includes("standing"));
+  assert.deepEqual(DEFAULT_SETTINGS.standing, ["in", "re", "oc", "me"]);
+  const { settings, errors } = resolve({ standing: [" mail ", "Code"] });
+  assert.deepEqual(errors, []);
+  assert.deepEqual(settings.standing, ["mail", "Code"], "trimmed, keeping their case");
+});
+
+test("the standing list refuses none, a name twice ignoring case, and a bad name", () => {
+  const bad = (standing) => resolve({ standing }).errors;
+  assert.deepEqual(bad("in"), ["standing: must be a list"]);
+  assert.deepEqual(bad([]), ["standing: must name at least one workspace, the first being home"]);
+  assert.deepEqual(bad(["in", "re", "RE"]), ['standing: workspace 3, "RE", is listed already']);
+  assert.deepEqual(bad(["in", 'say "hi"']), [
+    `standing: workspace 2, "say \\"hi\\"": a workspace's name can't have quotes, backslashes or control characters`,
+  ]);
+  assert.deepEqual(bad(["in", " "]), ['standing: workspace 2, " ": a workspace needs a name']);
+  assert.deepEqual(bad(["x".repeat(33)]), [`standing: workspace 1, "${"x".repeat(33)}": a workspace's name is at most 32 characters`]);
+  assert.deepEqual(resolve({ standing: [] }).settings.standing, DEFAULT_SETTINGS.standing, "it keeps its default");
 });

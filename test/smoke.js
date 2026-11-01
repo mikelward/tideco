@@ -243,6 +243,22 @@ for (const mode of ["home", "dashboard"]) {
   });
 }
 
+// The bar names the workspaces in bar order, the standing ones before
+// they're made, and a click shows one by name (§6.1).
+test("the bar lists the workspaces by name, and a click shows one", async () => {
+  const { page, errors } = await open("src/launcher.html?mode=home");
+  await page.waitForSelector("#workspaces button");
+  assert.deepEqual(await page.locator("#workspaces button").allInnerTexts(), ["in", "re", "oc", "me"]);
+  await page.locator("#workspaces button", { hasText: "oc" }).click();
+  // This tab is no display's home page, so the stored view says where it went.
+  await page.waitForFunction(async () => {
+    const { view } = await chrome.storage.local.get("view");
+    return Object.values(view?.displays ?? {}).some((d) => d.workspace === "oc");
+  });
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
 // Every point of the bar's logo, chips and clocks, top to bottom, reaches
 // one of them: none lands on the bar between or around them.
 test("a click anywhere on the bar's logo, chips or clocks reaches one", async () => {

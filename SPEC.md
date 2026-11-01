@@ -501,7 +501,17 @@ them over their parent, which is what tide's §6.4 asks for.
 - **The others are made by naming them** (the name prompt, below) and
   follow the standing ones, in the order they were made. An empty one is
   removed once no display shows it. One holding only windows you
-  minimized isn't empty.
+  minimized isn't empty, and nor is one holding a window a restart hasn't
+  brought back yet (§14.2).
+  - A display with every listed workspace showing elsewhere shows a new
+    one named by the lowest number free, "1" first *(a guess)*.
+  - A name dropped from the standing list is an ordinary workspace from
+    then on *(a guess)*.
+- **Before names**, tileco stored nine numbered workspaces. A state in
+  that shape is named as it loads: workspace 1 becomes home, and each
+  other one holding a window or showing keeps its number as its name,
+  after the standing ones, in number order *(a guess)*. The empty hidden
+  ones go.
 - **A name** is one line, trimmed, at most 32 characters, with no quotes
   (`"`, `'`, `` ` ``), backslashes or control characters, as on tide. It
   reaches storage, the badge, the pages and logs, so nothing needs quoting.
@@ -548,7 +558,9 @@ an extension page is the only place tileco can take typing:
 - One prompt at a time. One asked for while another is open waits.
 
 **`Search+Home`** shows home, and **`Search+End`** the last workspace
-other than home you showed, as tide's `Super+Home` and `Super+End`.
+other than home you showed, as tide's `Super+Home` and `Super+End`: from
+home the last one, from any other the one before it, skipping one removed
+since.
 **`Search+1…9`** shows the Nth workspace in bar order, so `Search+1` is
 home, and **`Search+Shift+1…9`** moves the focused window to the Nth,
 staying put, as tide's `Super+1…9` (tide §6.6). A number past the last
@@ -1117,6 +1129,8 @@ Crostini runs kitty, the shell config and the terminal tools, so `conf` and
   and main-window count, under tide's names (`defaultMode`, `modes`). A
   change reaches every workspace and replaces what the keys set there, as
   in tide.
+  The standing workspaces (`standing`, §6.1) are checked and shared, but
+  set only by import so far: the page has no fields for them yet.
 
 ### 13.1 Start at login
 

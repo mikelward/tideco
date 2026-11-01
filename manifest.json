@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "tileco",
+  "name": "tide",
   "version": "0",
   "description": "A tiling desktop environment for chromeOS: a window manager that places your windows, a launcher, and a dashboard.",
   "background": {
@@ -158,16 +158,16 @@
       "description": "Open a new browser window (Search+G)"
     },
     "app-calendar": {
-      "description": "Open app 1, Google Calendar unless changed in tileco's options (Search+C)"
+      "description": "Open app 1, Google Calendar unless changed in tide's options (Search+C)"
     },
     "app-chat": {
-      "description": "Open app 2, Google Chat unless changed in tileco's options (Search+Shift+C)"
+      "description": "Open app 2, Google Chat unless changed in tide's options (Search+Shift+C)"
     },
     "app-meet": {
-      "description": "Open app 3, Google Meet unless changed in tileco's options (Search+M)"
+      "description": "Open app 3, Google Meet unless changed in tide's options (Search+M)"
     },
     "app-music": {
-      "description": "Open app 4, YouTube Music unless changed in tileco's options (Search+Y)"
+      "description": "Open app 4, YouTube Music unless changed in tide's options (Search+Y)"
     }
   },
   "icons": {
@@ -177,7 +177,7 @@
     "128": "icons/tileco-128.png"
   },
   "action": {
-    "default_title": "tileco",
+    "default_title": "tide",
     "default_icon": {
       "16": "icons/tileco-16.png",
       "32": "icons/tileco-32.png"

@@ -17,7 +17,7 @@ test("word starts and runs score higher", () => {
 const tabs = [
   { id: 10, windowId: 1, title: "Inbox (3) - Gmail", url: "https://mail.google.com/mail/u/0/", lastAccessed: 300 },
   { id: 20, windowId: 2, title: "Design doc", url: "https://docs.google.com/document/d/1", lastAccessed: 500 },
-  { id: 30, windowId: 3, title: "tileco", url: "chrome-extension://tileco/src/launcher.html" },
+  { id: 30, windowId: 3, title: "tide", url: "chrome-extension://tileco/src/launcher.html" },
 ];
 const apps = [{ name: "Google Calendar", url: "https://calendar.google.com/", command: "app-calendar", key: "Search+C" }];
 const commands = {

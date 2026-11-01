@@ -12,19 +12,19 @@ export const EXTRAS = [
   {
     id: "tabs",
     title: "Find any tab in a keystroke",
-    how: "Press Search+Space, type a few letters, and jump to that tab. tileco also puts your windows back on their workspaces after Chrome restarts, and tiles Secure Shell's windows. Chrome calls this “read your browsing history”.",
+    how: "Press Search+Space, type a few letters, and jump to that tab. tide also puts your windows back on their workspaces after Chrome restarts, and tiles Secure Shell's windows. Chrome calls this “read your browsing history”.",
     access: { permissions: ["tabs"] },
   },
   {
     id: "unread",
     title: "Show unread counts for Gmail, Chat and Calendar",
-    how: "Highlight a window when new mail or messages arrive. tileco reads only the page title. Add other sites under Unread counts in the settings.",
+    how: "Highlight a window when new mail or messages arrive. tide reads only the page title. Add other sites under Unread counts in the settings.",
     access: { origins: DEFAULT_SITES.map(pattern) },
   },
   {
     id: "dim",
     title: "Dim inactive windows",
-    how: "Darken the windows you're not using. Chrome calls this “read and change all your data on all websites”; tileco only lays a shade over each page.",
+    how: "Darken the windows you're not using. Chrome calls this “read and change all your data on all websites”; tide only lays a shade over each page.",
     access: { origins: ["<all_urls>"] },
   },
 ];

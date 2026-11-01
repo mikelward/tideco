@@ -992,11 +992,11 @@ test("Search+S keeps the display awake until it's pressed again", async () => {
   await tileco.command("keep-awake");
   assert.equal(chrome.awake, "display");
   assert.equal(chrome.sessionStore.keepAwake, true, "the dashboard reads it from storage.session");
-  assert.equal(chrome.actionTitle, "tileco · Keeping awake");
+  assert.equal(chrome.actionTitle, "tide · Keeping awake");
   await tileco.command("keep-awake");
   assert.equal(chrome.awake, null);
   assert.equal(chrome.sessionStore.keepAwake, false);
-  assert.equal(chrome.actionTitle, "tileco · Not keeping awake");
+  assert.equal(chrome.actionTitle, "tide · Not keeping awake");
 });
 
 test("keep awake starts off in a new browser session", async () => {

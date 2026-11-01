@@ -7,6 +7,10 @@ the Search key, an optional dim on inactive windows, and world clocks. A
 setup checklist sets the native chromeOS features (lock, launcher,
 notifications, screenshots, dark mode) to match.
 
+On the Chromebook it calls itself **tide**, with tide's wave logo, in
+`chrome://extensions`, the toolbar and its own pages; tileco is the name of
+this repository and its code.
+
 **Status: milestone 1, the spec.** Start with [SPEC.md](SPEC.md). It
 explains what chromeOS lets an extension do, and what it doesn't: Android
 and Linux windows, global keys and a top bar are out of reach.

@@ -42,6 +42,26 @@ test("the background worker starts", async () => {
   assert.equal(await worker.evaluate(() => chrome.commands.onCommand.hasListeners()), true);
 });
 
+// The extension shows itself as tide (SPEC.md, top), rendered text included,
+// with tide's logo as each tab's icon.
+test("every page says tide, not tileco, under tide's logo", async () => {
+  for (const [path, ready] of [["src/options.html", "#setup li"], ["src/launcher.html?mode=dashboard", "#logo"], ["src/mouse.html", "body"]]) {
+    const { page, errors } = await open(path);
+    await page.waitForSelector(ready);
+    assert.match(await page.title(), /^tide\b/, path);
+    assert.doesNotMatch(await page.locator("body").innerText(), /tileco/i, path);
+    const width = await page.evaluate(() => new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve(img.naturalWidth);
+      img.onerror = () => resolve(0);
+      img.src = document.querySelector('link[rel="icon"]')?.href ?? "";
+    }));
+    assert.equal(width, 32, `${path}'s tab icon doesn't load`);
+    assert.deepEqual(errors, [], path);
+    await page.close();
+  }
+});
+
 test("the options page renders every section and saves changes", async () => {
   const { page, errors } = await open("src/options.html");
   await page.waitForSelector("#setup li");

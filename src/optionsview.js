@@ -133,7 +133,7 @@ async function renderPermissions() {
       const toggle = button(on ? "Turn off" : "Allow", `${on ? "Turn off" : "Allow"}: ${extra.title}`, async () => {
         try {
           if (on) {
-            if (extra.off && !(await extra.off())) throw new Error("tileco couldn't undim the windows");
+            if (extra.off && !(await extra.off())) throw new Error("tide couldn't undim the windows");
             await chrome.permissions.remove(extra.access);
           } else if (await chrome.permissions.request(extra.access)) {
             await extra.allowed?.();
@@ -363,7 +363,7 @@ $("watch-form").addEventListener("submit", async (e) => {
     return;
   }
   if (!(await chrome.permissions.request({ origins: [pattern(origin)] }))) {
-    showErrors([`tileco needs access to ${origin} to show its unread counts`]);
+    showErrors([`tide needs access to ${origin} to show its unread counts`]);
     return;
   }
   if (!watchedSites.includes(origin)) watchedSites.push(origin);

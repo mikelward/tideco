@@ -20,6 +20,6 @@ export async function toggle(api) {
   if (on) api.power.requestKeepAwake("display");
   else api.power.releaseKeepAwake();
   await api.storage.session.set({ [KEEP_AWAKE_KEY]: on });
-  await api.action?.setTitle({ title: `tileco · ${words(on)}` });
+  await api.action?.setTitle({ title: `tide · ${words(on)}` });
   return on;
 }

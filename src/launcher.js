@@ -43,13 +43,79 @@ function itemScore(query, item) {
   return found.length === 0 ? null : Math.max(...found);
 }
 
-// The scopes rank() ranks: "launch" is apps and tileco's commands, "tabs" is
-// open tabs. The third, "workspaces", has rows of its own (workspaceRows).
-export const SCOPES = { launch: ["app", "command"], tabs: ["tab"] };
+// The scopes rank() ranks: "launch" is apps, Tide Settings and its sections,
+// and, for a query, the actions and commands too; "tabs" is open tabs;
+// "actions" is tileco's actions and commands. "workspaces" has rows of its
+// own (workspaceRows).
+export const SCOPES = { launch: ["app", "setting", "action", "command"], tabs: ["tab"], actions: ["action", "command"] };
+
+// What each scope lists with nothing typed (§9.4): Launch only its apps, so
+// it reads as a start menu; a settings section turns up only for a query.
+const EMPTY = { launch: ["app"], tabs: ["tab"], actions: ["action", "command"] };
 
 // The scopes in their chips' order, which Tab steps through.
-export const SCOPE_ORDER = ["launch", "tabs", "workspaces"];
-const SCOPE_NAMES = { launch: "Launch", tabs: "Tabs", workspaces: "Workspaces" };
+export const SCOPE_ORDER = ["launch", "tabs", "workspaces", "actions"];
+const SCOPE_NAMES = { launch: "Launch", tabs: "Tabs", workspaces: "Workspaces", actions: "Actions" };
+
+// The name of the options page as an app (§9.4), in the user's words.
+export const SETTINGS_APP = "Tide Settings";
+
+// The options page's sections, each found from Launch by its name and what
+// it covers, and opened at its anchor, `id`. `chromeos` ones show only
+// there and `linux` only on Linux, as the options page shows them (§14.6).
+export const SETTINGS_SECTIONS = [
+  { id: "linux", name: "Tabs in tide's switcher", covers: "Linux native helper tide-tabs", linux: true },
+  { id: "extras", name: "Extras", covers: "permissions allow tab search unread dim" },
+  { id: "clocks-section", name: "Clocks", covers: "time zones cities daytime working hours" },
+  { id: "setup-section", name: "Setup checklist", covers: "chromeOS settings", chromeos: true },
+  { id: "keys-section", name: "Keys", covers: "shortcuts bindings" },
+  { id: "apps-section", name: "Apps", covers: "app keys web apps addresses" },
+  { id: "startup-section", name: "Start at login", covers: "websites autostart", chromeos: true },
+  { id: "unread", name: "Unread counts", covers: "Gmail Chat Calendar sites", chromeos: true },
+  { id: "dim", name: "Dim", covers: "strength inactive windows", chromeos: true },
+  { id: "workspaces", name: "Workspaces", covers: "standing home apps layouts main share", chromeos: true },
+  { id: "layouts", name: "Layouts", covers: "ultrawide aspect ratio width", chromeos: true },
+  { id: "mouse", name: "Mouse", covers: "wheel scroll step crosh", chromeos: true },
+  { id: "import-section", name: "Import and export", covers: "JSON backup reset defaults" },
+];
+
+// Where Launch leaves the section to show, in session storage, for the
+// options page to scroll to and clear (§9.4).
+export const SECTION_KEY = "settingsSection";
+
+// The section the options page shows: its address's anchor, else the one
+// Launch asked for; either only if the page has it, by `ids`.
+export function sectionToShow(hash, asked, ids) {
+  const id = hash.replace(/^#/, "") || asked || "";
+  return ids.includes(id) ? id : null;
+}
+
+// The sections shown where tileco runs: on chromeOS (`tiling`), or off it,
+// where `linux` adds Linux's own.
+export function settingsSections({ tiling = true, linux = false } = {}) {
+  return SETTINGS_SECTIONS.filter((s) => (tiling ? !s.linux : !s.chromeos && (!s.linux || linux)));
+}
+
+// The Actions scope's own rows (§9.4), before the commands: keep awake,
+// saying whether it's on; on chromeOS the dim, on, off, or to allow; and
+// reloading tileco. chromeOS gives extensions no lock, log out or shut down.
+// `keepAwake` is whether it's on, `dim` null off chromeOS, else
+// {granted, on}, and `key` names a command's key.
+export function actions({ keepAwake = false, dim = null, key = () => "" } = {}) {
+  const out = [{ kind: "action", title: "Keep awake", detail: keepAwake ? "on" : "off", key: key("keep-awake"), command: "keep-awake" }];
+  if (dim) {
+    const on = dim.granted && dim.on;
+    out.push({ kind: "action", title: "Dim inactive windows", detail: on ? "on" : dim.granted ? "off" : "off · Chrome asks first", act: "dim", on });
+  }
+  out.push({ kind: "action", title: "Reload tide", detail: "restarts the extension", act: "reload" });
+  return out;
+}
+
+// How many rows a scope shows: Actions lists every one with nothing typed,
+// the rest the best eight.
+export function limitFor(scope, query) {
+  return scope === "actions" && query.trim() === "" ? Infinity : 8;
+}
 
 // The scope `by` chips from `scope` among those shown, `scopes`, wrapping.
 // Off chromeOS there are no workspaces, so no Workspaces chip (§14.6).
@@ -130,14 +196,17 @@ export function workspaceRows({ bar = [], counts = {}, made = bar, current = nul
 // that matches nothing in its scope looks in every scope instead, so a tab
 // still turns up from the launch scope.
 export function rank(query, items, { scope = null, limit = 8 } = {}) {
-  const inScope = scope ? items.filter((i) => SCOPES[scope].includes(i.kind)) : items;
+  const empty = query.trim() === "";
+  const kinds = scope ? (empty ? EMPTY : SCOPES)[scope] : null;
+  // A settings section is only ever found by a query.
+  const inScope = items.filter((i) => (kinds ? kinds.includes(i.kind) : !empty || i.kind !== "setting"));
   const found = rankAll(query, inScope, limit);
-  return found.length > 0 || !scope || query.trim() === "" ? found : rankAll(query, items, limit);
+  return found.length > 0 || !scope || empty ? found : rankAll(query, items, limit);
 }
 
 function rankAll(query, items, limit) {
   const q = query.trim();
-  const kindOrder = { tab: 0, app: 1, command: 2 };
+  const kindOrder = { tab: 0, app: 1, setting: 2, action: 3, command: 4 };
   const scored = [];
   for (const item of items) {
     const score = q === "" ? 0 : itemScore(q, item);
@@ -161,12 +230,13 @@ function host(url) {
   }
 }
 
-// The launcher's items: every tab but tileco's own pages, the app keys, and
-// the manifest's commands. A tab on an app's site carries the app's name, so
-// "calendar" finds Calendar's tabs. `workspaceOf` names a window's
-// workspace, or null. Off chromeOS (`tiling` false) only the commands that
-// place no window are listed (§14.6).
-export function items({ tabs = [], apps = [], commands = {}, workspaceOf = () => null, ownOrigin = "", tiling = true }) {
+// The launcher's items: every tab but tileco's own pages, the app keys, Tide
+// Settings and its `sections`, the `actions`, and the manifest's commands. A
+// tab on an app's site carries the app's name, so "calendar" finds
+// Calendar's tabs. `workspaceOf` names a window's workspace, or null. Off
+// chromeOS (`tiling` false) only the commands that place no window are
+// listed (§14.6). Keep awake is an action, so its command isn't listed too.
+export function items({ tabs = [], apps = [], sections = [], actions = [], commands = {}, workspaceOf = () => null, ownOrigin = "", tiling = true }) {
   const out = [];
   for (const t of tabs) {
     if (ownOrigin && t.url?.startsWith(ownOrigin)) continue;
@@ -184,8 +254,13 @@ export function items({ tabs = [], apps = [], commands = {}, workspaceOf = () =>
     });
   }
   for (const a of apps) out.push({ kind: "app", title: a.name, detail: "app", key: a.key ?? "", command: a.command });
+  out.push({ kind: "app", title: SETTINGS_APP, detail: "settings", act: "settings" });
+  // Each section matches by its name, by Tide Settings, and for less by
+  // what it covers, as a tab does by its app and its host.
+  for (const s of sections) out.push({ kind: "setting", title: s.name, app: SETTINGS_APP, extra: s.covers, detail: SETTINGS_APP, act: "settings", section: s.id });
+  out.push(...actions);
   for (const [name, c] of Object.entries(commands)) {
-    if (name.startsWith("app-")) continue;
+    if (name.startsWith("app-") || name === "keep-awake") continue;
     if (!tiling && !worksUntiled(name)) continue;
     // Descriptions end with the key in parentheses, which shows on its own.
     const m = /^(.*?)\s*\(([^)]*)\)$/.exec(c.description ?? name);

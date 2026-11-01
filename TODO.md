@@ -26,6 +26,20 @@ is trying them on a Chromebook, with M2's device checks.
 
 Guesses made on autopilot (2026-10-24), each cheap to undo.
 
+- **Launch's empty query lists only the apps; the commands moved to
+  Actions** (2026-11-01), so Launch reads as a start menu. A query in
+  Launch still finds commands and actions. The alternative is Launch
+  listing commands after the apps, as before. Reversible: `EMPTY` in
+  `src/launcher.js`.
+- **The settings app is "Tide Settings", in the user's words**
+  (2026-11-01), though the options page calls itself "tide settings".
+  Its sections are listed by the page's headings, shortened ("Layouts",
+  "Mouse", "Start at login"). Reversible: `SETTINGS_APP` and
+  `SETTINGS_SECTIONS` in `src/launcher.js`.
+- **Actions turns the dim off by pausing it, keeping Chrome's access**
+  (2026-11-01), so turning it back on needs no prompt; the options
+  page's "Turn off" still gives the access back. Reversible:
+  `toggleDim` in `src/launcherview.js`.
 - **Named workspaces' keys are `Search+W` and `Search+Shift+W`**
   (2026-11-01), W for workspace, since Chrome can't bind tide's
   `Super+Return`; `Search+Home` and `Search+End` are tide's. The

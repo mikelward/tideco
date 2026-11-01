@@ -21,13 +21,13 @@
 <p id="overrides" class="muted" hidden></p>
 <div id="errors" role="alert" hidden></div>
 
-<section>
+<section id="extras">
 <h2>Extras</h2>
 <p class="muted">tide tiles your windows and runs your workspaces without any of these. Each needs Chrome's permission, which it asks for when you click Allow, and you can turn each off again here.</p>
 <ul id="permissions" class="checklist"></ul>
 </section>
 
-<section>
+<section id="clocks-section">
 <h2>Clocks</h2>
 <p class="muted">Shown on the dashboard and the home page, in this order, with local time last. A zone that is your local zone is hidden.</p>
 <table id="clocks">
@@ -43,14 +43,14 @@
 </fieldset>
 </section>
 
-<section data-chromeos>
+<section id="setup-section" data-chromeos>
 <h2>Setup checklist</h2>
 <p class="muted">chromeOS settings that bring this Chromebook closer to tide on Linux. tide can't change them for you, so each says where to go; tick them off as you go. The ticks stay on this Chromebook.</p>
 <p id="setup-summary"></p>
 <ul id="setup" class="checklist"></ul>
 </section>
 
-<section>
+<section id="keys-section">
 <h2>Keys</h2>
 <p class="muted">Chrome binds four keys when tide installs; the rest you bind once at <code>chrome://extensions/shortcuts</code>. This list says which are still to do, and updates when you come back.</p>
 <p><span id="keys-summary"></span> <button id="open-shortcuts" type="button">Open the shortcuts page</button></p>
@@ -60,7 +60,7 @@
 </table>
 </section>
 
-<section>
+<section id="apps-section">
 <h2>Apps</h2>
 <p class="muted">Each key opens a new window of its app on the current workspace. Chrome fixes the keys; you choose the apps. Change a key at <code>chrome://extensions/shortcuts</code>.</p>
 <table id="apps">
@@ -69,7 +69,7 @@
 </table>
 </section>
 
-<section data-chromeos>
+<section id="startup-section" data-chromeos>
 <h2>Start at login on this Chromebook</h2>
 <p class="muted">Websites tide opens each time you log in, in this order, as app windows on the workspace you're on, without taking focus. A change takes effect at the next login. The list stays on this Chromebook.</p>
 <ol id="startup"></ol>
@@ -79,7 +79,7 @@
 </form>
 </section>
 
-<section data-chromeos>
+<section id="unread" data-chromeos>
 <h2>Unread counts</h2>
 <p class="muted">tide highlights a window when a site's unread count goes up in its title, like "Inbox (3)". Gmail, Chat and Calendar are here to start with, and you can add other sites. Chrome asks for access to each site you add, on this Chromebook.</p>
 <ul id="watched"></ul>
@@ -89,13 +89,13 @@
 </form>
 </section>
 
-<section data-chromeos>
+<section id="dim" data-chromeos>
 <h2>Dim</h2>
 <p class="muted">How dark the dim makes the windows you're not in, when it's on (turn it on under Extras).</p>
 <label>Strength <input id="dim-strength" type="number" step="any" min="2" max="50" required> %</label>
 </section>
 
-<section data-chromeos>
+<section id="workspaces" data-chromeos>
 <h2>Workspaces</h2>
 <p class="muted">The standing workspaces are always on the bar, in this order, even when empty. The first is home, which holds home's apps and only theirs, so moving another first makes it home. A name taken out of the list stays a workspace until it's empty.</p>
 <table id="standing">
@@ -121,7 +121,7 @@
 </table>
 </section>
 
-<section data-chromeos>
+<section id="layouts" data-chromeos>
 <h2>Layouts on this Chromebook</h2>
 <p class="muted">These depend on this Chromebook's displays, so they stay here rather than follow you.</p>
 <label>A display is ultrawide, with three columns, from aspect ratio <input id="ultrawide" type="number" step="0.1" min="1" max="10" required></label>
@@ -133,7 +133,7 @@
 <button id="add-rule" type="button">Add a width</button>
 </section>
 
-<section data-chromeos>
+<section id="mouse" data-chromeos>
 <h2>Mouse on this Chromebook</h2>
 <p class="muted">A longer step per wheel click than Settings offers, set from crosh (Ctrl+Alt+T), which needs <code>chrome://flags/#gesture-properties-dbus-service</code> enabled once. chromeOS forgets it at each reboot, so with a step here, tide opens a page with the lines to copy at each login. Leave it empty for no reminder.</p>
 <div class="row">
@@ -142,7 +142,7 @@
 </div>
 </section>
 
-<section>
+<section id="import-section">
 <h2>Import and export</h2>
 <p class="muted">The settings as JSON, in the shape of tide's config on Linux, to copy between machines or keep in a dotfiles repo.</p>
 <textarea id="json" rows="10" spellcheck="false" aria-label="Settings as JSON"></textarea>

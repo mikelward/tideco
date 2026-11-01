@@ -211,9 +211,10 @@ function modeRow(mode, o) {
   return tr;
 }
 
-// The standing workspaces have no fields yet, only the JSON, so a save from
-// the form keeps what's stored.
+// The standing workspaces and home's apps have no fields yet, only the
+// JSON, so a save from the form keeps what's stored.
 let standing = DEFAULT_SETTINGS.standing;
+let homeApps = DEFAULT_SETTINGS.homeApps;
 
 // An emptied hour field is NaN, an error, not Number("")'s midnight.
 function fromForm() {
@@ -232,7 +233,7 @@ function fromForm() {
     const [share, count] = tr.querySelectorAll("input");
     return [tr.dataset.mode, { mfact: Number((num(share) / 100).toPrecision(12)), nmaster: num(count) }];
   }));
-  return { clocks, ...hours, apps, dimStrength: Number((strength / 100).toPrecision(12)), watched: [...watchedSites], defaultMode, modes, standing: [...standing] };
+  return { clocks, ...hours, apps, dimStrength: Number((strength / 100).toPrecision(12)), watched: [...watchedSites], defaultMode, modes, standing: [...standing], homeApps: [...homeApps] };
 }
 
 function toForm(settings) {
@@ -240,6 +241,7 @@ function toForm(settings) {
   $("dim-strength").value = Number((settings.dimStrength * 100).toPrecision(12));
   watchedSites = [...settings.watched];
   standing = [...settings.standing];
+  homeApps = [...settings.homeApps];
   renderWatched();
   renderPermissions();
   appRows.replaceChildren(...APP_COMMANDS.map((c) => appRow(c, settings.apps.find((a) => a.command === c))));

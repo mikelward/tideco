@@ -18,7 +18,9 @@ const SYMBOLS = { tile: "[]=", threecol: "|M|", twocol: "||=", monocle: "[M]" };
 const opened = opening(location.search);
 const home = opened.home;
 // Search+Shift+W's prompt: Enter moves a window, so it keeps to Workspaces.
+// Home is offered only for one of home's apps' windows.
 const move = opened.move;
+const allowHome = opened.allowHome;
 const $ = (id) => document.getElementById(id);
 const query = $("query");
 const results = $("results");
@@ -153,7 +155,7 @@ function placeholder() {
 function update() {
   if (scope === "workspaces") {
     const current = view?.displays?.[hereDisplay()]?.workspace ?? null;
-    shown = workspaceRows({ bar: view?.bar, counts: view?.counts, made: view?.made, current, query: query.value, move });
+    shown = workspaceRows({ bar: view?.bar, counts: view?.counts, made: view?.made, current, query: query.value, move, allowHome });
   } else shown = scope === "tabs" && !tabsAllowed ? [ALLOW_TABS] : rank(query.value, all, { scope });
   selected = Math.min(selected, Math.max(shown.length - 1, 0));
   for (const b of document.querySelectorAll(".scopes button")) {
@@ -232,7 +234,9 @@ query.addEventListener("keydown", (e) => {
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
   e.preventDefault();
-  if (query.value) {
+  // A new window's prompt starts with its short name, which isn't typing
+  // to clear: Esc leaves the window where it is at once (§6.1).
+  if (query.value && query.value !== opened.name) {
     query.value = "";
     update();
     query.focus();
@@ -393,9 +397,13 @@ window.addEventListener("focus", () => {
   refresh();
   query.focus();
 });
+// A new window's prompt starts with its short name, selected so typing
+// replaces it (§6.1).
+query.value = opened.name;
 refresh();
 renderCup();
 renderExtras();
 loadClocks();
 setInterval(renderTime, 10000);
 query.focus();
+query.select();

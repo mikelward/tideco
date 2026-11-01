@@ -33,6 +33,24 @@ export function checkName(text) {
   return { name };
 }
 
+// Punctuation that clings to a word's end, as in `ABC-123:` or `Docs,`.
+const TRAILING_PUNCT = /[.,:;!?|\u2026\-\u2013\u2014]+$/u;
+
+// A window's short name, which a new window's name prompt starts with
+// (§6.1): the first word of `title`, its tab's, with the punctuation
+// clinging to its end dropped, passing over words left with no letter or
+// digit, as tide's short name is without `namePatterns`. Characters a name
+// can't hold go first, and a word too long is cut, so it's always a name,
+// or "" when the title has no word to give.
+export function shortName(title) {
+  const text = [...String(title ?? "")].filter((c) => !UNSAFE.test(c)).join("");
+  for (const word of text.split(/\s+/u)) {
+    const w = word.replace(TRAILING_PUNCT, "");
+    if (/[\p{L}\p{N}]/u.test(w)) return [...w].slice(0, MAX_NAME).join("");
+  }
+  return "";
+}
+
 // Whether two names are the same workspace's: case doesn't count.
 export function sameName(a, b) {
   return String(a).toLowerCase() === String(b).toLowerCase();
@@ -198,11 +216,13 @@ function attach(s, winId, name) {
 }
 
 // A new window joins the end of the stack of the workspace showing on the
-// display it opened on, or home's if nothing shows there.
-export function addWindow(state, winId, displayId, { floating = false } = {}) {
+// display it opened on, or home's if nothing shows there. `to` names the
+// workspace it joins instead, wherever it opened, as one of home's apps
+// always joins home (§6.1); like a send, it's hidden if that isn't showing.
+export function addWindow(state, winId, displayId, { floating = false, to = null } = {}) {
   if (winId in state.windows) return state;
   const s = clone(state);
-  attach(s, winId, showing(s, displayId) ?? home(s));
+  attach(s, winId, to !== null ? make(s, to) : (showing(s, displayId) ?? home(s)));
   s.windows[winId].floating = floating;
   return s;
 }

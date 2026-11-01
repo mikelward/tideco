@@ -161,6 +161,23 @@ test("the options page renders every section and saves changes", async () => {
   assert.equal(await page.locator("#errors").isHidden(), true, await page.locator("#errors").innerText());
 });
 
+// The standing workspaces and home's apps have no fields yet (§13), so a
+// save from the form keeps what's stored.
+test("a save from the form keeps the standing workspaces and home's apps", async () => {
+  await worker.evaluate(() => chrome.storage.sync.set({ settings: { standing: ["mail", "code"], homeApps: ["app-meet"] } }));
+  const { page, errors } = await open("src/options.html");
+  await page.waitForSelector("#setup li");
+  await page.waitForFunction(() => /"app-meet"/.test(document.getElementById("json")?.value ?? ""));
+  await page.locator("#dim-strength").fill("30");
+  await page.locator("#dim-strength").dispatchEvent("change");
+  await page.waitForFunction(async () => (await chrome.storage.sync.get("settings")).settings?.dimStrength === 0.3);
+  const { settings } = await worker.evaluate(() => chrome.storage.sync.get("settings"));
+  assert.deepEqual([settings.standing, settings.homeApps], [["mail", "code"], ["app-meet"]]);
+  assert.deepEqual(errors, []);
+  await worker.evaluate(() => chrome.storage.sync.remove("settings"));
+  await page.close();
+});
+
 test("Start at login keeps this Chromebook's websites, in order", async () => {
   const { page, errors } = await open("src/options.html");
   await page.waitForSelector("#setup li");
@@ -357,6 +374,35 @@ test("the move prompt keeps to Workspaces and refuses home, saying why", async (
   await page.locator("#query").press("Tab");
   assert.equal(await page.locator('.scopes [aria-selected="true"]').innerText(), "Workspaces");
   assert.equal(await page.locator("#keys").innerText(), "Enter to move the window there · ↑ ↓ to choose · Esc to clear or close");
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
+// A new window's prompt (§6.1) starts with its short name, selected, and
+// offers home only to one of home's apps' windows.
+test("a new window's prompt starts with its name selected, and Esc leaves at once", async () => {
+  const { page, errors } = await open("src/launcher.html?mode=dashboard&scope=workspaces&move=1&allowHome=1&name=Caf%C3%A9%26co");
+  await page.evaluate(() => {
+    window.shut = false;
+    window.close = () => (window.shut = true);
+  });
+  await page.waitForSelector("#workspaces button");
+  assert.equal(await page.locator("#query").inputValue(), "Café&co");
+  assert.deepEqual(await page.locator("#query").evaluate((q) => [q.selectionStart, q.selectionEnd]), [0, 7], "selected");
+  assert.deepEqual(await page.locator('#results li[aria-selected="true"] .title').allInnerTexts(), ["Café&co"]);
+  assert.equal(await page.locator('#results li[aria-selected="true"] .kind').innerText(), "new workspace");
+  // Typing replaces it; with it gone, home is listed, as this one may go there.
+  await page.locator("#query").press("Backspace");
+  await page.waitForFunction(() => document.querySelectorAll("#results li").length >= 4);
+  assert.deepEqual((await page.locator("#results .title").allInnerTexts()).slice(0, 4), ["in", "re", "oc", "me"]);
+  await page.locator("#query").pressSequentially("ab");
+  await page.locator("#query").press("Escape");
+  assert.equal(await page.locator("#query").inputValue(), "", "Esc clears what you typed first");
+  assert.equal(await page.evaluate(() => window.shut), false);
+  // The name it started with isn't typing: Esc leaves at once.
+  await page.locator("#query").fill("Café&co");
+  await page.locator("#query").press("Escape");
+  assert.equal(await page.evaluate(() => window.shut), true);
   assert.deepEqual(errors, []);
   await page.close();
 });

@@ -41,6 +41,45 @@ test("a new window joins home when nothing shows on its display", () => {
   assert.equal(s.windows[1].ws, "in");
 });
 
+test("a new window can join a named workspace wherever it opened, hidden there", () => {
+  let s = twoDisplays();
+  s = ws.addWindow(s, 30, "b", { to: "in" });
+  assert.equal(s.windows[30].ws, "in", "home, not b's re");
+  assert.deepEqual(s.workspaces.in.windows, [10, 11, 30]);
+  assert.equal(ws.showing(s, "b"), "re", "no display switched");
+  assert.equal(ws.isShown(s, 30), true, "home is showing on a");
+  s = ws.show(s, "a", "oc");
+  s = ws.addWindow(s, 31, "a", { to: "in" });
+  assert.equal(s.windows[31].ws, "in");
+  assert.equal(ws.isShown(s, 31), false, "hidden, as a send to a hidden workspace is");
+  assert.deepEqual(ws.plan(s, none).minimize.includes(31), true);
+  // A standing workspace not made yet is made.
+  s = ws.addWindow(s, 32, "a", { to: "me" });
+  assert.ok(s.made.includes("me"));
+});
+
+test("a short name is a title's first word, as tide's without patterns", () => {
+  assert.equal(ws.shortName("ABC-123: Fix login - Tracker"), "ABC-123");
+  assert.equal(ws.shortName("Inbox  (3) - you@example.com - Gmail"), "Inbox");
+  assert.equal(ws.shortName("notes, draft | Docs"), "notes");
+  // A word left with no letter or digit is passed over.
+  assert.equal(ws.shortName("— | Docs"), "Docs");
+  assert.equal(ws.shortName("  Café: menu"), "Café");
+  assert.equal(ws.shortName("v1.2."), "v1.2");
+  assert.equal(ws.shortName("Really?! Yes"), "Really");
+  assert.equal(ws.shortName("Loading…"), "Loading");
+  // Punctuation inside a word stays.
+  assert.equal(ws.shortName("PR-12/login"), "PR-12/login");
+  // What a name can't hold goes, and a long word is cut, so it's a name.
+  assert.equal(ws.shortName('"Quoted" title'), "Quoted");
+  assert.equal(ws.shortName("it's"), "its");
+  assert.deepEqual(ws.checkName(ws.shortName("x".repeat(40))), { name: "x".repeat(32) });
+  // Nothing to name it from gives an empty name, so the prompt starts empty.
+  assert.equal(ws.shortName(""), "");
+  assert.equal(ws.shortName(undefined), "");
+  assert.equal(ws.shortName("— | …"), "");
+});
+
 test("the bar lists the standing ones, made or not, then the rest as made", () => {
   let s = ws.create(["a"]);
   assert.deepEqual(ws.barOrder(s), ["in", "re", "oc", "me"]);

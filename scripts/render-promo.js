@@ -43,6 +43,9 @@ try {
     const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
     await page.goto(`file://${STORE}${file}`);
     await requireInter(page, file, [400, 500, 600, 700]);
+    // The pointer starts at the corner, over the bar's logo, which would
+    // show its hover; park it over the windows instead.
+    await page.mouse.move(640, 600);
     await page.screenshot({ path: `${STORE}${file.replace(/\.html$/, ".png")}` });
     await page.close();
   }

@@ -3,16 +3,20 @@
 <head>
 <meta charset="utf-8">
 <!-- A store screenshot, 1280x800: three Chrome windows in tide's
-     three-column layout on a chromeOS screen. It's composed, not captured:
-     each window sits at the box src/geometry.js arranges for three windows
-     in threecol on a 1280x752 work area (the master 640 px in the middle,
-     the stack 320 px either side), above chromeOS's 48 px shelf. -->
+     three-column layout under tide's bar. It's composed, not captured: the
+     bar is the dashboard's own markup and src/launcher.css, as the extension
+     draws it, and each window sits at the box src/geometry.js arranges for
+     three windows in threecol on the 1280x764 below it (the master 640 px
+     in the middle, the stack 320 px either side). -->
+<link rel="stylesheet" href="../src/launcher.css">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=block">
 <style>
   * { box-sizing: border-box; }
-  body { margin: 0; width: 1280px; height: 800px; overflow: hidden; font-family: Inter, sans-serif; color: #241f31;
+  html, body { height: 800px; }
+  body { margin: 0; width: 1280px; height: 800px; overflow: hidden; font-family: Inter, sans-serif; color: #241f31; display: block;
     background: linear-gradient(135deg, #1a5fb4, #3584e4 55%, #62a0ea); position: relative; }
-  .win { position: absolute; top: 0; height: 752px; background: #fff; display: flex; flex-direction: column;
+  .bar { position: absolute; top: 0; left: 0; right: 0; }
+  .win { position: absolute; top: 36px; height: 764px; background: #fff; display: flex; flex-direction: column;
     box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); overflow: hidden; }
   .left { left: 0; width: 320px; } .main { left: 320px; width: 640px; } .right { left: 960px; width: 320px; }
   /* Unfocused windows carry tide's optional dim. */
@@ -22,7 +26,7 @@
     gap: 8px; font-size: 12px; max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tab.off { background: transparent; color: #5f6368; }
   .fav { width: 14px; height: 14px; border-radius: 3px; flex: none; }
-  .bar { height: 38px; display: flex; align-items: center; gap: 10px; padding: 0 10px; border-bottom: 1px solid #e0e0e0; flex: none; }
+  .addr { height: 38px; display: flex; align-items: center; gap: 10px; padding: 0 10px; border-bottom: 1px solid #e0e0e0; flex: none; }
   .nav { color: #5f6368; font-size: 15px; letter-spacing: 6px; }
   .url { flex: 1; height: 28px; border-radius: 14px; background: #f1f3f4; font-size: 13px; color: #3c4043;
     display: flex; align-items: center; padding: 0 14px; white-space: nowrap; overflow: hidden; }
@@ -36,18 +40,19 @@
   .ev { border-left: 4px solid; border-radius: 4px; padding: 8px 10px; margin-bottom: 10px; font-size: 13px; background: #f6f5f4; }
   .ev b { display: block; font-weight: 600; } .ev span { color: #5e5c64; }
   .hour { font-size: 11px; color: #9a9996; margin: 10px 0 6px; }
-  .shelf { position: absolute; left: 0; right: 0; bottom: 0; height: 48px; background: rgba(32, 33, 36, .55);
-    display: flex; align-items: center; justify-content: center; gap: 10px; }
-  .app { width: 32px; height: 32px; border-radius: 50%; }
-  .tray { position: absolute; right: 12px; top: 10px; height: 28px; padding: 0 12px; border-radius: 14px; background: rgba(255,255,255,.16);
-    color: #fff; font-size: 13px; display: flex; align-items: center; gap: 10px; }
-  .launcher { position: absolute; left: 12px; top: 10px; width: 28px; height: 28px; border-radius: 50%; border: 2.5px solid #fff; }
 </style>
 </head>
 <body>
+<header class="bar">
+<button id="logo" type="button" aria-label="Launcher" title="Launcher"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M1.75 6.25q2.083-2 4.167 0t4.166 0t4.167 0"></path><path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M1.75 10.75q2.083-2 4.167 0t4.166 0t4.167 0"></path></svg></button>
+<nav id="workspaces" aria-label="Workspaces"><button class="occupied">in</button><button class="occupied">re</button><button>oc</button><button>me</button><button class="occupied current">release</button><span class="layout">|M|</span></nav>
+<span id="title">release</span>
+<button id="keep-awake" type="button" aria-pressed="false" title="Not keeping awake" aria-label="Keep awake"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" d="M2.75 7.25h8.5v3a3.25 3.25 0 0 1-3.25 3.25h-2A3.25 3.25 0 0 1 2.75 10.25z"></path><path fill="none" stroke="currentColor" stroke-width="1.5" d="M11.25 8.25h1a1.75 1.75 0 0 1 0 3.5h-1.25"></path><path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" d="M5.5 2.25v2.5M8.5 2.25v2.5"></path></svg></button>
+<ol id="clocks" role="button" tabindex="0" aria-expanded="false" aria-controls="clock-detail" title="Click for each zone's day; scroll to scrub time"><li><span class="label">SYD</span>22:45</li><li><span class="label">LAX</span>03:45</li><li><span class="label">NYC</span>06:45</li><li><span class="label">LON</span>11:45</li><li><span class="label">Nov 1</span>11:45</li></ol>
+</header>
   <div class="win left dim">
     <div class="tabs"><div class="tab"><span class="fav" style="background:#2ec27e"></span>Team chat</div></div>
-    <div class="bar"><span class="nav">‹ › ↻</span><div class="url">chat.example.com</div></div>
+    <div class="addr"><span class="nav">‹ › ↻</span><div class="url">chat.example.com</div></div>
     <div class="page">
       <h2>Release room</h2>
       <div class="item"><span class="av" style="background:#f6d32d"></span><div><div class="who">Priya</div><div class="what">Build 81 is green. Shipping the layout fix today?</div></div></div>
@@ -59,7 +64,7 @@
   </div>
   <div class="win main">
     <div class="tabs"><div class="tab"><span class="fav" style="background:#3584e4"></span>Release notes · Draft</div><div class="tab off"><span class="fav" style="background:#c0bfbc"></span>Design review</div></div>
-    <div class="bar"><span class="nav">‹ › ↻</span><div class="url">docs.example.com/release-notes</div></div>
+    <div class="addr"><span class="nav">‹ › ↻</span><div class="url">docs.example.com/release-notes</div></div>
     <div class="page">
       <h1>Release notes</h1>
       <div class="meta">Draft · edited just now</div>
@@ -74,7 +79,7 @@
   </div>
   <div class="win right dim">
     <div class="tabs"><div class="tab"><span class="fav" style="background:#e5a50a"></span>Calendar</div></div>
-    <div class="bar"><span class="nav">‹ › ↻</span><div class="url">calendar.example.com</div></div>
+    <div class="addr"><span class="nav">‹ › ↻</span><div class="url">calendar.example.com</div></div>
     <div class="page">
       <h2>Today</h2>
       <div class="hour">10:00</div>
@@ -86,12 +91,6 @@
       <div class="hour">15:00</div>
       <div class="ev" style="border-color:#c061cb"><b>Release</b><span>15:00 – 15:30</span></div>
     </div>
-  </div>
-  <div class="shelf">
-    <span class="launcher"></span>
-    <span class="app" style="background:#4285f4"></span><span class="app" style="background:#2ec27e"></span>
-    <span class="app" style="background:#e5a50a"></span><span class="app" style="background:#f66151"></span>
-    <div class="tray">Wi-Fi · 82% · 11:40</div>
   </div>
 </body>
 </html>

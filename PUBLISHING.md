@@ -137,6 +137,15 @@ In the [developer dashboard](https://chrome.google.com/webstore/devconsole):
        title. Asked for only when you allow it.
      - Optional all-sites access: dimming inactive windows, asked for only
        when you turn it on.
+     - Optional `nativeMessaging`, with optional `tabs`: on Linux only,
+       handing the tab list to tide's switcher through tide's `tide-tabs`
+       helper on the same computer (SPEC.md §14.6). Asked for only when
+       you allow it on the settings, never on chromeOS.
+   - **The single purpose and Linux:** the purpose above is chromeOS's. The
+     Linux tab list is a second job, so either the purpose says it ("...,
+     and on Linux lists your tabs in tide's switcher"), or the store build
+     leaves `nativeMessaging` out and Linux loads the extension unpacked.
+     Not decided yet (TODO.md).
    - **Remote code:** no. tileco runs only the code in its package.
    - **Data use:** tileco sends nothing to its developer or anyone else.
      Chrome Sync carrying the shared settings is Chrome's, not tileco's, but

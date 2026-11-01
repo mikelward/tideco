@@ -6,10 +6,11 @@
 import { scrub } from "./clocks.js";
 import { stepMonth } from "./calendar.js";
 import { renderClocks, renderDetail, today } from "./clockview.js";
-import { addDefaultSites, DISMISSED_KEY, EXTRAS, isOn } from "./extras.js";
+import { addDefaultSites, DISMISSED_KEY, extrasFor, isOn } from "./extras.js";
 import { KEEP_AWAKE_KEY, isOn as keepingAwake, words as awakeWords } from "./keepawake.js";
 import { footerKeys, footerText, items, logoTapped, rank } from "./launcher.js";
 import { load as loadSettings, SETTINGS_KEY } from "./settings.js";
+import { platform, TILE } from "./platform.js";
 
 const SYMBOLS = { tile: "[]=", threecol: "|M|", twocol: "||=", monocle: "[M]" };
 const mode = new URLSearchParams(location.search).get("mode") === "home" ? "home" : "dashboard";
@@ -31,6 +32,10 @@ let selected = 0;
 let state = null;
 let view = null;
 let me = null;
+// Off chromeOS nothing tiles (§14.6): no workspaces on the bar, and only the
+// commands that place no window.
+const tiles = platform(chrome).then((p) => p.role === TILE);
+let tiling = true;
 
 // After a choice the dashboard closes; the home page stays until a window
 // arrives on its workspace, which closes it.
@@ -45,6 +50,10 @@ async function send(message) {
 function renderBar() {
   const nav = $("workspaces");
   nav.replaceChildren();
+  if (!tiling) {
+    $("title").textContent = "Tiling and workspaces work only on chromeOS";
+    return;
+  }
   if (!view) return;
   // The home page belongs to its own display; the dashboard has focus.
   const display = home
@@ -86,6 +95,7 @@ cup.addEventListener("click", () =>
 );
 
 async function refresh() {
+  tiling = await tiles;
   me = await chrome.windows.getCurrent();
   const wasAllowed = tabsAllowed;
   tabsAllowed = await chrome.permissions.contains({ permissions: ["tabs"] });
@@ -111,6 +121,7 @@ async function refresh() {
     commands,
     workspaceOf: (w) => state?.windows?.[w]?.ws ?? null,
     ownOrigin: chrome.runtime.getURL(""),
+    tiling,
   });
   renderBar();
   update();
@@ -281,7 +292,7 @@ async function renderExtras() {
     return;
   }
   const off = [];
-  for (const extra of EXTRAS) if (!(await isOn(chrome, extra))) off.push(extra);
+  for (const extra of extrasFor(await tiles)) if (!(await isOn(chrome, extra))) off.push(extra);
   card.hidden = off.length === 0;
   card.querySelector("ul").replaceChildren(
     ...off.map((extra) => {

@@ -2,6 +2,8 @@
 // tests in Node: tabs, apps and tileco's commands, filtered by a fuzzy match
 // and ordered by how well they match, then by how recently you used them.
 
+import { worksUntiled } from "./platform.js";
+
 import { appOfUrl } from "./apps.js";
 
 // How well `query` matches `text`, or null if it doesn't. Every query
@@ -81,8 +83,9 @@ function host(url) {
 // The launcher's items: every tab but tileco's own pages, the app keys, and
 // the manifest's commands. A tab on an app's site carries the app's name, so
 // "calendar" finds Calendar's tabs. `workspaceOf` names a window's
-// workspace, or null.
-export function items({ tabs = [], apps = [], commands = {}, workspaceOf = () => null, ownOrigin = "" }) {
+// workspace, or null. Off chromeOS (`tiling` false) only the commands that
+// place no window are listed (§14.6).
+export function items({ tabs = [], apps = [], commands = {}, workspaceOf = () => null, ownOrigin = "", tiling = true }) {
   const out = [];
   for (const t of tabs) {
     if (ownOrigin && t.url?.startsWith(ownOrigin)) continue;
@@ -102,6 +105,7 @@ export function items({ tabs = [], apps = [], commands = {}, workspaceOf = () =>
   for (const a of apps) out.push({ kind: "app", title: a.name, detail: "app", key: a.key ?? "", command: a.command });
   for (const [name, c] of Object.entries(commands)) {
     if (name.startsWith("app-")) continue;
+    if (!tiling && !worksUntiled(name)) continue;
     // Descriptions end with the key in parentheses, which shows on its own.
     const m = /^(.*?)\s*\(([^)]*)\)$/.exec(c.description ?? name);
     out.push({ kind: "command", title: m ? m[1] : c.description ?? name, detail: "command", key: m ? m[2] : "", command: name });

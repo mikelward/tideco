@@ -119,7 +119,8 @@ chrome.storage.onChanged.addListener((changes) => {
 chrome.action.onClicked.addListener(() => command("popup"));
 
 // The launcher runs commands too, but only ones the manifest declares, and
-// its bar shows a workspace by name, but only a valid name from tileco's own
+// its bar and Workspaces scope show a workspace by name, and Search+Shift+W's
+// prompt moves its window to one, but only by a valid name from tileco's own
 // pages. Pages on the watched origins report their titles (§10.3). The
 // popup turns the dim on and off, answering once it's done so the popup can
 // give back the access only after every page is undimmed.
@@ -149,9 +150,9 @@ function handle(message, sender, respond) {
   };
   // The launcher waits for each step before it closes itself (§9.4).
   if (commands.has(message?.command)) return done(tileco.command(message.command));
-  if (fromTileco && typeof message?.workspace === "string" && checkName(message.workspace).name === message.workspace) {
-    return done(tileco.workspace(message.workspace));
-  }
+  const valid = (name) => typeof name === "string" && checkName(name).name === name;
+  if (fromTileco && valid(message?.workspace)) return done(tileco.workspace(message.workspace));
+  if (fromTileco && valid(message?.moveTo)) return done(tileco.moveTo(message.moveTo));
   if (fromTileco && Number.isInteger(message?.tabId) && Number.isInteger(message?.windowId)) {
     return done(tileco.activateTab(message.tabId, message.windowId));
   }

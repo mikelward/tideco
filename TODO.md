@@ -11,9 +11,9 @@ Replace the nine numbered workspaces with tide's named ones, a PR each:
 - [x] Keys: `Search+1…9` and `Search+Shift+1…9` as the Nth in bar order,
   `Search+Home` and `Search+End`, in `manifest.json` and `src/tileco.js`.
   The bar and badge by name came with them.
-- [ ] The `Search+W` / `Search+Shift+W` commands, the dashboard's
-  Workspaces scope and the name prompt. Until then a workspace other than
-  the standing ones is made only by migration or a new display.
+- [x] The `Search+W` / `Search+Shift+W` commands, the dashboard's
+  Workspaces scope and the name prompt. Home refuses every window moved
+  by the prompt until its apps are listed.
 - [ ] Home's apps, and the prompt for a new window on home.
 - [ ] Options: the standing list and home's apps.
 
@@ -45,6 +45,24 @@ Guesses made on autopilot (2026-10-24), each cheap to undo.
   display, a new one shows a new workspace named "1", "2", and so on, as
   tide can't say. The alternative is no workspace there until you pick
   one. Reversible: `freshName` in `src/workspaces.js`.
+- **A name prompt's key while one's open swaps it** (2026-11-01):
+  `Search+W` again closes its prompt, as `Search+Space` closes the
+  dashboard, and `Search+Shift+W` or `Search+Space` puts its own in place,
+  rather than waiting its turn as tide's prompts do. The alternative is
+  tide's queue. Reversible: `dashboard` in `src/tileco.js`.
+- **`Search+Shift+W`'s prompt keeps to Workspaces** (2026-11-01): no
+  Launch or Tabs chip, and Tab stays, so Enter can only ever move the
+  window. The alternative is every scope, Enter moving the window only on
+  Workspaces. Reversible: `scopes` in `src/launcherview.js`.
+- **Home isn't listed in `Search+Shift+W`'s prompt** (2026-11-01), as in
+  tide's, and typing its name shows "home holds only its own apps". The
+  alternative is listing it, greyed, with that reason. Reversible:
+  `workspaceRows` in `src/launcher.js`.
+- **Tab cycles Launch, Tabs, Workspaces, and Shift+Tab goes back**
+  (2026-11-01), so Tab from Tabs now goes to Workspaces, not back to
+  Launch. The alternative is Tab flipping Launch and Tabs, with Workspaces
+  reached only by its chip or `Search+W`. Reversible: `nextScope` in
+  `src/launcher.js`.
 - **A name dropped from the standing list is an ordinary workspace**
   (2026-11-01): it stays, after the standing ones, while it holds a window
   or shows, then goes. The alternative is moving its windows home.

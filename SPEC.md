@@ -540,22 +540,30 @@ an extension page is the only place tileco can take typing:
 
 - It's the dashboard opened on its **Workspaces** scope, with the field
   asking for a name: the typed name first, when no workspace has it yet,
-  then the workspaces that match it, scored as the launcher scores. Enter
-  on the top row makes a new name; `↓` picks an existing one.
+  then the workspaces that match it, scored as the launcher scores, a name
+  typed in any case first. Enter on the top row makes a new name; `↓`
+  picks an existing one. A typed name that can't be one (above) shows why
+  in that first row, which Enter can't take.
 - **`Search+W`** (tide: `Super+Return`) opens it to go to a workspace,
   moving no window. Enter shows the workspace, making it if it's new; Esc
   stays put. Home is offered.
 - **`Search+Shift+W`** (tide: `Super+Shift+Return`) opens it for the
-  focused window. Enter moves the window there, making the workspace if
-  it's new, and shows it; Esc leaves it. Home is refused for a window that
-  isn't one of its apps.
+  focused window, or, from the dashboard, the window you were last in. Enter
+  moves the window there, making the workspace if it's new, and shows it;
+  Esc leaves it. Home is refused for a window that isn't one of its apps:
+  it isn't listed, and typing its name shows why. Until home's apps are
+  listed, that's every window. This prompt keeps to Workspaces: no other
+  chip, and Tab stays. With no window to move, as on an empty workspace,
+  the key does nothing.
 - **A new window on home** that isn't one of home's apps opens it too,
   once the window is focused, with the field starting as the window's
   short name, selected: the first word of its tab's title, as tide's
   short name without `namePatterns` *(a guess, to confirm)*. Enter moves
   the window there; Esc leaves it on home, since tileco can't close a
   window politely *(differs from tide, whose Esc closes it)*.
-- One prompt at a time. One asked for while another is open waits.
+- One prompt at a time. Its key again closes it, as the dashboard's does,
+  and another of these keys, or the dashboard's, takes its place *(a
+  guess)*. A new window's prompt asked for while another is open waits.
 
 **`Search+Home`** shows home, and **`Search+End`** the last workspace
 other than home you showed, as tide's `Super+Home` and `Super+End`: from
@@ -933,11 +941,21 @@ tileco adds its own launcher on top, on the home page (§6.2) and the
 dashboard (§8.1), for what the native one doesn't do: switching among open
 tabs and running tileco's commands.
 
-- **Two scopes**, switched by their chips or Tab: **Launch** (the app keys'
-  apps and tileco's commands, each with its key) and **Tabs** (every open tab
-  but tileco's own, with its workspace). The home page opens on Launch, the
-  dashboard on Tabs. Without the `tabs` permission (§14.1) the dashboard
-  opens on Launch too, and Tabs offers "Allow tab search".
+- **Three scopes**, in this order, switched by their chips, or Tab and
+  Shift+Tab: **Launch** (the app keys' apps and tileco's commands, each
+  with its key), **Tabs** (every open tab but tileco's own, with its
+  workspace) and **Workspaces** (the name prompt, §6.1). The home page
+  opens on Launch, the dashboard on Tabs, and `Search+W` and
+  `Search+Shift+W` open it on Workspaces. Without the `tabs` permission
+  (§14.1) the dashboard opens on Launch too, and Tabs offers "Allow tab
+  search". The page learns which from its address: `scope=workspaces`, and
+  `move=1` for `Search+Shift+W`.
+- **Workspaces** lists every workspace in bar order, the standing ones
+  even before they're made, each under tide's switcher's words: "current"
+  for the one showing where you are, else "not made yet", "empty", or how
+  many windows; home's starts "home · ". Enter shows the one chosen, as a
+  click on the bar does. Its "Go to a workspace by name" command, chosen
+  on Launch, goes to this scope.
 - **Fuzzy matching:** every query letter in order, with word starts and runs
   scoring higher, so "gc" finds Google Calendar. A tab matches by title,
   by the name of the app whose site it's on (so "calendar" finds Calendar's
@@ -951,7 +969,8 @@ tabs and running tileco's commands.
   Esc clears, then closes the dashboard.
 - **The footer** names only the keys that work in the scope you're in, as
   tide's switcher footer does: Enter to run on Launch, to go there on
-  Tabs, and to allow tab search on Tabs without it, where there's one row
+  Tabs and Workspaces, to move the window there in `Search+Shift+W`'s
+  prompt, and to allow tab search on Tabs without it, where there's one row
   and so no arrows; Tab names the scope it switches to.
 
 It only opens from a Chrome window or an empty workspace (§2.2): over an
@@ -959,8 +978,9 @@ Android or Linux app, tap Search for the native launcher instead.
 
 Off chromeOS (§14.6) the dashboard and its launcher work the same, with
 two differences. The bar shows no workspaces, and says tiling and
-workspaces work only on chromeOS. Launch lists only the commands that
-place no window: the dashboard, the app keys and keep awake.
+workspaces work only on chromeOS, and there's no Workspaces scope. Launch
+lists only the commands that place no window: the dashboard, the app keys
+and keep awake.
 
 ## 10. Focus cue, focus and attention
 

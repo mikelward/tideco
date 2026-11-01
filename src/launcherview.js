@@ -1,27 +1,31 @@
 // tileco's full-screen page (SPEC.md §6.2, §8.1, §9.4): tide's bar on top,
 // with a launcher under it. As the home page of an empty workspace it opens
 // on the launch scope and stays; as the dashboard, from its key or the
-// toolbar button, it opens on open tabs and closes once you choose.
+// toolbar button, it opens on open tabs and closes once you choose. Search+W
+// opens the dashboard on its workspaces, the name prompt (§6.1), and
+// Search+Shift+W the same for moving the window it opened over.
 
 import { scrub } from "./clocks.js";
 import { stepMonth } from "./calendar.js";
 import { renderClocks, renderDetail, today } from "./clockview.js";
 import { addDefaultSites, DISMISSED_KEY, extrasFor, isOn } from "./extras.js";
 import { KEEP_AWAKE_KEY, isOn as keepingAwake, words as awakeWords } from "./keepawake.js";
-import { footerKeys, footerText, items, logoTapped, rank } from "./launcher.js";
+import { footerKeys, footerText, items, logoTapped, nextScope, opening, rank, SCOPE_ORDER, workspaceRows } from "./launcher.js";
 import { load as loadSettings, SETTINGS_KEY } from "./settings.js";
 import { platform, TILE } from "./platform.js";
 
 const SYMBOLS = { tile: "[]=", threecol: "|M|", twocol: "||=", monocle: "[M]" };
-const mode = new URLSearchParams(location.search).get("mode") === "home" ? "home" : "dashboard";
-const home = mode === "home";
+const opened = opening(location.search);
+const home = opened.home;
+// Search+Shift+W's prompt: Enter moves a window, so it keeps to Workspaces.
+const move = opened.move;
 const $ = (id) => document.getElementById(id);
 const query = $("query");
 const results = $("results");
 const clocks = $("clocks");
 const detail = $("clock-detail");
 
-let scope = home ? "launch" : "tabs";
+let scope = opened.scope;
 // Tab titles and addresses need the tabs permission (§9.4); without it the
 // Tabs scope offers to allow it.
 let tabsAllowed = true;
@@ -47,6 +51,19 @@ async function send(message) {
   } else window.close();
 }
 
+// The display this page is about: the home page belongs to its own; the
+// dashboard has focus.
+function hereDisplay() {
+  return home ? Object.entries(state?.homes ?? {}).find(([, id]) => id === me?.id)?.[0] : view?.focusedDisplay;
+}
+
+// The scopes with a chip: no workspaces off chromeOS (§14.6), and only
+// them in Search+Shift+W's prompt.
+function scopes() {
+  if (!tiling) return SCOPE_ORDER.filter((s) => s !== "workspaces");
+  return move ? ["workspaces"] : SCOPE_ORDER;
+}
+
 function renderBar() {
   const nav = $("workspaces");
   nav.replaceChildren();
@@ -55,10 +72,7 @@ function renderBar() {
     return;
   }
   if (!view) return;
-  // The home page belongs to its own display; the dashboard has focus.
-  const display = home
-    ? Object.entries(state?.homes ?? {}).find(([, id]) => id === me?.id)?.[0]
-    : view.focusedDisplay;
+  const display = hereDisplay();
   const here = view.displays[display];
   const elsewhere = new Set(
     Object.entries(view.displays)
@@ -97,6 +111,7 @@ cup.addEventListener("click", () =>
 
 async function refresh() {
   tiling = await tiles;
+  if (!scopes().includes(scope)) scope = "launch";
   me = await chrome.windows.getCurrent();
   const wasAllowed = tabsAllowed;
   tabsAllowed = await chrome.permissions.contains({ permissions: ["tabs"] });
@@ -128,18 +143,31 @@ async function refresh() {
   update();
 }
 
+// What the field asks for in each scope; the workspaces' words are tide's
+// name prompt's.
+function placeholder() {
+  if (scope !== "workspaces") return "Type to search";
+  return move ? "Move this window to the workspace named" : "Go to the workspace named";
+}
+
 function update() {
-  shown = scope === "tabs" && !tabsAllowed ? [ALLOW_TABS] : rank(query.value, all, { scope });
+  if (scope === "workspaces") {
+    const current = view?.displays?.[hereDisplay()]?.workspace ?? null;
+    shown = workspaceRows({ bar: view?.bar, counts: view?.counts, made: view?.made, current, query: query.value, move });
+  } else shown = scope === "tabs" && !tabsAllowed ? [ALLOW_TABS] : rank(query.value, all, { scope });
   selected = Math.min(selected, Math.max(shown.length - 1, 0));
   for (const b of document.querySelectorAll(".scopes button")) {
     b.setAttribute("aria-selected", String(b.dataset.scope === scope));
+    b.hidden = !scopes().includes(b.dataset.scope);
   }
-  $("keys").textContent = footerText(footerKeys(scope, { home, tabsAllowed }));
+  query.placeholder = placeholder();
+  $("keys").textContent = footerText(footerKeys(scope, { home, tabsAllowed, move, scopes: scopes() }));
   results.replaceChildren();
   shown.forEach((item, i) => {
     const li = document.createElement("li");
     li.setAttribute("role", "option");
     li.setAttribute("aria-selected", String(i === selected));
+    if (item.kind === "refused") li.setAttribute("aria-disabled", "true");
     const icon = document.createElement(item.icon ? "img" : "span");
     icon.className = `icon ${item.kind}`;
     if (item.icon) icon.src = item.icon;
@@ -158,11 +186,18 @@ function update() {
   });
 }
 
+// A workspace, new or not, shows; in Search+Shift+W's prompt the window
+// moves there first. A refused name is only there to say why.
 function choose(item) {
-  if (!item) return;
+  if (!item || item.kind === "refused") return;
   if (item.kind === "allow") allowTabs();
   else if (item.kind === "tab") send({ tabId: item.tabId, windowId: item.windowId });
-  else send({ command: item.command });
+  else if (item.kind === "workspace" || item.kind === "new") send(move ? { moveTo: item.workspace } : { workspace: item.workspace });
+  // Search+W's prompt is this page's own scope.
+  else if (item.command === "workspace-go" && scopes().includes("workspaces")) {
+    query.value = "";
+    setScope("workspaces");
+  } else send({ command: item.command });
 }
 
 function setScope(s) {
@@ -186,9 +221,10 @@ query.addEventListener("keydown", (e) => {
     e.preventDefault();
     choose(shown[selected]);
   } else if (e.key === "Tab") {
-    // Tab flips the scope; it's Search+Tab, not Tab, that runs attention.
+    // Tab steps through the scopes, Shift+Tab back; it's Search+Tab, not
+    // Tab, that runs attention.
     e.preventDefault();
-    setScope(scope === "launch" ? "tabs" : "launch");
+    setScope(nextScope(scope, e.shiftKey ? -1 : 1, scopes()));
   }
 });
 // Esc anywhere on the page, not just in the search box: after a click on the

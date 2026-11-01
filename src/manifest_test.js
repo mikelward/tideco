@@ -105,11 +105,11 @@ test("no command's key is a Search+arrow", () => {
   }
 });
 
-// Frequent actions take Search and one key; Shift is for moving a window
-// and for rare actions (§7.3).
+// Frequent actions take Search and one key; Shift is for moving a window,
+// as workspace-move does, and for rare actions (§7.3).
 test("frequent actions take no modifier but Search, and no two commands share a key", () => {
   const keyOf = (c) => /\(([^)]*)\)$/.exec(c.description ?? "")?.[1] ?? "";
-  const frequent = /^(focus-|grow|shrink|master-|monocle|layout-|workspace-|popup|attention)/;
+  const frequent = /^(focus-|grow|shrink|master-|monocle|layout-|workspace-(?!move)|popup|attention)/;
   const seen = new Map();
   for (const [name, c] of Object.entries(manifest.commands)) {
     const key = keyOf(c);
@@ -305,6 +305,8 @@ for (const os of ["linux", "mac", "win"]) {
     assert.equal(answer, false);
     await fire(w, "runtime.onMessage", { workspace: "re" }, launcher, (a) => (answer = a));
     assert.equal(answer, false, "and so is a click on a workspace");
+    await fire(w, "runtime.onMessage", { moveTo: "re" }, launcher, (a) => (answer = a));
+    assert.equal(answer, false, "and so is the name prompt's move");
     await fire(w, "runtime.onMessage", { tabId: 12, windowId: 3 }, launcher, (a) => (answer = a));
     assert.equal(answer, true);
     assert.deepEqual(w.calls.filter(([name]) => name === "tabs.update"), [["tabs.update", 12, { active: true }]]);
@@ -337,4 +339,28 @@ test("on chromeOS, the bar shows a workspace by name, asked by tileco's pages on
   await fire(w, "runtime.onMessage", { workspace: "oc" }, launcher, (a) => (answer = a));
   assert.equal(answer, true);
   assert.equal(badges().at(-1), "oc");
+});
+
+// Search+Shift+W's prompt moves its window by name (§6.1), asked by
+// tileco's own pages alone, and only by a valid name.
+test("on chromeOS, the name prompt's move is asked by tileco's pages only, by a valid name", async () => {
+  const w = await startWorker("cros");
+  const launcher = { url: "chrome-extension://tileco/src/launcher.html?mode=dashboard&scope=workspaces&move=1" };
+  const site = { url: "https://example.com/", tab: { id: 5, windowId: 6, url: "https://example.com/" } };
+  let answer = "none";
+  await fire(w, "runtime.onMessage", { moveTo: "notes" }, site, (a) => (answer = a));
+  assert.equal(answer, undefined, "a website can't");
+  for (const bad of ['o"c', " notes", "", "x".repeat(33), 7]) {
+    answer = "none";
+    await fire(w, "runtime.onMessage", { moveTo: bad }, launcher, (a) => (answer = a));
+    assert.equal(answer, undefined, `nor a name that isn't one: ${JSON.stringify(bad)}`);
+  }
+  // A valid name reaches tileco, which has no prompt's window to move here.
+  await fire(w, "runtime.onMessage", { moveTo: "notes" }, launcher, (a) => (answer = a));
+  assert.equal(answer, false);
+});
+
+test("the two name prompt commands are in the manifest, with their keys", () => {
+  assert.equal(manifest.commands["workspace-go"].description, "Go to a workspace by name (Search+W)");
+  assert.equal(manifest.commands["workspace-move"].description, "Move the window to a workspace by name (Search+Shift+W)");
 });

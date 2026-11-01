@@ -104,6 +104,12 @@
     "workspace-last": {
       "description": "Go to the last workspace other than home (Search+End)"
     },
+    "workspace-go": {
+      "description": "Go to a workspace by name (Search+W)"
+    },
+    "workspace-move": {
+      "description": "Move the window to a workspace by name (Search+Shift+W)"
+    },
     "workspace-1": {
       "description": "Go to the 1st workspace in the bar (Search+1)"
     },

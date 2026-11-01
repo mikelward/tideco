@@ -3,6 +3,7 @@
        icon draws it, with the name. -->
   <rect width="440" height="280" fill="#f6f5f4"/>
   <g transform="translate(40 76) scale(1)"><rect x="4" y="4" width="120" height="120" rx="26" fill="#3584e4"/><g transform="translate(12.54 8.75) scale(6.5)" fill="none" stroke="#ffffff" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M1.75 6.25q2.083-2 4.167 0t4.166 0t4.167 0"/><path d="M1.75 10.75q2.083-2 4.167 0t4.166 0t4.167 0"/></g></g>
-  <text x="196" y="138" font-family="Inter, sans-serif" font-size="56" font-weight="700" fill="#241f31">tide</text>
-  <text x="198" y="176" font-family="Inter, sans-serif" font-size="20" fill="#5e5c64">Tiling for ChromeOS</text>
+  <text x="196" y="128" font-family="Inter, sans-serif" font-size="56" font-weight="700" fill="#241f31">tide</text>
+  <text x="198" y="164" font-family="Inter, sans-serif" font-size="18" fill="#5e5c64">Tiling window manager</text>
+  <text x="198" y="188" font-family="Inter, sans-serif" font-size="18" fill="#5e5c64">for chromeOS</text>
 </svg>

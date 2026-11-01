@@ -123,7 +123,10 @@ test("off chromeOS, the settings and dashboard keep only what places no window",
   const dash = await open("src/launcher.html?mode=dashboard&real-platform");
   await dash.page.waitForFunction(() => /only on chromeOS/.test(document.getElementById("title").innerText));
   assert.equal(await dash.page.locator("#workspaces button").count(), 0);
-  assert.deepEqual(await dash.page.locator(".scopes button:visible").allInnerTexts(), ["Launch", "Tabs"], "no Workspaces scope");
+  assert.deepEqual(await dash.page.locator(".scopes button:visible").allInnerTexts(), ["Launch", "Tabs", "Actions"], "no Workspaces scope");
+  // Actions keeps to what works here: no dim.
+  await dash.page.locator('[data-scope="actions"]').click();
+  assert.deepEqual((await dash.page.locator("#results .title").allInnerTexts()).slice(0, 2), ["Keep awake", "Reload tide"]);
   await dash.page.locator('[data-scope="launch"]').click();
   await dash.page.locator("#query").fill("work");
   assert.doesNotMatch(await dash.page.locator("#results").innerText(), /Go to workspace/);
@@ -445,8 +448,13 @@ test("the Workspaces scope lists the workspaces, and Enter on a new name shows i
   assert.equal(await page.locator('#results li[aria-selected="true"] .kind').innerText(), "new workspace");
   await page.locator("#query").press("Enter");
   await page.waitForFunction(() => [...document.querySelectorAll("#workspaces button")].some((b) => b.textContent === "notes"));
-  // Tab steps on to Launch.
+  // Tab steps on to Actions, every action and command, then round to Launch.
   await page.locator("#query").fill("");
+  await page.locator("#query").press("Tab");
+  assert.equal(await page.locator('.scopes [aria-selected="true"]').innerText(), "Actions");
+  const acts = await page.locator("#results .title").allInnerTexts();
+  assert.deepEqual(acts.slice(0, 3), ["Keep awake", "Dim inactive windows", "Reload tide"]);
+  assert.ok(acts.length > 20, `every command too, not the best eight: ${acts.length}`);
   await page.locator("#query").press("Tab");
   assert.equal(await page.locator('.scopes [aria-selected="true"]').innerText(), "Launch");
   // Back home, so the next tests see the standing workspaces alone.
@@ -664,4 +672,28 @@ test("the mouse page fills the mouse's ID into the crosh lines", async () => {
   } finally {
     await worker.evaluate(() => chrome.storage.local.remove(["settings", "mouseId"]));
   }
+});
+
+// Tide Settings (§9.4): Launch lists it with the apps, and finds each of
+// its sections by a query; Enter opens the settings at that section.
+test("Launch finds a settings section and opens the settings there", async () => {
+  const { page, errors } = await open("src/launcher.html?mode=home");
+  await page.waitForFunction(() => [...document.querySelectorAll("#results .title")].some((t) => t.textContent === "Tide Settings"));
+  assert.ok(!(await page.locator("#results .title").allInnerTexts()).includes("Mouse"), "no section until you type");
+  await page.locator("#query").fill("wheel");
+  assert.deepEqual(await page.locator('#results li[aria-selected="true"] .title').allInnerTexts(), ["Mouse"]);
+  // Chrome brings an open settings tab forward rather than opening another.
+  for (const p of context.pages()) if (p.url().includes("options.html")) await p.close();
+  const opened = context.waitForEvent("page", (p) => p.url().includes("options.html"));
+  await page.locator("#query").press("Enter");
+  const options = await opened;
+  await options.waitForLoadState();
+  await options.waitForFunction(() => {
+    const r = document.getElementById("mouse").getBoundingClientRect();
+    return r.top >= 0 && r.top < innerHeight / 2;
+  });
+  assert.equal(await options.evaluate(async () => (await chrome.storage.session.get("settingsSection")).settingsSection), undefined, "asked once");
+  await options.close();
+  assert.deepEqual(errors, []);
+  await page.close();
 });

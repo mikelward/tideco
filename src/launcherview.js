@@ -10,9 +10,9 @@ import { stepMonth } from "./calendar.js";
 import { renderClocks, renderDetail, today } from "./clockview.js";
 import { addDefaultSites, DISMISSED_KEY, extrasFor, isOn } from "./extras.js";
 import { KEEP_AWAKE_KEY, isOn as keepingAwake, words as awakeWords } from "./keepawake.js";
-import { footerKeys, footerText, items, logoTapped, nextScope, opening, rank, SCOPE_ORDER, workspaceRows } from "./launcher.js";
+import { actions, footerKeys, footerText, items, limitFor, logoTapped, nextScope, opening, rank, SCOPE_ORDER, SECTION_KEY, settingsSections, workspaceRows } from "./launcher.js";
 import { load as loadSettings, SETTINGS_KEY } from "./settings.js";
-import { platform, TILE } from "./platform.js";
+import { platform, TABS, TILE } from "./platform.js";
 
 const SYMBOLS = { tile: "[]=", threecol: "|M|", twocol: "||=", monocle: "[M]" };
 const opened = opening(location.search);
@@ -40,8 +40,11 @@ let view = null;
 let me = null;
 // Off chromeOS nothing tiles (§14.6): no workspaces on the bar, and only the
 // commands that place no window.
-const tiles = platform(chrome).then((p) => p.role === TILE);
+const where = platform(chrome);
+const tiles = where.then((p) => p.role === TILE);
 let tiling = true;
+// The dim's access (§10.1), which the Actions scope can ask for.
+const DIM_ACCESS = { origins: ["<all_urls>"] };
 
 // After a choice the dashboard closes; the home page stays until a window
 // arrives on its workspace, which closes it.
@@ -119,10 +122,13 @@ async function refresh() {
   tabsAllowed = await chrome.permissions.contains({ permissions: ["tabs"] });
   // The dashboard opens on tabs only when it can show them.
   if (!home && !tabsAllowed && wasAllowed && scope === "tabs" && query.value === "") scope = "launch";
-  const [tabs, stored, { settings: current }] = await Promise.all([
+  const [tabs, stored, { settings: current }, awake, dimGranted, { role }] = await Promise.all([
     tabsAllowed ? chrome.tabs.query({}) : [],
     chrome.storage.local.get(["state", "view"]),
     loadSettings(chrome.storage),
+    keepingAwake(chrome.storage),
+    chrome.permissions.contains(DIM_ACCESS),
+    where,
   ]);
   state = stored.state ?? null;
   view = stored.view ?? null;
@@ -136,6 +142,8 @@ async function refresh() {
   all = items({
     tabs,
     apps,
+    sections: settingsSections({ tiling, linux: role === TABS }),
+    actions: actions({ keepAwake: awake, dim: tiling ? { granted: dimGranted, on: view?.dim === true } : null, key: keyOf }),
     commands,
     workspaceOf: (w) => state?.windows?.[w]?.ws ?? null,
     ownOrigin: chrome.runtime.getURL(""),
@@ -156,7 +164,7 @@ function update() {
   if (scope === "workspaces") {
     const current = view?.displays?.[hereDisplay()]?.workspace ?? null;
     shown = workspaceRows({ bar: view?.bar, counts: view?.counts, made: view?.made, current, query: query.value, move, allowHome });
-  } else shown = scope === "tabs" && !tabsAllowed ? [ALLOW_TABS] : rank(query.value, all, { scope });
+  } else shown = scope === "tabs" && !tabsAllowed ? [ALLOW_TABS] : rank(query.value, all, { scope, limit: limitFor(scope, query.value) });
   selected = Math.min(selected, Math.max(shown.length - 1, 0));
   for (const b of document.querySelectorAll(".scopes button")) {
     b.setAttribute("aria-selected", String(b.dataset.scope === scope));
@@ -186,6 +194,8 @@ function update() {
     li.addEventListener("click", () => choose(item));
     results.append(li);
   });
+  // Actions lists every row, so the chosen one may be below the fold.
+  results.children[selected]?.scrollIntoView({ block: "nearest" });
 }
 
 // A workspace, new or not, shows; in Search+Shift+W's prompt the window
@@ -193,6 +203,9 @@ function update() {
 function choose(item) {
   if (!item || item.kind === "refused") return;
   if (item.kind === "allow") allowTabs();
+  else if (item.act === "settings") openSettings(item.section);
+  else if (item.act === "dim") toggleDim(item.on);
+  else if (item.act === "reload") chrome.runtime.reload();
   else if (item.kind === "tab") send({ tabId: item.tabId, windowId: item.windowId });
   else if (item.kind === "workspace" || item.kind === "new") send(move ? { moveTo: item.workspace } : { workspace: item.workspace });
   // Search+W's prompt is this page's own scope.
@@ -318,11 +331,42 @@ async function allowTabs() {
   query.focus();
 }
 
-// The settings open in a tab of their own; the dashboard closes as it
-// loses focus.
-$("open-settings").addEventListener("click", () =>
-  chrome.runtime.openOptionsPage().catch((e) => console.error("tileco: couldn't open the settings:", e)),
-);
+// The settings open in a tab of their own, at `section` if one's given; the
+// dashboard closes as it loses focus. Chrome brings an open settings tab
+// forward rather than opening another, so the section goes by session
+// storage, which the options page watches, not by the page's address.
+async function openSettings(section = null) {
+  try {
+    if (section) await chrome.storage.session.set({ [SECTION_KEY]: section });
+    await chrome.runtime.openOptionsPage();
+  } catch (e) {
+    console.error(`tileco: couldn't open the settings${section ? ` at ${section}` : ""}:`, e);
+  }
+  if (home) {
+    query.value = "";
+    update();
+  }
+}
+$("open-settings").addEventListener("click", () => openSettings());
+
+// The dim on or off (§10.1). Without its access Chrome asks first, so the
+// dashboard stays open while it does; once allowed, the dim comes on.
+async function toggleDim(on) {
+  if (on || (await chrome.permissions.contains(DIM_ACCESS))) {
+    await send({ dim: !on }).catch((e) => console.error("tileco: couldn't turn the dim over:", e));
+    return;
+  }
+  asking = true;
+  try {
+    await chrome.permissions.request(DIM_ACCESS);
+  } catch (e) {
+    console.error("tileco: couldn't ask for the dim's access:", e);
+  } finally {
+    asking = false;
+  }
+  await refresh();
+  query.focus();
+}
 
 // The dashboard offers the extras still off (§14.1) until you dismiss it.
 // Chrome's prompt takes focus, so the dashboard stays open while it asks.
@@ -382,7 +426,10 @@ if (home) {
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === "session") {
-    if (changes[KEEP_AWAKE_KEY]) renderCup();
+    if (changes[KEEP_AWAKE_KEY]) {
+      renderCup();
+      refresh();
+    }
     return;
   }
   if (changes.view || changes.state) refresh();

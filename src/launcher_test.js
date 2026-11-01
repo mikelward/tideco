@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { footerKeys, footerText, fuzzyScore, items, logoTapped, nextScope, opening, rank, workspaceRows } from "./launcher.js";
+import { actions, footerKeys, footerText, fuzzyScore, items, limitFor, logoTapped, nextScope, opening, rank, sectionToShow, settingsSections, SETTINGS_SECTIONS, workspaceRows } from "./launcher.js";
 
 test("a fuzzy match needs every query letter in order", () => {
   assert.equal(fuzzyScore("cal", "Google Calendar") > 0, true);
@@ -26,20 +26,21 @@ const commands = {
 };
 const all = items({ tabs, apps, commands, workspaceOf: (w) => ({ 1: 2, 2: 1 })[w] ?? null, ownOrigin: "chrome-extension://tileco/" });
 
-test("the items are tabs, apps and commands, without tileco's own pages", () => {
+test("the items are tabs, apps, Tide Settings and commands, without tileco's own pages", () => {
   assert.deepEqual(
     all.map((i) => [i.kind, i.title, i.detail, i.key ?? ""]),
     [
       ["tab", "Inbox (3) - Gmail", "tab on 2", ""],
       ["tab", "Design doc", "tab on 1", ""],
       ["app", "Google Calendar", "app", "Search+C"],
+      ["app", "Tide Settings", "settings", ""],
       ["command", "Go to workspace 4", "command", "Search+4"],
     ],
   );
 });
 
 test("with no query, the most recent tabs come first, then apps and commands", () => {
-  assert.deepEqual(rank("", all).map((i) => i.title), ["Design doc", "Inbox (3) - Gmail", "Google Calendar", "Go to workspace 4"]);
+  assert.deepEqual(rank("", all).map((i) => i.title), ["Design doc", "Inbox (3) - Gmail", "Google Calendar", "Tide Settings", "Go to workspace 4"]);
 });
 
 test("a query ranks by match, then by recency", () => {
@@ -49,8 +50,9 @@ test("a query ranks by match, then by recency", () => {
   assert.equal(rank("ws 4", all)[0].title, "Go to workspace 4");
 });
 
-test("a scope keeps to its kinds: launch is apps and commands, tabs is tabs", () => {
-  assert.deepEqual(rank("", all, { scope: "launch" }).map((i) => i.kind), ["app", "command"]);
+test("a scope keeps to its kinds: launch lists apps, and finds commands too; tabs is tabs", () => {
+  assert.deepEqual(rank("", all, { scope: "launch" }).map((i) => i.title), ["Google Calendar", "Tide Settings"]);
+  assert.deepEqual(rank("ws 4", all, { scope: "launch" }).map((i) => i.title), ["Go to workspace 4"]);
   assert.deepEqual(rank("", all, { scope: "tabs" }).map((i) => i.title), ["Design doc", "Inbox (3) - Gmail"]);
   assert.deepEqual(rank("google", all, { scope: "launch" }).map((i) => i.title), ["Google Calendar"]);
 });
@@ -176,8 +178,10 @@ test("the page's address says how it opened: home, the dashboard, or a name prom
 test("Tab steps through the scopes, Shift+Tab back, skipping those not shown", () => {
   assert.equal(nextScope("launch"), "tabs");
   assert.equal(nextScope("tabs"), "workspaces");
-  assert.equal(nextScope("workspaces"), "launch");
-  assert.equal(nextScope("launch", -1), "workspaces");
+  assert.equal(nextScope("workspaces"), "actions");
+  assert.equal(nextScope("actions"), "launch");
+  assert.equal(nextScope("launch", -1), "actions");
+  assert.equal(nextScope("tabs", 1, ["launch", "tabs", "actions"]), "actions", "off chromeOS, past the missing Workspaces");
   assert.equal(nextScope("tabs", 1, ["launch", "tabs"]), "launch");
   assert.equal(nextScope("workspaces", 1, ["workspaces"]), "workspaces");
 });
@@ -185,10 +189,74 @@ test("Tab steps through the scopes, Shift+Tab back, skipping those not shown", (
 test("the Workspaces footer says where Enter goes, and the move prompt has no Tab", () => {
   assert.equal(
     footerText(footerKeys("workspaces", { home: false, tabsAllowed: true })),
-    "Enter to go there · ↑ ↓ to choose · Tab to switch to Launch · Esc to clear or close",
+    "Enter to go there · ↑ ↓ to choose · Tab to switch to Actions · Esc to clear or close",
   );
   assert.equal(
     footerText(footerKeys("workspaces", { home: false, tabsAllowed: false, move: true, scopes: ["workspaces"] })),
     "Enter to move the window there · ↑ ↓ to choose · Esc to clear or close",
+  );
+});
+
+// Tide Settings and its sections (§9.4): the app is listed with the apps,
+// each section only found by a query, by its name, Tide Settings, or what it
+// covers, and only those the options page shows here.
+const withSettings = items({ apps, sections: settingsSections(), commands });
+
+test("Launch lists Tide Settings with the apps, but no section until you type", () => {
+  assert.deepEqual(rank("", withSettings, { scope: "launch" }).map((i) => i.title), ["Google Calendar", "Tide Settings"]);
+  const [found] = rank("clocks", withSettings, { scope: "launch" });
+  assert.deepEqual([found.kind, found.title, found.detail, found.section], ["setting", "Clocks", "Tide Settings", "clocks-section"]);
+  assert.equal(rank("time zone", withSettings, { scope: "launch" })[0].title, "Clocks", "by what it covers");
+  assert.ok(rank("tide settings", withSettings, { scope: "launch" }).length > 2, "every section is Tide Settings'");
+  assert.equal(rank("", withSettings).some((i) => i.kind === "setting"), false, "nor with no scope");
+});
+
+test("each platform gets the sections its options page shows", () => {
+  const ids = (where) => settingsSections(where).map((s) => s.id);
+  assert.ok(ids({ tiling: true }).includes("workspaces"));
+  assert.ok(!ids({ tiling: true }).includes("linux"));
+  assert.deepEqual(ids({ tiling: false, linux: true }), ["linux", "extras", "clocks-section", "keys-section", "apps-section", "import-section"]);
+  assert.deepEqual(ids({ tiling: false }), ["extras", "clocks-section", "keys-section", "apps-section", "import-section"]);
+});
+
+test("the options page shows its address's section, else the one Launch asked for", () => {
+  const ids = SETTINGS_SECTIONS.map((s) => s.id);
+  assert.equal(sectionToShow("#dim", "mouse", ids), "dim");
+  assert.equal(sectionToShow("", "mouse", ids), "mouse");
+  assert.equal(sectionToShow("", undefined, ids), null);
+  assert.equal(sectionToShow("#nowhere", undefined, ids), null);
+});
+
+// The Actions scope (§9.4): tileco's own actions, then its commands.
+test("Actions lists keep awake, the dim and reloading, saying which are on", () => {
+  const rows = (opts) => actions(opts).map((a) => [a.title, a.detail]);
+  assert.deepEqual(rows({ keepAwake: true, dim: { granted: true, on: false } }), [
+    ["Keep awake", "on"],
+    ["Dim inactive windows", "off"],
+    ["Reload tide", "restarts the extension"],
+  ]);
+  assert.deepEqual(rows({ dim: { granted: false, on: true } })[1], ["Dim inactive windows", "off · Chrome asks first"]);
+  // Off chromeOS there's no dim.
+  assert.deepEqual(rows({}).map(([title]) => title), ["Keep awake", "Reload tide"]);
+  assert.equal(actions({ key: (c) => (c === "keep-awake" ? "Search+S" : "") })[0].key, "Search+S");
+});
+
+test("Actions lists every action and command with nothing typed; keep awake once", () => {
+  const many = Object.fromEntries(Array.from({ length: 12 }, (_, i) => [`workspace-${i}`, { description: `Go to ${i} (Search+${i})` }]));
+  const list = items({ apps, actions: actions({ dim: { granted: true, on: true } }), commands: { ...many, "keep-awake": { description: "Toggle keep awake (Search+S)" } } });
+  const shown = rank("", list, { scope: "actions", limit: limitFor("actions", "") });
+  assert.deepEqual(shown.slice(0, 3).map((i) => i.title), ["Keep awake", "Dim inactive windows", "Reload tide"]);
+  assert.equal(shown.length, 15, "every one, past the usual eight");
+  assert.equal(shown.filter((i) => /keep awake/i.test(i.title)).length, 1);
+  assert.equal(limitFor("actions", "re"), 8, "a query shows the best eight");
+  assert.equal(limitFor("launch", ""), 8);
+  // Launch finds an action by name too.
+  assert.equal(rank("reload", list, { scope: "launch" })[0].title, "Reload tide");
+});
+
+test("the Actions footer runs, and Tab goes round to Launch", () => {
+  assert.equal(
+    footerText(footerKeys("actions", { home: false, tabsAllowed: true })),
+    "Enter to run · ↑ ↓ to choose · Tab to switch to Launch · Esc to clear or close",
   );
 });

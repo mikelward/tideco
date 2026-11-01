@@ -97,9 +97,10 @@ test("off chromeOS the launcher lists only the commands that place nothing", () 
   };
   const tabs = [{ id: 1, windowId: 2, title: "Docs", url: "https://docs.example.com/" }];
   const names = (list) => list.filter((i) => i.kind === "command").map((i) => i.command);
-  assert.deepEqual(names(items({ commands, tabs })), ["popup", "focus-next", "keep-awake", "workspace-1"]);
+  // Keep awake is an action (§9.4), so its command isn't listed again.
+  assert.deepEqual(names(items({ commands, tabs })), ["popup", "focus-next", "workspace-1"]);
   const untiled = items({ commands, tabs, tiling: false });
-  assert.deepEqual(names(untiled), ["popup", "keep-awake"]);
+  assert.deepEqual(names(untiled), ["popup"]);
   assert.equal(untiled.find((i) => i.kind === "tab").detail, "tab", "no workspace to name");
 });
 

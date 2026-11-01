@@ -966,6 +966,8 @@ The native launcher stays: tap Search, type, Enter. It searches apps,
 files, settings and the web. What's missing from tide §8:
 
 - **Quick actions**: screenshot, lock and so on are native keys instead.
+  chromeOS gives an extension no way to lock, log out, restart or shut
+  down, so tileco's Actions scope has none of them.
 - **Launcher scripts**: tileco's commands appear in it only as the extension
   itself.
 
@@ -973,16 +975,32 @@ tileco adds its own launcher on top, on the home page (§6.2) and the
 dashboard (§8.1), for what the native one doesn't do: switching among open
 tabs and running tileco's commands.
 
-- **Three scopes**, in this order, switched by their chips, or Tab and
-  Shift+Tab: **Launch** (the app keys' apps and tileco's commands, each
-  with its key), **Tabs** (every open tab but tileco's own, with its
-  workspace) and **Workspaces** (the name prompt, §6.1). The home page
+- **Four scopes**, in this order, switched by their chips, or Tab and
+  Shift+Tab: **Launch** (the app keys' apps, each with its key, and Tide
+  Settings), **Tabs** (every open tab but tileco's own, with its
+  workspace), **Workspaces** (the name prompt, §6.1) and **Actions**
+  (tileco's actions, then its commands). The home page
   opens on Launch, the dashboard on Tabs, and `Search+W` and
   `Search+Shift+W` open it on Workspaces. Without the `tabs` permission
   (§14.1) the dashboard opens on Launch too, and Tabs offers "Allow tab
   search". The page learns which from its address: `scope=workspaces`, and
   `move=1` for `Search+Shift+W`, with `allowHome=1` for a window of one
   of home's apps and `name=`, URL-encoded, for a new window's short name.
+- **Tide Settings** is listed on Launch as an app, and opens the options
+  page. Each of the page's sections is found from Launch by a query, by
+  its name, by "Tide Settings", or, for less, by what it covers ("time
+  zone" finds Clocks), and opens the page scrolled to it. Only the
+  sections the page shows on this platform are found (§14.6). Chrome
+  brings an open settings tab forward rather than opening another, so
+  the section goes by session storage, `settingsSection`, which the page
+  scrolls to and clears; an address's `#anchor` works too.
+- **Actions** lists, with nothing typed, every action and then every
+  command, not just the best eight: **Keep awake**, saying whether it's
+  on; on chromeOS **Dim inactive windows**, on or off, which turns the
+  dim over, or, without its access, asks Chrome for it first; and
+  **Reload tide**, which restarts the extension. Keep awake's command is
+  this action, so it isn't listed twice. A query in Launch finds actions
+  and commands too.
 - **Workspaces** lists every workspace in bar order, the standing ones
   even before they're made, each under tide's switcher's words: "current"
   for the one showing where you are, else "not made yet", "empty", or how
@@ -993,15 +1011,17 @@ tabs and running tileco's commands.
   scoring higher, so "gc" finds Google Calendar. A tab matches by title,
   by the name of the app whose site it's on (so "calendar" finds Calendar's
   tabs), and, for less, by host. Ties go to the most recently used (`tab.lastAccessed`).
-- **Empty query:** tabs most recent first; apps before commands.
+- **Empty query:** Launch lists only the apps and Tide Settings, as a
+  start menu would; Tabs, tabs most recent first; Actions, the actions
+  before the commands. A settings section shows only for a query.
 - **Nothing in scope:** a query that matches nothing in its scope searches
-  both, so a tab still turns up from Launch.
+  them all, so a tab still turns up from Launch.
 - **Enter** goes there: a tab comes forward with its window and workspace
   (§6.1 Activate); an app or command runs as its key would, so an app
   opens a new window (§9.1). Arrows choose,
   Esc clears, then closes the dashboard.
 - **The footer** names only the keys that work in the scope you're in, as
-  tide's switcher footer does: Enter to run on Launch, to go there on
+  tide's switcher footer does: Enter to run on Launch and Actions, to go there on
   Tabs and Workspaces, to move the window there in `Search+Shift+W`'s
   prompt, and to allow tab search on Tabs without it, where there's one row
   and so no arrows; Tab names the scope it switches to.
@@ -1012,8 +1032,9 @@ Android or Linux app, tap Search for the native launcher instead.
 Off chromeOS (§14.6) the dashboard and its launcher work the same, with
 two differences. The bar shows no workspaces, and says tiling and
 workspaces work only on chromeOS, and there's no Workspaces scope. Launch
-lists only the commands that place no window: the dashboard, the app keys
-and keep awake.
+and Actions list only the commands that place no window: the dashboard,
+the app keys and keep awake. Actions has no dim, and Launch finds only
+the settings sections shown there.
 
 ## 10. Focus cue, focus and attention
 

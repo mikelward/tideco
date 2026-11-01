@@ -28,7 +28,20 @@ export function appOfUrl(url, apps = DEFAULT_APPS) {
   return apps.find((a) => a.url && origin(a.url) === o) ?? null;
 }
 
-// The app a window belongs to, by its first tab's origin, or null.
+// The app a window belongs to, by its active tab's origin, or null. A tab
+// still loading its first page has only the address it's going to.
 export function appOf(win, apps = DEFAULT_APPS) {
-  return appOfUrl(win.tabs?.[0]?.url ?? win.tabs?.[0]?.pendingUrl, apps);
+  const tab = win.tabs?.find((t) => t.active) ?? win.tabs?.[0];
+  return appOfUrl(tab?.url || tab?.pendingUrl, apps);
+}
+
+// Home's apps by default (§6.1): the app keys' Calendar, Chat and YouTube
+// Music, the apps you keep open all day. Meet's calls come and go.
+export const DEFAULT_HOME_APPS = ["app-calendar", "app-chat", "app-music"];
+
+// The one of home's apps, `homeApps` naming their keys, that a window
+// belongs to, by its site as appOf finds it, or null.
+export function homeAppOf(win, apps = DEFAULT_APPS, homeApps = DEFAULT_HOME_APPS) {
+  const app = appOf(win, apps);
+  return app && homeApps.includes(app.command) ? app : null;
 }

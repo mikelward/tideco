@@ -527,13 +527,22 @@ them over their parent, which is what tide's §6.4 asks for.
   **minimized by you**, set when it's minimized while its workspace is
   showing.
 - A new window joins the workspace showing on the display it opens on,
-  except a window of one of home's apps, which always joins home.
+  except a window of one of home's apps, which always joins home. Your
+  display stays put, so it's hidden there if home isn't showing, as a
+  window moved there is.
 
 **The home workspace's apps** are the web apps you keep open all day: the
-app keys' Calendar, Chat and YouTube Music by default, and mail where §9.1
-lists it. A window is one of them when its tab's URL is on that app's
-site, as the app keys find an existing window (§9.1). The list is a
-setting beside the standing workspaces.
+app keys' Calendar, Chat and YouTube Music by default. §9.1 has no mail
+key, so mail is one only once an app key is given its site. A window is
+one of them when its active tab's URL is on that app's site, as the app
+keys find an existing window (§9.1). Without tab search (§14.1) Chrome
+hides tabs' addresses, so no window is one. The list is a setting beside
+the standing workspaces, `homeApps`, naming app keys
+(`["app-calendar", "app-chat", "app-music"]`). A name that isn't one of
+the four keys, or one listed twice, is refused, naming the setting.
+
+- An app key for one of them opens its window on home, and home shows with
+  it, since you asked for it and it takes focus *(a guess)*.
 
 **The name prompt** is tide's (tide §6.5), on the dashboard (§8.1), since
 an extension page is the only place tileco can take typing:
@@ -551,19 +560,42 @@ an extension page is the only place tileco can take typing:
   focused window, or, from the dashboard, the window you were last in. Enter
   moves the window there, making the workspace if it's new, and shows it;
   Esc leaves it. Home is refused for a window that isn't one of its apps:
-  it isn't listed, and typing its name shows why. Until home's apps are
-  listed, that's every window. This prompt keeps to Workspaces: no other
-  chip, and Tab stays. With no window to move, as on an empty workspace,
-  the key does nothing.
+  it isn't listed, and typing its name shows why. A window of one of them
+  sees home listed, and Enter moves it there. This prompt keeps to
+  Workspaces: no other chip, and Tab stays. With no window to move, as on
+  an empty workspace, the key does nothing.
 - **A new window on home** that isn't one of home's apps opens it too,
   once the window is focused, with the field starting as the window's
-  short name, selected: the first word of its tab's title, as tide's
-  short name without `namePatterns` *(a guess, to confirm)*. Enter moves
-  the window there; Esc leaves it on home, since tileco can't close a
-  window politely *(differs from tide, whose Esc closes it)*.
+  short name, selected, so typing replaces it. Enter moves the window
+  there; Esc leaves it on home, since tileco can't close a window politely
+  *(differs from tide, whose Esc closes it)*.
+  - It's `Search+Shift+W`'s prompt for that window, on home's display.
+  - tileco never takes focus, so a window that opens unfocused asks when
+    it's first focused. Each window asks once: a prompt you close, or
+    click away from, isn't asked again.
+  - Only a tab window or an installed app's own window asks. A popup, a
+    dialog, an app key's window and anything tileco doesn't manage never
+    do. Nor do the windows open when tileco starts, or those a restart
+    brings back (§14.2), which aren't new.
+  - A window that left home before it was focused doesn't ask.
+  - **The short name** is the first word of its active tab's title, as
+    tide's short name without `namePatterns` *(a guess, to confirm)*.
+    Punctuation clinging to the word's end goes (`.` `,` `:` `;` `!` `?`
+    `|` `…` and dashes), and a word with no letter or digit is passed
+    over. Characters a name can't hold go, and a word over 32 characters
+    is cut, so it's always a name. A title with no word, or a page that
+    isn't a website, such as the new tab page's "New Tab", starts the
+    field empty. The title is the one when the prompt opens: unlike
+    tide's, it doesn't follow a title that changes after.
+  - Esc while the field still holds the name it started with closes the
+    prompt at once *(a guess)*; typed text is cleared first, as elsewhere.
 - One prompt at a time. Its key again closes it, as the dashboard's does,
   and another of these keys, or the dashboard's, takes its place *(a
-  guess)*. A new window's prompt asked for while another is open waits.
+  guess)*. A new window's prompt asked for while any dashboard is open
+  waits its turn, in order, and opens once that one closes. It opens
+  where you are, without bringing home back, the field naming the window
+  *(a guess)*. One whose window closed or left home meanwhile goes
+  unasked.
 
 **`Search+Home`** shows home, and **`Search+End`** the last workspace
 other than home you showed, as tide's `Super+Home` and `Super+End`: from
@@ -949,7 +981,8 @@ tabs and running tileco's commands.
   `Search+Shift+W` open it on Workspaces. Without the `tabs` permission
   (§14.1) the dashboard opens on Launch too, and Tabs offers "Allow tab
   search". The page learns which from its address: `scope=workspaces`, and
-  `move=1` for `Search+Shift+W`.
+  `move=1` for `Search+Shift+W`, with `allowHome=1` for a window of one
+  of home's apps and `name=`, URL-encoded, for a new window's short name.
 - **Workspaces** lists every workspace in bar order, the standing ones
   even before they're made, each under tide's switcher's words: "current"
   for the one showing where you are, else "not made yet", "empty", or how
@@ -1149,8 +1182,9 @@ Crostini runs kitty, the shell config and the terminal tools, so `conf` and
   and main-window count, under tide's names (`defaultMode`, `modes`). A
   change reaches every workspace and replaces what the keys set there, as
   in tide.
-  The standing workspaces (`standing`, §6.1) are checked and shared, but
-  set only by import so far: the page has no fields for them yet.
+  The standing workspaces (`standing`, §6.1) and home's apps (`homeApps`)
+  are checked and shared, but set only by import so far: the page has no
+  fields for them yet, and a save from it keeps what's stored.
 
 ### 13.1 Start at login
 
@@ -1171,7 +1205,8 @@ program, so tileco's list is web addresses alone.
   its app (§9.1): an app-like `popup` window that tileco tiles as an app
   window. They join the workspace showing on the focused display, else
   the first, in the list's order, and none takes focus, as tide's
-  background launches don't.
+  background launches don't. One of home's apps (§6.1) joins home, as
+  tide's do.
 - They're tracked from the moment they open, so a Start at login window
   never takes the place of a window Chrome is still restoring (§14.2).
 - Chrome may restore a window on the same site as well, which then shows

@@ -153,12 +153,24 @@ test("moving a window, home is refused, saying why, and the rest are offered", (
   assert.deepEqual(rows("in")[0], ["workspace", "in", "home · 2 windows"]);
 });
 
+test("moving one of home's apps' windows, home is offered", () => {
+  assert.deepEqual(rows("", { move: true, allowHome: true }).map(([, title]) => title), ["in", "re", "oc", "me", "web", "docs"]);
+  assert.deepEqual(rows("IN", { move: true, allowHome: true })[0], ["workspace", "in", "home · 2 windows"]);
+  assert.equal(workspaceRows({ ...view, query: "in", move: true, allowHome: true })[0].workspace, "in");
+});
+
 test("the page's address says how it opened: home, the dashboard, or a name prompt", () => {
-  assert.deepEqual(opening("?mode=home"), { home: true, scope: "launch", move: false });
-  assert.deepEqual(opening("?mode=dashboard"), { home: false, scope: "tabs", move: false });
-  assert.deepEqual(opening("?mode=dashboard&scope=workspaces"), { home: false, scope: "workspaces", move: false });
-  assert.deepEqual(opening("?mode=dashboard&scope=workspaces&move=1"), { home: false, scope: "workspaces", move: true });
-  assert.deepEqual(opening("?mode=home&scope=workspaces&move=1"), { home: true, scope: "launch", move: false }, "home's page moves nothing");
+  const how = (home, scope, move = false, allowHome = false, name = "") => ({ home, scope, move, allowHome, name });
+  assert.deepEqual(opening("?mode=home"), how(true, "launch"));
+  assert.deepEqual(opening("?mode=dashboard"), how(false, "tabs"));
+  assert.deepEqual(opening("?mode=dashboard&scope=workspaces"), how(false, "workspaces"));
+  assert.deepEqual(opening("?mode=dashboard&scope=workspaces&move=1"), how(false, "workspaces", true));
+  assert.deepEqual(opening("?mode=home&scope=workspaces&move=1"), how(true, "launch"), "home's page moves nothing");
+  // A home app's window may go home; a new window's prompt starts with its name.
+  assert.deepEqual(opening("?mode=dashboard&scope=workspaces&move=1&allowHome=1"), how(false, "workspaces", true, true));
+  assert.deepEqual(opening("?mode=dashboard&scope=workspaces&allowHome=1"), how(false, "workspaces"), "only a move goes anywhere");
+  assert.deepEqual(opening(`?mode=dashboard&scope=workspaces&move=1&name=${encodeURIComponent("PR-12 & co")}`), how(false, "workspaces", true, false, "PR-12 & co"));
+  assert.deepEqual(opening("?mode=dashboard&name=x"), how(false, "tabs"), "only the prompt has a field to fill");
 });
 
 test("Tab steps through the scopes, Shift+Tab back, skipping those not shown", () => {

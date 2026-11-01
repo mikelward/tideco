@@ -101,7 +101,7 @@ test("layouts are set per Chromebook, and checked", () => {
 
 test("pick keeps the shared settings apart from this Chromebook's", () => {
   const all = resolve().settings;
-  assert.deepEqual(Object.keys(pick(all, SHARED)), ["clocks", "day", "work", "apps", "dimStrength", "watched", "defaultMode", "modes", "standing"]);
+  assert.deepEqual(Object.keys(pick(all, SHARED)), ["clocks", "day", "work", "apps", "dimStrength", "watched", "defaultMode", "modes", "standing", "homeApps"]);
   assert.deepEqual(Object.keys(pick(all, PER_MACHINE)), ["singleRules", "ultrawideAspect", "wheelStep", "startup"]);
 });
 
@@ -188,4 +188,21 @@ test("the standing list refuses none, a name twice ignoring case, and a bad name
   assert.deepEqual(bad(["in", " "]), ['standing: workspace 2, " ": a workspace needs a name']);
   assert.deepEqual(bad(["x".repeat(33)]), [`standing: workspace 1, "${"x".repeat(33)}": a workspace's name is at most 32 characters`]);
   assert.deepEqual(resolve({ standing: [] }).settings.standing, DEFAULT_SETTINGS.standing, "it keeps its default");
+});
+
+test("home's apps are shared, the app keys' Calendar, Chat and YouTube Music by default", () => {
+  assert.ok(SHARED.includes("homeApps"));
+  assert.deepEqual(DEFAULT_SETTINGS.homeApps, ["app-calendar", "app-chat", "app-music"]);
+  const { settings, errors } = resolve({ homeApps: ["app-meet"] });
+  assert.deepEqual(errors, []);
+  assert.deepEqual(settings.homeApps, ["app-meet"]);
+  assert.deepEqual(resolve({ homeApps: [] }).settings.homeApps, [], "home can hold none");
+});
+
+test("home's apps refuse a name that's no app key, and one listed twice", () => {
+  const bad = (homeApps) => resolve({ homeApps }).errors;
+  assert.deepEqual(bad("app-chat"), ["homeApps: must be a list"]);
+  assert.deepEqual(bad(["app-chat", "gmail"]), ['homeApps: app 2, "gmail", isn\'t one of app-calendar, app-chat, app-meet, app-music']);
+  assert.deepEqual(bad(["app-chat", "app-chat"]), ["homeApps: app 2, app-chat, is listed already"]);
+  assert.deepEqual(resolve({ homeApps: ["gmail"] }).settings.homeApps, DEFAULT_SETTINGS.homeApps, "it keeps its default");
 });

@@ -62,16 +62,24 @@ export function nextScope(scope, by = 1, scopes = SCOPE_ORDER) {
 // workspace's home page (§6.2), on Launch; anything else the dashboard
 // (§8.1), on Tabs, or on Workspaces with `scope=workspaces`, as Search+W
 // opens it. Search+Shift+W adds `move=1`: Enter then moves the window the
-// dashboard opened over.
+// dashboard opened over, and `allowHome=1` when that's one of home's apps,
+// which may go there. A new window's prompt adds `name`, the field's text
+// to start with (§6.1).
 export function opening(search) {
   const q = new URLSearchParams(search);
   const home = q.get("mode") === "home";
   const workspaces = !home && q.get("scope") === "workspaces";
-  return { home, scope: home ? "launch" : workspaces ? "workspaces" : "tabs", move: workspaces && q.get("move") === "1" };
+  const move = workspaces && q.get("move") === "1";
+  return {
+    home,
+    scope: home ? "launch" : workspaces ? "workspaces" : "tabs",
+    move,
+    allowHome: move && q.get("allowHome") === "1",
+    name: workspaces ? (q.get("name") ?? "") : "",
+  };
 }
 
-// Why home takes no window from the name prompt: it holds only its apps
-// (§6.1), and until those are listed, no window is one of them.
+// Why home takes no window from the name prompt but its apps' (§6.1).
 const HOME_REFUSED = "home holds only its own apps";
 
 // The Workspaces scope's rows for `query` (§6.1, §9.4), as tide's switcher
@@ -82,23 +90,25 @@ const HOME_REFUSED = "home holds only its own apps";
 // before they're made. Typing filters them with the launcher's fuzzy match,
 // a name typed in any case first; a valid name no workspace has comes first
 // of all, as a "new" row that makes it; an invalid one shows why, as a
-// "refused" row. `move` is Search+Shift+W's prompt, which refuses home.
+// "refused" row. `move` is Search+Shift+W's prompt, which refuses home
+// unless `allowHome`, as it is for a window of one of home's apps.
 // Each row is {kind, title, detail, workspace}, `workspace` the name Enter
 // shows; a refused row has none.
-export function workspaceRows({ bar = [], counts = {}, made = bar, current = null, query = "", move = false }) {
+export function workspaceRows({ bar = [], counts = {}, made = bar, current = null, query = "", move = false, allowHome = false }) {
   const home = bar[0] ?? null;
+  const noHome = move && !allowHome;
   const typed = query.trim();
   const out = [];
   if (typed !== "") {
     const checked = checkName(typed);
     const known = bar.find((n) => sameName(n, typed)) ?? null;
     if (checked.error) out.push({ kind: "refused", title: typed, detail: checked.error });
-    else if (move && known !== null && known === home) out.push({ kind: "refused", title: known, detail: HOME_REFUSED });
+    else if (noHome && known !== null && known === home) out.push({ kind: "refused", title: known, detail: HOME_REFUSED });
     else if (known === null) out.push({ kind: "new", title: checked.name, detail: "new workspace", workspace: checked.name });
   }
   const scored = [];
   bar.forEach((name, i) => {
-    if (move && name === home) return;
+    if (noHome && name === home) return;
     const score = typed === "" ? 0 : fuzzyScore(typed, name);
     if (score !== null) scored.push({ name, score, exact: typed !== "" && sameName(name, typed), i });
   });

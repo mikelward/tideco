@@ -2,7 +2,7 @@
 // overrides in chrome.storage.local, merged key by key. A bad value is an
 // error naming the setting, and that setting keeps its default.
 
-import { APP_COMMANDS, DEFAULT_APPS } from "./apps.js";
+import { APP_COMMANDS, DEFAULT_APPS, DEFAULT_HOME_APPS } from "./apps.js";
 import { checkZone, DAY, DEFAULT_CLOCKS, WORK } from "./clocks.js";
 import { DEFAULT_SITES } from "./unread.js";
 import { checkName, DEFAULT_STANDING, sameName } from "./workspaces.js";
@@ -11,7 +11,7 @@ export const SETTINGS_KEY = "settings";
 
 // What follows you to every Chromebook, in storage.sync, and what each one
 // keeps for its own displays, in storage.local.
-export const SHARED = ["clocks", "day", "work", "apps", "dimStrength", "watched", "defaultMode", "modes", "standing"];
+export const SHARED = ["clocks", "day", "work", "apps", "dimStrength", "watched", "defaultMode", "modes", "standing", "homeApps"];
 export const PER_MACHINE = ["singleRules", "ultrawideAspect", "wheelStep", "startup"];
 
 export function pick(settings, keys) {
@@ -37,6 +37,8 @@ export const DEFAULT_SETTINGS = {
   // The standing workspaces, always listed, the first being home (§6.1),
   // as tide's workspaces.json.
   standing: DEFAULT_STANDING,
+  // Home's apps (§6.1), by their app keys: their windows always join home.
+  homeApps: DEFAULT_HOME_APPS,
   // Per machine, as they depend on its displays (§5.2).
   singleRules: [{ minAspect: 2.1, width: 0.8 }],
   ultrawideAspect: 2.1,
@@ -191,6 +193,19 @@ function checkStanding(names) {
   return seen;
 }
 
+// Home's apps: app keys, each once. A key with no app, or one whose app
+// you change, names whatever app it has now (§9.1).
+function checkHomeApps(commands) {
+  if (!Array.isArray(commands)) throw new Error("must be a list");
+  const seen = new Set();
+  for (const [i, c] of commands.entries()) {
+    if (!APP_COMMANDS.includes(c)) throw new Error(`app ${i + 1}, ${JSON.stringify(c)}, isn't one of ${APP_COMMANDS.join(", ")}`);
+    if (seen.has(c)) throw new Error(`app ${i + 1}, ${c}, is listed already`);
+    seen.add(c);
+  }
+  return [...seen];
+}
+
 export const START_MODES = ["tile", "threecol", "twocol", "monocle"];
 
 // Objects merge key by key onto what's there (§13), as tide's do.
@@ -227,7 +242,7 @@ function checkModes(value, current) {
   return modes;
 }
 
-const CHECKS = { clocks: checkClocks, day: checkHours, work: checkHours, apps: checkApps, singleRules: checkSingleRules, ultrawideAspect: (a) => checkAspect(a), dimStrength: checkStrength, watched: checkWatched, defaultMode: checkDefaultMode, modes: checkModes, wheelStep: checkWheelStep, startup: checkStartup, standing: checkStanding };
+const CHECKS = { clocks: checkClocks, day: checkHours, work: checkHours, apps: checkApps, singleRules: checkSingleRules, ultrawideAspect: (a) => checkAspect(a), dimStrength: checkStrength, watched: checkWatched, defaultMode: checkDefaultMode, modes: checkModes, wheelStep: checkWheelStep, startup: checkStartup, standing: checkStanding, homeApps: checkHomeApps };
 
 // Settings from what's stored: `sync` then `local`, each an object or
 // undefined. Returns {settings, errors}, an error for each bad or unknown

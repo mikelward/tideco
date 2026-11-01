@@ -3,7 +3,7 @@
 // `api` is `chrome` in the extension and a fake in the tests; only its
 // promise-returning calls are used.
 
-import { DEFAULT_APPS } from "./apps.js";
+import { appOfUrl, DEFAULT_APPS, homeAppOf } from "./apps.js";
 import { DEFAULT_SETTINGS, load as loadSettings } from "./settings.js";
 import { overlay } from "./dim.js";
 import { toggle as toggleKeepAwake } from "./keepawake.js";
@@ -29,6 +29,11 @@ function managed(w, appPopups, refused) {
   const url = w.tabs?.[0]?.url ?? "";
   return w.type === "popup" && TILED_POPUP_ORIGINS.some((o) => url.startsWith(o));
 }
+// The windows a new one on home asks a workspace for (§6.1): tab windows
+// and installed web apps' own. Popups and dialogs never ask, nor do the app
+// popups tileco opens itself.
+const ASKING = ["normal", "app"];
+
 const STATE_KEY = "state";
 const VIEW_KEY = "view";
 // In storage.session, which a browser restart empties: whether this browser
@@ -167,7 +172,7 @@ export class Tileco {
   // Enter in Search+Shift+W's prompt (§6.1): the window the dashboard opened
   // over moves to workspace `name`, made if it's new, which then shows on the
   // display you're on with that window focused, as tide's Super+Shift+Return.
-  // Home holds only its apps, and none is listed yet, so it's refused. Only
+  // Home holds only its apps, so it's refused for any other window. Only
   // the prompt's own dashboard can ask: no other has a window to move.
   moveTo(name) {
     return this.run(async () => {
@@ -176,7 +181,7 @@ export class Tileco {
       const s = this.state;
       const id = s.moving;
       if (id === undefined || !(id in s.windows)) throw new Error(`no window to move to ${name}: the prompt that asked has gone`);
-      if (ws.lookup(s, name) === ws.home(s)) throw new Error(`window ${id} can't go to ${name}: home holds only its own apps`);
+      if (ws.lookup(s, name) === ws.home(s) && !this.isHomeApp(id)) throw new Error(`window ${id} can't go to ${name}: home holds only its own apps`);
       this.state = ws.send(s, id, name);
       const display = this.focusedDisplay();
       this.showWorkspace(display, this.state.windows[id].ws);
@@ -190,6 +195,62 @@ export class Tileco {
     if (!this.state.restoring) return;
     delete this.state.restoring;
     this.state = ws.prune(this.state);
+  }
+
+  // Whether window `id` is one of home's apps' (§6.1), by its tab's site as
+  // the last sync saw it: what a window update returns has no tabs.
+  isHomeApp(id) {
+    const w = this.all?.get(id);
+    return w !== undefined && this.homeApp(w);
+  }
+
+  homeApp(w) {
+    return homeAppOf(w, this.apps, this.settings.homeApps) !== null;
+  }
+
+  // A new window joins the workspace showing where it opened, or home if
+  // it's one of home's apps, there or not, as a send (§6.1). One that lands
+  // on home otherwise, and may `ask`, is marked to ask for a workspace the
+  // first time it's focused.
+  join(s, id, display, { homeApp = false, ask = false } = {}) {
+    if (id in s.windows) return s;
+    const joined = ws.addWindow(s, id, display, { to: homeApp ? ws.home(s) : null });
+    if (ask && !homeApp && joined.windows[id].ws === ws.home(joined)) joined.windows[id].ask = true;
+    return joined;
+  }
+
+  // The windows waiting for a name prompt, in the order they asked (§6.1):
+  // those still on home, then the focused window if it's marked to ask and
+  // still there. The mark goes at its first focus, so each window asks once,
+  // and a prompt closed or answered isn't asked again.
+  asking(s, before, wins) {
+    const h = ws.home(s);
+    const waiting = (before?.asking ?? []).filter((id) => s.windows[id]?.ws === h);
+    const f = wins.find((w) => w.focused && w.state !== "minimized");
+    const info = f && s.windows[f.id];
+    if (info?.ask) {
+      delete info.ask;
+      if (info.ws === h && !this.homeApp(f) && !waiting.includes(f.id)) waiting.push(f.id);
+    }
+    return waiting;
+  }
+
+  // The next waiting window's name prompt, once no dashboard is open, as
+  // one prompt at a time (§6.1): Search+Shift+W's, on home's display, or
+  // yours while home's hidden, the field starting as the window's short name.
+  async ask() {
+    const s = this.state;
+    if (s.dashboard !== undefined) return;
+    while (s.asking?.length > 0) {
+      const id = s.asking.shift();
+      const w = this.all.get(id);
+      if (!this.windows.has(id) || !w || s.windows[id]?.ws !== ws.home(s) || this.homeApp(w)) continue;
+      // A new tab page's title, "New Tab", names nothing.
+      const tab = w.tabs?.find((t) => t.active);
+      const name = /^https?:/.test(tab?.url ?? "") ? ws.shortName(tab.title) : "";
+      await this.dashboard(ws.displayOf(s, ws.home(s)) ?? this.focusedDisplay(), "move", id, name);
+      return;
+    }
   }
 
   // A state stored before workspaces had names takes them here (§6.1).
@@ -267,6 +328,9 @@ export class Tileco {
     // workspace makes other windows look minimized or restored.
     // A tiled window you resized, the first if there are several.
     let resized = null;
+    // A new window asks for a workspace only once tileco knows the rest, and
+    // not while a restart brings windows back (§14.2), which aren't new.
+    const asks = before !== null && renamed.size === 0 && Object.keys(waiting).length === 0;
     for (const w of wins) {
       // Chrome restores a restarted window as it likes; tileco puts it back.
       if (renamed.has(w.id)) {
@@ -274,7 +338,8 @@ export class Tileco {
         continue;
       }
       if (!(w.id in s.windows) || !before || !(w.id in before.windows)) {
-        s = ws.addWindow(s, w.id, displayFor(w, this.displays));
+        const ask = asks && ASKING.includes(w.type) && !appPopups.has(w.id);
+        s = this.join(s, w.id, displayFor(w, this.displays), { homeApp: this.homeApp(w), ask });
         // A window already minimized when tileco first sees it stays so.
         if (w.state === "minimized") s = ws.userMinimized(s, w.id);
         if (w.focused) s = ws.focused(s, w.id);
@@ -295,6 +360,7 @@ export class Tileco {
       if (w.focused) s = ws.focused(s, w.id);
     }
     if (resized) s = ws.setMfact(s, resized.n, resized.mode, resized.mfact);
+    s.asking = this.asking(s, before, wins);
     s.appPopups = [...appPopups].filter((id) => this.windows.has(id));
     s.refused = [...refused];
     if (Object.keys(waiting).length > 0) s.restoring = waiting;
@@ -604,8 +670,10 @@ export class Tileco {
   // screen over the focused display. The key again closes it (§8.1).
   // `how` is "tabs" for that, "go" for Search+W's name prompt, on the
   // Workspaces scope, and "move" for Search+Shift+W's, which moves window
-  // `moving` (§6.1). A different one's key swaps it for that one.
-  async dashboard(display, how = "tabs", moving = null) {
+  // `moving` (§6.1), offering home if that's one of home's apps'. A new
+  // window's prompt starts its field as `name`. A different one's key swaps
+  // it for that one.
+  async dashboard(display, how = "tabs", moving = null, name = "") {
     const s = this.state;
     if (s.dashboard !== undefined) {
       const id = s.dashboard;
@@ -617,7 +685,9 @@ export class Tileco {
       if (was === how) return null;
     }
     const d = this.displays.find((x) => x.id === display) ?? this.displays[0];
-    const extra = { tabs: "", go: "&scope=workspaces", move: "&scope=workspaces&move=1" }[how];
+    let extra = { tabs: "", go: "&scope=workspaces", move: "&scope=workspaces&move=1" }[how];
+    if (moving !== null && this.isHomeApp(moving)) extra += "&allowHome=1";
+    if (name) extra += `&name=${encodeURIComponent(name)}`;
     s.dashboard = (await this.fullscreen("dashboard", d, true, extra)).id;
     if (how !== "tabs") s.dashboardFor = how;
     if (moving !== null) s.moving = moving;
@@ -680,28 +750,31 @@ export class Tileco {
     });
   }
 
-  async open(props, display) {
+  async open(props, display, how) {
     const w = await this.api.windows.create({ focused: true, ...props });
     this.windows.set(w.id, w);
-    this.state = ws.addWindow(this.state, w.id, display);
+    this.state = this.join(this.state, w.id, display, how);
     return w;
   }
 
   // The browser key: always a new browser window on this workspace, as
-  // tide's and KDE's keys launch one (§9.1).
+  // tide's and KDE's keys launch one (§9.1). On home it asks for a
+  // workspace, as any new window there does (§6.1).
   async browser(display) {
-    return (await this.open({}, display)).id;
+    return (await this.open({}, display, { ask: true })).id;
   }
 
   // A web app key: always a new window on this workspace, never one already
   // open, as tide's and KDE's keys launch the app (§9.1). Installed web apps
   // open their own windows, but there's no public way to launch one by
   // origin, so tileco opens the site in an app-like popup and tiles it as the
-  // app's.
+  // app's. One of home's apps opens on home (§6.1), which comes with it when
+  // it takes focus, since it was asked for.
   async app(app, display, focused = true) {
-    const w = await this.open({ url: app.url, type: "popup", focused }, display);
+    const homeApp = this.settings.homeApps.includes(appOfUrl(app.url, this.apps)?.command);
+    const w = await this.open({ url: app.url, type: "popup", focused }, display, { homeApp });
     this.state.appPopups.push(w.id);
-    return w.id;
+    return homeApp && focused ? this.activate(w.id, display) : w.id;
   }
 
   // An empty workspace gets a home window, so tileco's keys still have a
@@ -804,6 +877,7 @@ export class Tileco {
       this.state = ws.focused(this.state, focus);
     }
     await this.homes(focus);
+    await this.ask();
     await this.dim(focus ?? this.focusedWindow());
     await this.badge();
     await this.save();

@@ -38,7 +38,7 @@ export class FakeChrome {
         structuredClone(
           fake.wins
             .filter((w) => !windowTypes || windowTypes.includes(w.type))
-            .map((w) => (populate ? { ...w, tabs: [{ id: w.id * 10, active: true, url: w.url ?? "chrome://newtab/" }] } : w)),
+            .map((w) => (populate ? { ...w, tabs: [{ id: w.id * 10, active: true, url: w.url ?? "chrome://newtab/", title: w.title ?? "" }] } : w)),
         ),
       create: async ({ url, type = "normal", focused = false, left = 100, top = 100, width = 800, height = 600 } = {}) => {
         const id = Math.max(0, ...fake.wins.map((w) => w.id)) + 1;

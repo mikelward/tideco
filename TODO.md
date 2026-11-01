@@ -14,7 +14,8 @@ Replace the nine numbered workspaces with tide's named ones, a PR each:
 - [x] The `Search+W` / `Search+Shift+W` commands, the dashboard's
   Workspaces scope and the name prompt. Home refuses every window moved
   by the prompt until its apps are listed.
-- [ ] Home's apps, and the prompt for a new window on home.
+- [x] Home's apps, and the prompt for a new window on home. The
+  `homeApps` setting, its options-page fields still to come.
 - [ ] Options: the standing list and home's apps.
 
 ## Decisions needing review
@@ -55,7 +56,8 @@ Guesses made on autopilot (2026-10-24), each cheap to undo.
   window. The alternative is every scope, Enter moving the window only on
   Workspaces. Reversible: `scopes` in `src/launcherview.js`.
 - **Home isn't listed in `Search+Shift+W`'s prompt** (2026-11-01), as in
-  tide's, and typing its name shows "home holds only its own apps". The
+  tide's, but for a window of one of home's apps, and typing its name
+  shows "home holds only its own apps". The
   alternative is listing it, greyed, with that reason. Reversible:
   `workspaceRows` in `src/launcher.js`.
 - **Tab cycles Launch, Tabs, Workspaces, and Shift+Tab goes back**
@@ -75,6 +77,42 @@ Guesses made on autopilot (2026-10-24), each cheap to undo.
   a click or a window brought up, but not one a swap moves onto the other
   display. The alternative counts every display's changes. Reversible:
   `show` in `src/workspaces.js`.
+- **Home's apps are app keys** (2026-11-01): `homeApps` names the app keys
+  (`app-calendar`, `app-chat`, `app-music` by default), so a window is one
+  by its active tab's site, as the launcher finds an app's tabs. §6.1's
+  "mail where §9.1 lists it" adds nothing, since no app key is mail until
+  you give one its site. The alternative is a list of sites of its own,
+  as tide's `inApps` takes web addresses. Reversible: `checkHomeApps` in
+  `src/settings.js` and `homeAppOf` in `src/apps.js`.
+- **A home app's key shows home** (2026-11-01): its window joins home, and
+  since the key focuses it, home comes with it, where any other new home
+  app window joins home hidden and your display stays. The alternative
+  is the key opening it hidden too, which a focused window can't be.
+  Reversible: `app` in `src/tileco.js`.
+- **Only new windows ask** (2026-11-01): windows open when tileco first
+  runs, and those a restart brings back, even unmatched, never ask, nor
+  any window already on home before this change. The alternative asks
+  for every window on home's first focus, which a migrated workspace 1
+  would turn into a run of prompts. Reversible: `asks` in `Tileco.sync`.
+- **A waiting prompt opens where you are** (2026-11-01): once the prompt
+  before it closes, the next window's opens over whatever workspace
+  you're on, home staying hidden if you left it, the field naming the
+  window. The alternative brings home back to show the window first.
+  Reversible: `ask` in `src/tileco.js`.
+- **Any open dashboard holds a new window's prompt** (2026-11-01), not
+  only another prompt, as one dashboard shows at a time. In practice the
+  new window's focus closes the dashboard, which then lets it ask.
+  Reversible: `ask` in `src/tileco.js`.
+- **Esc on an untouched starting name closes the prompt** (2026-11-01),
+  where Esc otherwise clears the field first, since that name isn't
+  typing. The alternative is two presses. Reversible: the Esc handler in
+  `src/launcherview.js`.
+- **The short name is only a website's** (2026-11-01): a tab that isn't
+  on `http` or `https`, such as the new tab page's "New Tab", starts the
+  field empty, and the title is read once, when the prompt opens, where
+  tide's follows a title that changes. The alternative is following the
+  title through `storage.onChanged`. Reversible: `ask` in
+  `src/tileco.js`.
 
 - **Keep awake is `Search+S`** (2026-10-31), as tide's and tilemo's
   `Super+S`, though chromeOS has select to speak there, and whether the
@@ -121,7 +159,7 @@ Guesses made on autopilot (2026-10-24), each cheap to undo.
   from `PER_MACHINE` to `SHARED` in `src/settings.js`.
 - **Start at login opens on the workspace you're on, and checks nothing
   already open** (2026-10-31): tide opens home's apps on home, which
-  tileco hasn't got, and starts a web address whatever runs, so a site
+  tileco now does too (2026-11-01), and starts a web address whatever runs, so a site
   Chrome restores itself shows twice. The alternatives are a workspace per
   address, or skipping a site with a tab already open, which needs tab
   access and races Chrome's restore. Reversible: `Tileco.startAtLogin`.

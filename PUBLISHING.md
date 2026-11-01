@@ -73,12 +73,14 @@ What the first upload needs:
   the shared settings to your Google account when Sync is on. Update it
   when tileco starts reading or keeping something new.
 - **Promo tiles.** Done: `store/promo-small.png` (440×280) and
-  `store/promo-marquee.png` (1400×560), tileco's first icon, the T of three
-  columns under a bar of workspaces and a clock, beside the name tide and
-  what it does. Upload them under the listing's graphic assets. After
-  changing an SVG in `store/`, `make promo` renders them again, with Inter
-  from Google Fonts. They're the store's alone, so `make zip` leaves them
-  out.
+  `store/promo-marquee.png` (1400×560), tide's logo, two waves, as tileco's
+  icon draws it, beside the name tide and what it does. The `-alt` pair,
+  `store/promo-small-alt.png` and `store/promo-marquee-alt.png`, shows
+  tileco's first icon instead, the T of three columns under a bar of
+  workspaces and a clock. Upload one pair under the listing's graphic
+  assets. After changing an SVG in `store/`, `make promo` renders them
+  again, with Inter from Google Fonts. They're the store's alone, so
+  `make zip` leaves them out.
 - **Screenshots.** At least one, 1280×800 or 640×400. One is done:
   `store/screenshot-threecol.png`, three Chrome windows in the three-column
   layout, the master in the middle at half the width. It's composed, not

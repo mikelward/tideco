@@ -18,7 +18,8 @@
     "power"
   ],
   "optional_permissions": [
-    "tabs"
+    "tabs",
+    "nativeMessaging"
   ],
   "optional_host_permissions": [
     "<all_urls>"

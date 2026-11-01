@@ -18,7 +18,22 @@ before(async () => {
     headless: false,
     args: ["--headless=new", `--disable-extensions-except=${EXTENSION}`, `--load-extension=${EXTENSION}`],
   });
+  // The pages are chromeOS's unless a test says otherwise (SPEC.md §14.6):
+  // this Chromium runs on Linux, where the settings show only tide's tab list.
+  await context.addInitScript(() => {
+    const query = new URLSearchParams(location.search);
+    if (location.protocol !== "chrome-extension:" || query.has("real-platform")) return;
+    // ?os=linux shows a page as another platform would.
+    const info = { os: query.get("os") ?? "cros", arch: "x86-64", nacl_arch: "x86-64" };
+    Object.defineProperty(chrome.runtime, "getPlatformInfo", { value: () => Promise.resolve(info), configurable: true });
+  });
   worker = context.serviceWorkers()[0] ?? (await context.waitForEvent("serviceworker"));
+  // The worker asks the platform at each event, so it tiles from here on;
+  // only its startup, which set the toolbar's Linux title, saw Linux.
+  await worker.evaluate(() => {
+    const info = { os: "cros", arch: "x86-64", nacl_arch: "x86-64" };
+    Object.defineProperty(chrome.runtime, "getPlatformInfo", { value: () => Promise.resolve(info), configurable: true });
+  });
   base = new URL(".", worker.url()).href.replace(/src\/$/, "");
 });
 
@@ -60,6 +75,59 @@ test("every page says tide, not tileco, under tide's logo", async () => {
     assert.deepEqual(errors, [], path);
     await page.close();
   }
+});
+
+// The real platform here is the machine's own, Linux in CI but macOS or
+// Windows on a developer's machine, and never chromeOS. Off chromeOS the
+// settings hide what only tiling uses and the dashboard lists no
+// workspaces; only Linux offers tide's tab list.
+const HOST_OS = { linux: "Linux", darwin: "macOS", win32: "Windows" }[process.platform];
+const ON_LINUX = process.platform === "linux";
+
+// Linux's own page, wherever the test runs.
+test("on Linux, the settings offer tide's tab list", async () => {
+  const { page, errors } = await open("src/options.html?os=linux");
+  await page.waitForSelector("#linux:not([hidden])");
+  assert.equal(await page.locator("h2:visible").first().innerText(), "Tabs in tide's switcher");
+  assert.match(await page.locator("#untiled").innerText(), /only on chromeOS, so on Linux/);
+  await page.waitForFunction(() => document.getElementById("bridge-state").innerText === "Off");
+  assert.equal(await page.locator("#bridge-toggle").innerText(), "Allow");
+  assert.equal(await page.locator("#setup").isVisible(), false);
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
+test("off chromeOS, the settings and dashboard keep only what places no window", async () => {
+  const { page, errors } = await open("src/options.html?real-platform");
+  await page.waitForSelector("#untiled:not([hidden])");
+  const headings = await page.locator("h2:visible").allInnerTexts();
+  assert.deepEqual(headings, [...(ON_LINUX ? ["Tabs in tide's switcher"] : []), "Extras", "Clocks", "Keys", "Apps", "Import and export"]);
+  assert.match(await page.locator("#untiled").innerText(), new RegExp(`only on chromeOS, so on ${HOST_OS}`));
+  assert.equal(await page.locator("#linux").isVisible(), ON_LINUX);
+  if (ON_LINUX) {
+    await page.waitForFunction(() => document.getElementById("bridge-state").innerText === "Off");
+    assert.equal(await page.locator("#bridge-toggle").innerText(), "Allow");
+  }
+  await page.waitForSelector("#permissions li");
+  assert.equal(await page.locator("#permissions li").count(), 1, "tab search alone");
+  await page.waitForSelector("#keys tbody tr");
+  const keys = await page.locator("#keys tbody td:first-child").allInnerTexts();
+  assert.ok(!keys.some((k) => /to workspace|stack|layout|monocle/i.test(k)), keys.join(", "));
+  assert.doesNotMatch(await page.locator("body").innerText(), /tileco/i);
+  // The worker started here, so the toolbar says the tiling keys don't work.
+  const title = new RegExp(`work only on chromeOS, not ${HOST_OS}`);
+  await page.waitForFunction(async (source) => new RegExp(source).test(await chrome.action.getTitle({})), title.source);
+  assert.deepEqual(errors, []);
+  await page.close();
+
+  const dash = await open("src/launcher.html?mode=dashboard&real-platform");
+  await dash.page.waitForFunction(() => /only on chromeOS/.test(document.getElementById("title").innerText));
+  assert.equal(await dash.page.locator("#workspaces button").count(), 0);
+  await dash.page.locator('[data-scope="launch"]').click();
+  await dash.page.locator("#query").fill("work");
+  assert.doesNotMatch(await dash.page.locator("#results").innerText(), /Go to workspace/);
+  assert.deepEqual(dash.errors, []);
+  await dash.page.close();
 });
 
 test("the options page renders every section and saves changes", async () => {

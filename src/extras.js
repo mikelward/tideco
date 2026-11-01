@@ -14,6 +14,8 @@ export const EXTRAS = [
     title: "Find any tab in a keystroke",
     how: "Press Search+Space, type a few letters, and jump to that tab. tide also puts your windows back on their workspaces after Chrome restarts, and tiles Secure Shell's windows. Chrome calls this “read your browsing history”.",
     access: { permissions: ["tabs"] },
+    // Tab search works off chromeOS too; the rest is chromeOS's.
+    untiled: "Open the dashboard, type a few letters, and jump to that tab. Chrome calls this “read your browsing history”.",
   },
   {
     id: "unread",
@@ -28,6 +30,12 @@ export const EXTRAS = [
     access: { origins: ["<all_urls>"] },
   },
 ];
+
+// The extras on a platform that tiles, or doesn't (§14.6). Unread counts and
+// the dim mark and shade windows tileco manages, so they're chromeOS's alone.
+export function extrasFor(tiling, extras = EXTRAS) {
+  return tiling ? extras : extras.filter((e) => e.untiled).map((e) => ({ ...e, how: e.untiled }));
+}
 
 // Whether Gmail, Chat and Calendar are all in the stored unread counts list;
 // `stored` is the shared settings as stored, or undefined for the defaults.

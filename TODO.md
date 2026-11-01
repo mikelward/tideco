@@ -161,6 +161,43 @@ Guesses made on autopilot (2026-10-24), each cheap to undo.
   `runtime.onStartup`, which can arrive after the first window event.
   Reversible: `SEEN_KEY` in `src/tileco.js`.
 
+- **Off chromeOS, the dashboard and launcher stay; tiling goes**
+  (2026-11-01, per the maintainer): every command that lays out, focuses
+  or moves a window, or switches workspaces, does nothing, and the bar
+  shows no workspaces. Sub-choices, each reversible in `src/platform.js`'s
+  `worksUntiled` or the pages:
+  - Keep awake and the app keys work there too: they place nothing. The
+    alternative is chromeOS only, which tide and tilemo don't need.
+  - The dim, unread counts and start at login are chromeOS only: they mark,
+    shade or open windows on tileco's workspaces. Their settings hide.
+  - The suggested keys stay bound off chromeOS (`Alt+Shift+J/K/U/Space`).
+    Chrome refuses a suggested key with no `default` there, and dropping
+    them would unbind them on chromeOS too. `Alt+Shift+Space` (the
+    dashboard) doesn't overlap tide's `Super+Space`. The tiling ones do
+    nothing, so unbind them at `chrome://extensions/shortcuts` if a page
+    needs the keys.
+  - The toolbar button opens the dashboard everywhere, and its tooltip off
+    chromeOS says tiling and workspaces work only on chromeOS.
+- **The Linux tab list is one Allow for `tabs` and `nativeMessaging`
+  together** (2026-11-01), rather than reusing tab search's `tabs` grant:
+  one switch with one meaning. Reversible: `ACCESS` in `src/tabsbridge.js`.
+- **The whole tab list goes on every change**, gathered over 100 ms, rather
+  than diffs: a few KB per change, and nothing to get out of step after a
+  reconnect. Reversible: the protocol, with tide's `tide-tabs`.
+- **No incognito windows in tide's list**, even where you've allowed tileco
+  in incognito. Reversible: the filter in `tabsMessage`.
+- **Waiting: the store's single purpose for Linux** (needs the maintainer).
+  Either the listing names the Linux tab list as part of the purpose, or
+  the store build drops `nativeMessaging` and Linux loads tileco unpacked
+  (PUBLISHING.md §5).
+- **Waiting: a `key` in the manifest** (needs the maintainer). Without it an
+  unpacked copy's ID comes from its folder's path, so `setup` allows both
+  that ID and the store's. The store item's public key (dashboard ›
+  Package › View public key) in `manifest.json`'s `key` would make every
+  copy `ajcfbfgjfglgofbepnkiimmmnaidfedl`; `make zip` would then have to
+  drop it, since the store has refused packages with one (from memory,
+  unchecked).
+
 ## Later
 
 - **Set the PRO 2 LIGHTSPEED's DPI from Linux** (SPEC.md §19.2, fix 1).

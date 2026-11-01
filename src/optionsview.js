@@ -6,10 +6,12 @@ import { APP_COMMANDS } from "./apps.js";
 import { checklist } from "./keys.js";
 import { MOUSE_PAGE } from "./mouse.js";
 import { ITEMS, progress, SETUP_KEY, tick } from "./setup.js";
-import { EXTRAS as BASE_EXTRAS } from "./extras.js";
+import { EXTRAS as BASE_EXTRAS, extrasFor } from "./extras.js";
 import { DEFAULT_SITES } from "./unread.js";
 import { pattern } from "./watchers.js";
 import { DEFAULT_SETTINGS, PER_MACHINE, pick, resolve, SETTINGS_KEY, SHARED, START_MODES } from "./settings.js";
+import { osName, platform, TABS, TILE, worksUntiled } from "./platform.js";
+import { ACCESS as BRIDGE_ACCESS, bridgeText, STATUS_KEY as BRIDGE_KEY } from "./tabsbridge.js";
 
 const $ = (id) => document.getElementById(id);
 const rows = $("clocks").tBodies[0];
@@ -121,11 +123,14 @@ const HOOKS = {
   // Every page is undimmed while tileco can still reach them.
   dim: { off: () => chrome.runtime.sendMessage({ dim: false }) },
 };
-const EXTRAS = BASE_EXTRAS.map((e) => ({ ...e, ...HOOKS[e.id] }));
+const ALL_EXTRAS = BASE_EXTRAS.map((e) => ({ ...e, ...HOOKS[e.id] }));
+// Off chromeOS, only what works there (§14.6).
+const where = platform(chrome);
+const tiles = where.then((p) => p.role === TILE);
 
 async function renderPermissions() {
   const items = await Promise.all(
-    EXTRAS.map(async (extra) => {
+    extrasFor(await tiles, ALL_EXTRAS).map(async (extra) => {
       const li = document.createElement("li");
       const on = (await chrome.permissions.contains(extra.access)) && (extra.on?.() ?? true);
       const title = Object.assign(document.createElement("strong"), { textContent: extra.title });
@@ -424,7 +429,8 @@ async function renderKeys() {
   const bound = await chrome.commands.getAll();
   shortcuts = Object.fromEntries(bound.map((c) => [c.name, c.shortcut]));
   for (const tr of appRows.rows) tr.querySelector("kbd").textContent = shortcuts[tr.dataset.command] || "No key";
-  const rows = checklist(chrome.runtime.getManifest().commands, bound);
+  const tiling = await tiles;
+  const rows = checklist(chrome.runtime.getManifest().commands, bound).filter((r) => tiling || worksUntiled(r.name));
   // A command on another key is your choice (or Chrome's default off
   // chromeOS), so only an unbound one is still to do.
   const todo = rows.filter((r) => r.state === "unbound").length;
@@ -524,4 +530,43 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (JSON.stringify(fresh.settings) === JSON.stringify(resolve(fromForm()).settings)) return;
   toForm(fresh.settings);
   showErrors(fresh.errors);
+});
+
+// Off chromeOS the tiling settings hide (§14.6), and Linux offers tide's tab
+// list too.
+async function renderBridge() {
+  const allowed = await chrome.permissions.contains(BRIDGE_ACCESS);
+  const status = allowed ? (await chrome.storage.session.get(BRIDGE_KEY))[BRIDGE_KEY] : null;
+  const { state, detail } = bridgeText(allowed, status);
+  $("bridge-state").textContent = state;
+  $("bridge-detail").textContent = detail;
+  $("bridge-detail").hidden = detail === "";
+  const toggle = $("bridge-toggle");
+  toggle.textContent = allowed ? "Turn off" : "Allow";
+  toggle.setAttribute("aria-label", `${toggle.textContent}: tabs in tide's switcher`);
+}
+
+$("bridge-toggle").addEventListener("click", async () => {
+  try {
+    if (await chrome.permissions.contains(BRIDGE_ACCESS)) await chrome.permissions.remove(BRIDGE_ACCESS);
+    else await chrome.permissions.request(BRIDGE_ACCESS);
+  } catch (e) {
+    showErrors([`Tabs in tide's switcher: ${e.message}`]);
+  }
+  renderBridge();
+});
+
+where.then((p) => {
+  if (p.role === TILE) return;
+  for (const el of document.querySelectorAll("[data-chromeos]")) el.hidden = true;
+  $("untiled").hidden = false;
+  $("untiled").textContent = `Changes apply as you make them, and follow you to every computer you sign in to. Tiling and workspaces work only on chromeOS, so on ${osName(p.os)} their keys do nothing and their settings aren't shown; the dashboard, its launcher and the app keys work here too.`;
+  if (p.role !== TABS) return;
+  $("linux").hidden = false;
+  renderBridge();
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === "session" && changes[BRIDGE_KEY]) renderBridge();
+  });
+  chrome.permissions.onAdded.addListener(renderBridge);
+  chrome.permissions.onRemoved.addListener(renderBridge);
 });

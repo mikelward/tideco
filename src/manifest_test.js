@@ -1,10 +1,11 @@
 // Tests for manifest.json and background.js.
-import { test } from "node:test";
+import { after, test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { Tileco } from "./tileco.js";
 import { FakeChrome, HD } from "./fake_chrome.js";
 import { EXTRAS } from "./extras.js";
+import { worksUntiled } from "./platform.js";
 import { ITEMS } from "./setup.js";
 
 const manifest = JSON.parse(readFileSync(new URL("../manifest.json", import.meta.url)));
@@ -123,7 +124,8 @@ test("frequent actions take no modifier but Search, and no two commands share a 
 test("every permission with an install warning is optional", () => {
   // power has no install warning, so keep awake (§11) needs no prompt.
   assert.deepEqual(manifest.permissions, ["storage", "system.display", "scripting", "power"]);
-  assert.deepEqual(manifest.optional_permissions, ["tabs"]);
+  // nativeMessaging is asked for only on Linux, for tide's tab list (§14.6).
+  assert.deepEqual(manifest.optional_permissions, ["tabs", "nativeMessaging"]);
   assert.equal(manifest.content_scripts, undefined, "the title watcher is registered once its sites are allowed");
   assert.equal(manifest.host_permissions, undefined);
 });
@@ -176,31 +178,76 @@ test("every command in the manifest does something", async () => {
   }
 });
 
-test("background.js adds every listener while it first runs", async () => {
-  const added = new Set();
-  const event = (name) => ({ addListener: () => added.add(name) });
-  globalThis.chrome = {
-    commands: { onCommand: event("commands.onCommand") },
+// A chrome for background.js: every event keeps its listeners, so a test
+// can fire them, and `calls` records what the worker asked Chrome to do.
+function workerChrome(os) {
+  const listeners = {};
+  const calls = [];
+  const event = (name) => ({ addListener: (f) => (listeners[name] ??= []).push(f) });
+  const call = (name, value) => (...args) => {
+    calls.push([name, ...args]);
+    return Promise.resolve(value);
+  };
+  const events = (ns, names) => Object.fromEntries(names.map((n) => [n, event(`${ns}.${n}`)]));
+  const chrome = {
+    commands: events("commands", ["onCommand"]),
     windows: {
-      onCreated: event("windows.onCreated"),
-      onRemoved: event("windows.onRemoved"),
-      onFocusChanged: event("windows.onFocusChanged"),
-      onBoundsChanged: event("windows.onBoundsChanged"),
+      ...events("windows", ["onCreated", "onRemoved", "onFocusChanged", "onBoundsChanged"]),
+      getAll: call("windows.getAll", []),
+      update: call("windows.update", {}),
+      create: call("windows.create", { id: 99 }),
+      remove: call("windows.remove"),
     },
-    system: { display: { onDisplayChanged: event("system.display.onDisplayChanged") } },
-    tabs: { onActivated: event("tabs.onActivated"), onUpdated: event("tabs.onUpdated") },
-    action: { onClicked: event("action.onClicked") },
-    permissions: { onAdded: event("permissions.onAdded"), onRemoved: event("permissions.onRemoved") },
-    storage: { onChanged: event("storage.onChanged") },
+    system: { display: { ...events("system.display", ["onDisplayChanged"]), getInfo: call("system.display.getInfo", [HD]) } },
+    tabs: {
+      ...events("tabs", ["onActivated", "onUpdated", "onCreated", "onRemoved", "onMoved", "onAttached", "onDetached", "onReplaced"]),
+      update: call("tabs.update", {}),
+      query: call("tabs.query", []),
+    },
+    action: { ...events("action", ["onClicked"]), setTitle: call("action.setTitle"), setBadgeText: call("action.setBadgeText"), setBadgeBackgroundColor: call("action.setBadgeBackgroundColor") },
+    permissions: { ...events("permissions", ["onAdded", "onRemoved"]), contains: async () => false },
+    storage: {
+      ...events("storage", ["onChanged"]),
+      local: { get: async () => ({}), set: call("storage.local.set") },
+      sync: { get: async () => ({}), set: call("storage.sync.set") },
+      session: { get: async () => ({}), set: call("storage.session.set"), remove: call("storage.session.remove") },
+    },
+    scripting: { getRegisteredContentScripts: async () => [], registerContentScripts: call("scripting.registerContentScripts"), unregisterContentScripts: call("scripting.unregisterContentScripts") },
+    power: { requestKeepAwake: call("power.requestKeepAwake"), releaseKeepAwake: call("power.releaseKeepAwake") },
     runtime: {
-      onStartup: event("runtime.onStartup"),
-      onInstalled: event("runtime.onInstalled"),
-      onMessage: event("runtime.onMessage"),
+      ...events("runtime", ["onStartup", "onInstalled", "onMessage"]),
       getManifest: () => manifest,
+      getURL: (path) => `chrome-extension://tileco/${path}`,
+      getPlatformInfo: async () => ({ os }),
+      openOptionsPage: call("runtime.openOptionsPage"),
     },
   };
-  await import("./background.js");
-  assert.deepEqual([...added].sort(), [
+  return { chrome, listeners, calls };
+}
+
+after(() => delete globalThis.chrome);
+
+// Each import of background.js is a fresh worker.
+let workers = 0;
+async function startWorker(os) {
+  const w = workerChrome(os);
+  // The worker reads the global as it runs, not only as it loads.
+  globalThis.chrome = w.chrome;
+  await import(`./background.js?worker=${++workers}`);
+  // Let the platform check and what waits on it finish.
+  for (let i = 0; i < 20; i++) await new Promise((r) => setImmediate(r));
+  return w;
+}
+
+async function fire(w, name, ...args) {
+  const results = (w.listeners[name] ?? []).map((f) => f(...args));
+  await Promise.all(results.map((r) => (r === true ? undefined : r)));
+  for (let i = 0; i < 20; i++) await new Promise((r) => setImmediate(r));
+}
+
+test("background.js adds every listener while it first runs", async () => {
+  const { listeners } = await startWorker("cros");
+  assert.deepEqual(Object.keys(listeners).sort(), [
     "action.onClicked",
     "commands.onCommand",
     "permissions.onAdded",
@@ -211,11 +258,56 @@ test("background.js adds every listener while it first runs", async () => {
     "storage.onChanged",
     "system.display.onDisplayChanged",
     "tabs.onActivated",
+    "tabs.onAttached",
+    "tabs.onCreated",
+    "tabs.onDetached",
+    "tabs.onMoved",
+    "tabs.onRemoved",
+    "tabs.onReplaced",
     "tabs.onUpdated",
     "windows.onBoundsChanged",
     "windows.onCreated",
     "windows.onFocusChanged",
     "windows.onRemoved",
   ]);
-  delete globalThis.chrome;
+});
+
+// Only chromeOS tiles (§14.6): elsewhere no tiling or workspace key, and no
+// window event, lays out or moves a window, but the dashboard, its
+// launcher, the app keys and keep awake still work.
+for (const os of ["linux", "mac", "win"]) {
+  test(`on ${os}, nothing tiles, but the dashboard and launcher work`, async () => {
+    const w = await startWorker(os);
+    const placing = () => w.calls.filter(([name]) => /^(windows\.(update|create|remove)|tabs\.update|scripting\.register)/.test(name));
+    for (const name of Object.keys(manifest.commands).filter((n) => !worksUntiled(n))) await fire(w, "commands.onCommand", name);
+    await fire(w, "windows.onCreated", { id: 1 });
+    await fire(w, "windows.onFocusChanged", 1);
+    await fire(w, "system.display.onDisplayChanged");
+    await fire(w, "runtime.onStartup");
+    assert.deepEqual(placing(), [], "a tiling key or window event placed a window");
+    // The toolbar says why the tiling keys do nothing.
+    assert.ok(w.calls.some(([name, arg]) => name === "action.setTitle" && /work only on chromeOS/.test(arg.title)));
+    // The dashboard opens from its key and the toolbar button.
+    await fire(w, "commands.onCommand", "popup");
+    const opened = w.calls.filter(([name, arg]) => name === "windows.create" && /launcher\.html\?mode=dashboard/.test(arg?.url));
+    assert.equal(opened.length, 1, "the dashboard opens");
+    // Its launcher's asks: a workspace one is refused, a tab comes up.
+    const launcher = { url: "chrome-extension://tileco/src/launcher.html?mode=dashboard" };
+    let answer = "none";
+    await fire(w, "runtime.onMessage", { command: "workspace-2" }, launcher, (a) => (answer = a));
+    assert.equal(answer, false);
+    await fire(w, "runtime.onMessage", { tabId: 12, windowId: 3 }, launcher, (a) => (answer = a));
+    assert.equal(answer, true);
+    assert.deepEqual(w.calls.filter(([name]) => name === "tabs.update"), [["tabs.update", 12, { active: true }]]);
+    await fire(w, "runtime.onMessage", { command: "keep-awake" }, launcher, (a) => (answer = a));
+    assert.equal(answer, true);
+    assert.ok(w.calls.some(([name]) => name === "power.requestKeepAwake"));
+  });
+}
+
+test("on chromeOS, a key still tiles", async () => {
+  const w = await startWorker("cros");
+  assert.ok(!w.calls.some(([name]) => name === "action.setTitle"), "chromeOS keeps the manifest's title");
+  await fire(w, "commands.onCommand", "popup");
+  assert.ok(w.calls.some(([name]) => name === "windows.create"), "the dashboard opens");
 });

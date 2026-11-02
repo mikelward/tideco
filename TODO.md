@@ -22,6 +22,25 @@ Replace the nine numbered workspaces with tide's named ones, a PR each:
 All five are built, tested with FakeChrome and the smoke test; what's left
 is trying them on a Chromebook, with M2's device checks.
 
+## One workspace across every display, as in tide and tilemo
+
+tide and tilemo now show one workspace on every display at once, each
+display with its own part of it and its own layout (tide SPEC.md §6.5,
+tilemo SPEC.md §6.1); tileco still shows one workspace per display from a
+shared pool (SPEC.md §6.1, its parity table says **partial**). Bring
+tileco to the same model:
+
+- First, check on a Chromebook with two displays whether chromeOS lets an
+  extension show a workspace on every display together without a visible
+  flicker: tileco shows and hides windows itself, so a switch is one
+  minimize or restore per window, on every display.
+- Then: each window keeps its display within its workspace; a switch
+  shows every display's part, focus staying on the display it was on;
+  the bar and the launcher's Workspaces list each workspace once; a
+  display that goes away hands its windows to the first one left, and
+  gets them back when it returns. tide's `hypr/tide/span.lua` and
+  tilemo's `wm.lua` are the models to follow.
+
 ## Decisions needing review
 
 Guesses made on autopilot (2026-10-24), each cheap to undo.

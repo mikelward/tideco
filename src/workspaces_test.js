@@ -172,10 +172,12 @@ test("a name is one trimmed line of at most 32 characters, with nothing to quote
   assert.deepEqual(ws.checkName("  web "), { name: "web" });
   assert.deepEqual(ws.checkName("x".repeat(32)), { name: "x".repeat(32) });
   assert.deepEqual(ws.checkName("ñ".repeat(32)), { name: "ñ".repeat(32) }, "characters, not bytes");
-  for (const bad of ["", "   ", "x".repeat(33), 'a"b', "a'b", "a`b", "a\\b", "a\nb", "a\tb", "a\u0007b", "a b"]) {
+  for (const bad of ["", "   ", "x".repeat(33), 'a"b', "a'b", "a`b", "a\\b", "a\nb", "a\tb", "a\u0007b", "a b", "re@DP-2"]) {
     assert.ok(ws.checkName(bad).error, JSON.stringify(bad));
   }
   assert.throws(() => ws.show(ws.create(["a"]), "a", 'a"b'), /quotes/);
+  assert.match(ws.checkName("re@DP-2").error, /@/, "tide keeps @ for a monitor's part");
+  assert.equal(ws.shortName("mail@example.com - Inbox"), "mailexample.com", "a short name drops it");
 });
 
 test("switching hides the old workspace's windows and shows the new one's", () => {

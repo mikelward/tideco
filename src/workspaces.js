@@ -14,9 +14,11 @@ export const DEFAULT_STANDING = ["in", "re", "oc", "me"];
 // The longest a name may be, in characters, as on tide.
 export const MAX_NAME = 32;
 
-// What a name can't hold, as on tide: quotes, backslashes and control
+// What a name can't hold, as on tide: quotes, backslashes, `@` and control
 // characters, so it needs no quoting in storage, the badge, pages or logs.
-const UNSAFE = /["'`\\\p{Cc}]/u;
+// tide keeps `@` for a monitor's part of a workspace (tide SPEC.md §6.5),
+// and the standing list is shared with it.
+const UNSAFE = /["'`\\@\p{Cc}]/u;
 
 // A name as typed, made one: trimmed, and refused if it's empty, runs over
 // more than one line, holds an unsafe character or is too long. Returns
@@ -25,7 +27,7 @@ export function checkName(text) {
   const name = String(text ?? "").trim();
   if (name === "") return { error: "a workspace needs a name" };
   if (/[\n\r\u2028\u2029]/.test(name)) return { error: "a workspace's name is one line" };
-  if (UNSAFE.test(name)) return { error: "a workspace's name can't have quotes, backslashes or control characters" };
+  if (UNSAFE.test(name)) return { error: "a workspace's name can't have quotes, backslashes, @ or control characters" };
   if ([...name].length > MAX_NAME) return { error: `a workspace's name is at most ${MAX_NAME} characters` };
   // Workspaces are kept in an object, where this one key sets the
   // prototype instead of making an entry.

@@ -183,7 +183,7 @@ test("the standing list refuses none, a name twice ignoring case, and a bad name
   assert.deepEqual(bad([]), ["standing: must name at least one workspace, the first being home"]);
   assert.deepEqual(bad(["in", "re", "RE"]), ['standing: workspace 3, "RE", is listed already']);
   assert.deepEqual(bad(["in", 'say "hi"']), [
-    `standing: workspace 2, "say \\"hi\\"": a workspace's name can't have quotes, backslashes or control characters`,
+    `standing: workspace 2, "say \\"hi\\"": a workspace's name can't have quotes, backslashes, @ or control characters`,
   ]);
   assert.deepEqual(bad(["in", " "]), ['standing: workspace 2, " ": a workspace needs a name']);
   assert.deepEqual(bad(["x".repeat(33)]), [`standing: workspace 1, "${"x".repeat(33)}": a workspace's name is at most 32 characters`]);
@@ -194,7 +194,7 @@ test("the standing list refuses none, a name twice ignoring case, and a bad name
 test("each standing name's problem is its own, a repeat marking the later one", () => {
   assert.deepEqual(standingProblems(["in", "re"]), ["", ""]);
   assert.deepEqual(standingProblems(["in", "Re", " re ", ""]), ["", "", 'workspace 3, "re", is listed already', 'workspace 4, "": a workspace needs a name']);
-  assert.deepEqual(standingProblems(["a'b", "ok"]), [`workspace 1, "a'b": a workspace's name can't have quotes, backslashes or control characters`, ""]);
+  assert.deepEqual(standingProblems(["a'b", "ok"]), [`workspace 1, "a'b": a workspace's name can't have quotes, backslashes, @ or control characters`, ""]);
   assert.deepEqual(standingProblems([]), [], "an empty list is the setting's to refuse");
 });
 

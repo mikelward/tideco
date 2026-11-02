@@ -513,8 +513,10 @@ them over their parent, which is what tide's §6.4 asks for.
   after the standing ones, in number order *(a guess)*. The empty hidden
   ones go.
 - **A name** is one line, trimmed, at most 32 characters, with no quotes
-  (`"`, `'`, `` ` ``), backslashes or control characters, as on tide. It
-  reaches storage, the badge, the pages and logs, so nothing needs quoting.
+  (`"`, `'`, `` ` ``), backslashes, `@` or control characters, as on tide. It
+  reaches storage, the badge, the pages and logs, so nothing needs quoting,
+  and tide keeps `@` for a monitor's part of a workspace, with the standing
+  list shared.
   Names are compared ignoring case, and keep the case they were made
   with, so `RE` is the standing `re`.
 - Shared across displays, as in tide (§6.5). Each display shows one at a

@@ -595,9 +595,12 @@ an extension page is the only place tileco can take typing:
     it's first focused. Each window asks once: a prompt you close, or
     click away from, isn't asked again.
   - Only a tab window or an installed app's own window asks. A popup, a
-    dialog, an app key's window and anything tileco doesn't manage never
-    do. Nor do the windows open when tileco starts, or those a restart
-    brings back (§14.2), which aren't new.
+    dialog, an app key's window, chromeOS's system apps (Settings, Files,
+    Camera) and anything tileco doesn't manage never do. A system app
+    reports as an app too, so an app window asks only when its page is a
+    website; without tab search (§14.1) Chrome hides the page, and no app
+    window asks. Nor do the windows open when tileco starts, or those a
+    restart brings back (§14.2), which aren't new.
   - A window that left home before it was focused doesn't ask.
   - **The short name** is the first word of its active tab's title, as
     tide's short name without `namePatterns` *(a guess, to confirm)*.
@@ -690,7 +693,7 @@ Beyond Android and Linux apps, from Chromium's and Secure Shell's source
 | **Secure Shell**, from its toolbar popup | A `popup` window. Tiled by tileco's Secure Shell rule (§5.4); tileco's keys work. | Fine as is. |
 | **Secure Shell**, from "New session" (Ctrl+Shift+N) | An app popup: tiled, but the terminal swallows every Ctrl, Alt and Search combo, so tileco's keys go dead while it has focus. | Open connections from the toolbar popup or as tabs, or add pass-through keybindings in Secure Shell's options. |
 | **Secure Shell**, Shift-click or as a tab | A normal window or tab: tiles, keys work. | Fine. |
-| **chromeOS's system apps** (Files, Settings, Camera) | Report as `app`, so they tile like web apps, with the page-first keys of §2.2. | Fine; expect the odd key to be eaten. |
+| **chromeOS's system apps** (Files, Settings, Camera) | Report as `app`, so they tile like web apps, with the page-first keys of §2.2. One opening on home doesn't ask for a workspace (§6.1). | Fine; expect the odd key to be eaten. |
 | **The Terminal system app** | The same terminal as Secure Shell: it tiles, and tileco's keys go dead in it. | Use Secure Shell from its popup, or Crostini's terminal (§12). |
 | **Document picture-in-picture** (a call's pop-out) | Always on top, refuses minimizing; tileco leaves it alone on every workspace. | Fine; it floats over everything, as it should. |
 | **Video picture-in-picture** | Invisible to tileco; floats over everything. | Fine. |

@@ -34,6 +34,18 @@ function managed(w, appPopups, refused) {
 // popups tileco opens itself.
 const ASKING = ["normal", "app"];
 
+// Whether `w` may ask for a workspace by its kind. chromeOS's system apps
+// (Settings, Files, Camera) report as `app` too, on a `chrome://` page, so an
+// app window asks only when its page is a website. Without tab search
+// Chrome hides the address, so none can tell, and none asks. One still
+// loading its first page has only the address it's going to.
+function asksByKind(w) {
+  if (!ASKING.includes(w.type)) return false;
+  if (w.type !== "app") return true;
+  const tab = w.tabs?.find((t) => t.active);
+  return /^https?:/.test(tab?.url || tab?.pendingUrl || "");
+}
+
 const STATE_KEY = "state";
 const VIEW_KEY = "view";
 // In storage.session, which a browser restart empties: whether this browser
@@ -341,7 +353,7 @@ export class Tileco {
       // belongs to the display it's on.
       if (w.id in s.windows && s.windows[w.id].display == null) s.windows[w.id].display = displayFor(w, this.displays);
       if (!(w.id in s.windows) || !before || !(w.id in before.windows)) {
-        const ask = asks && ASKING.includes(w.type) && !appPopups.has(w.id);
+        const ask = asks && asksByKind(w) && !appPopups.has(w.id);
         s = this.join(s, w.id, displayFor(w, this.displays), { homeApp: this.homeApp(w), ask });
         // A window already minimized when tileco first sees it stays so.
         if (w.state === "minimized") s = ws.userMinimized(s, w.id);

@@ -870,6 +870,24 @@ test("popups, dialogs and app popups on home never ask, nor home's apps", async 
   assert.equal(prompts(chrome).length, 1);
 });
 
+test("chromeOS's system apps on home never ask, but an installed web app does", async () => {
+  const { chrome, tileco } = await setup([HD], [on(HD, 1, { focused: true })]);
+  await opens(chrome, tileco, 2, { type: "app", url: "chrome://os-settings/", title: "Settings" });
+  await opens(chrome, tileco, 3, { type: "app", url: "chrome://file-manager/", title: "Files" });
+  assert.deepEqual(prompts(chrome), [], "Settings and Files are left on home");
+  assert.equal(tileco.state.windows[2].ws, "in");
+  await opens(chrome, tileco, 4, { type: "app", url: "https://example.com/", title: "Example" });
+  assert.deepEqual(prompts(chrome).map((w) => w.url), [`${MOVE_PROMPT}&name=Example`]);
+});
+
+test("a web app still loading its first page asks, by where it's going", async () => {
+  const { chrome, tileco } = await setup([HD], [on(HD, 1, { focused: true })]);
+  await opens(chrome, tileco, 2, { type: "app", pendingUrl: "https://example.com/", focused: false });
+  chrome.focus(2);
+  await tileco.event();
+  assert.equal(prompts(chrome).length, 1);
+});
+
 test("a tab chosen in the launcher comes forward with its window and workspace", async () => {
   const { chrome, tileco } = await setup([HD], [on(HD, 1, { focused: true }), on(HD, 2)]);
   await tileco.command("send-4");

@@ -63,7 +63,7 @@ Contents:
 **Must have**, each taken from tide's §1 or `setup-kde`:
 
 - dwm/Krohnkite tiling, never BSP: **tile** (master + stack), **three
-  columns**, **two columns + stack**, **monocle**. Layout per workspace.
+  columns**, **two columns + stack**, **monocle**. Layout per workspace, on each display.
 - A lone window centered at **80%** width on an ultrawide, **100%** on 16:9
   or 16:10.
 - Named **workspaces**, as tide's (tide §6.5): a home workspace and the
@@ -361,9 +361,9 @@ off-ramp.
 |---|---|---|
 | Tile, three-column, two columns + stack, monocle (tide §6.1) | tileco layouts over Chrome and web app windows (§5) | **partial**: not Android or Linux windows |
 | Lone window 80% on ultrawide, 100% otherwise | tileco, per display, from `workArea` aspect | **yes** |
-| Layout per workspace | tileco state per workspace (§6) | **yes** |
+| Layout per workspace, on each monitor | tileco state per workspace and display (§6.1) | **yes** |
 | Named workspaces, home first; go and move by name; the Nth on Search+1…9 / Shift (tide §6.5, §6.6) | tileco workspaces by minimize (§3.2), named as tide's (§6.1) | **partial**: keys need a Chrome window focused; Android/Linux windows on every workspace; the name prompt is the dashboard's, not a window over the app |
-| One workspace spanning every monitor, each with its own part (tide §6.5) | tileco: the workspace showing shows on every display, each window in its display's part (§6.1) | **partial**, same caveats, and one layout per workspace, not per part |
+| One workspace spanning every monitor, each with its own part (tide §6.5) | tileco: the workspace showing shows on every display, each window in its display's part (§6.1) | **partial**, same caveats |
 | Dim inactive, 0.07 (tide §6.2; KDE 0.15) | an overlay injected into the page of each unfocused window (§10.1) | **partial**: page only, not tab strip or title bar; not over `chrome://` pages |
 | No borders, no gaps | chromeOS draws its own frames; tileco margin 0 | **partial** |
 | Maximize, fullscreen, restore (tide §6.3) | native Alt+=, fullscreen key, rebound to Search+Up/Shift+Up/Down in the Shortcuts app | **yes** |
@@ -528,10 +528,12 @@ them over their parent, which is what tide's §6.4 asks for.
   - A display with no window in the part showing gets a home page (§6.2).
   - The stack keys (`focus-next`, `move-next`, `swap-master`) work within
     the focused window's part.
-  - The layout, `mfact` and master count are the workspace's, shared by its
-    parts, each part laid out for its own display; a layout left unset is
-    each display's default *(a guess: tide and tilemo keep one per
-    part)*.
+  - **Each part has its own layout,** `mfact` and master count, as tide's
+    and tilemo's do: the layout keys change only the part on the display
+    you're on. A part's layout left unset is its display's default. A
+    display that goes away keeps its parts' settings for when it's back.
+  - A workspace stored with one layout for all its displays gives that
+    layout to each of its parts as it's first used.
   - **A display that goes away** hands its windows to the first display
     left, in the same workspaces, each remembering where it was. When that
     display comes back, each goes back there, unless you moved it to
@@ -541,7 +543,7 @@ them over their parent, which is what tide's §6.4 asks for.
     that showed its workspace; the rest are placed where they are.
 - Each workspace stores, in `chrome.storage.local` (§14.2):
   - its windows in tile order;
-  - its layout, `mfact` and master count;
+  - each display's part's layout, `mfact` and master count;
   - its focused window.
 - Each window belongs to exactly one workspace, and carries one flag:
   **minimized by you**, set when it's minimized while its workspace is

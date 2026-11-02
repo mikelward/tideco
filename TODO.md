@@ -35,11 +35,6 @@ with the unplug isn't read as a drag.
 
 Guesses made on autopilot (2026-10-24), each cheap to undo.
 
-- **A workspace's layout, `mfact` and master count are shared by its
-  displays' parts** (2026-11-02), each part laid out for its own display,
-  where tide and tilemo keep one per part. Simpler state and keys; the
-  alternative is a layout per workspace and display. Reversible: the
-  `layout` and `modes` of each workspace in `src/workspaces.js`.
 - **A window keeps one place in its workspace's single stack across
   displays** (2026-11-02): a part's order is the stack's order filtered by
   display, so a window handed to the first display and back keeps its

@@ -376,14 +376,48 @@ test("stack moves on a window that isn't tiled change nothing", () => {
 });
 
 test("monocle toggles back to the layout before it", () => {
-  let s = ws.setLayout(ws.create(["a"]), "in", "twocol");
-  s = ws.toggleMonocle(s, "in", "twocol");
-  assert.equal(s.workspaces.in.layout, "monocle");
-  s = ws.toggleMonocle(s, "in", "monocle");
-  assert.equal(s.workspaces.in.layout, "twocol");
-  s = ws.toggleMonocle(ws.create(["a"]), "in", "tile");
-  s = ws.toggleMonocle(s, "in", "monocle");
-  assert.equal(s.workspaces.in.layout, null, "back to the display's default");
+  let s = ws.setLayout(ws.create(["a"]), "in", "a", "twocol");
+  s = ws.toggleMonocle(s, "in", "a", "twocol");
+  assert.equal(ws.layoutOf(s, "in", "a").layout, "monocle");
+  s = ws.toggleMonocle(s, "in", "a", "monocle");
+  assert.equal(ws.layoutOf(s, "in", "a").layout, "twocol");
+  s = ws.toggleMonocle(ws.create(["a"]), "in", "a", "tile");
+  s = ws.toggleMonocle(s, "in", "a", "monocle");
+  assert.equal(ws.layoutOf(s, "in", "a").layout, null, "back to the display's default");
+});
+
+test("each display's part of a workspace keeps its own layout, share and count", () => {
+  let s = ws.create(["a", "b"]);
+  s = ws.setLayout(s, "in", "a", "twocol");
+  s = ws.adjust(s, "in", "b", "tile", { mfact: 0.1, nmaster: 1 });
+  s = ws.toggleMonocle(s, "in", "b", "tile", "tile");
+  assert.equal(ws.layoutOf(s, "in", "a").layout, "twocol");
+  assert.equal(ws.layoutOf(s, "in", "b").layout, "monocle");
+  assert.equal(ws.layoutOf(s, "in", "a").modes.tile.mfact, 0.55);
+  assert.deepEqual(ws.layoutOf(s, "in", "b").modes.tile, { mfact: 0.65, nmaster: 2 });
+  s = ws.setDisplays(s, ["a"]);
+  s = ws.setDisplays(s, ["a", "b"]);
+  assert.equal(ws.layoutOf(s, "in", "b").layout, "monocle", "a display that comes back finds its part as it left it");
+  assert.equal(ws.layoutOf(ws.show(s, "re"), "re", "a").layout, null, "another workspace's parts are its own");
+});
+
+test("a part starts from the layout its workspace kept before parts had their own", () => {
+  const s = ws.create(["a", "b"]);
+  s.workspaces.in.layout = "threecol";
+  s.workspaces.in.modes = { ...structuredClone(ws.DEFAULT_MODE_SETTINGS), tile: { mfact: 0.6, nmaster: 1 } };
+  delete s.workspaces.in.parts;
+  assert.equal(ws.layoutOf(s, "in", "b").layout, "threecol");
+  const t = ws.adjust(s, "in", "a", "tile", { mfact: 0.1 });
+  assert.equal(ws.layoutOf(t, "in", "a").modes.tile.mfact, 0.7);
+  assert.equal(ws.layoutOf(t, "in", "b").modes.tile.mfact, 0.6, "the other display's part is untouched");
+});
+
+test("a part keeps the layout its workspace had before monocle, from before parts", () => {
+  const s = ws.create(["a"]);
+  Object.assign(s.workspaces.in, { layout: "monocle", beforeMonocle: "twocol" });
+  delete s.workspaces.in.parts;
+  const t = ws.toggleMonocle(s, "in", "a", "monocle", "tile");
+  assert.equal(ws.layoutOf(t, "in", "a").layout, "twocol");
 });
 
 test("stack moves leave minimized and floating windows in their places", () => {
@@ -401,18 +435,21 @@ test("stack moves leave minimized and floating windows in their places", () => {
 
 test("mfact and the master count stay in range", () => {
   let s = ws.show(ws.show(ws.create(["a", "b"]), "re"), "in");
-  for (let i = 0; i < 40; i++) s = ws.adjust(s, "in", "tile", { mfact: 0.025, nmaster: -1 });
-  assert.equal(s.workspaces.in.modes.tile.mfact, 0.95);
-  assert.equal(s.workspaces.in.modes.tile.nmaster, 0, "tile can have no main window");
-  for (let i = 0; i < 5; i++) s = ws.adjust(s, "in", "threecol", { nmaster: -1 });
-  assert.equal(s.workspaces.in.modes.threecol.nmaster, 1, "the columns keep one");
-  assert.equal(s.workspaces.re.modes.tile.mfact, 0.55, "other workspaces untouched");
+  for (let i = 0; i < 40; i++) s = ws.adjust(s, "in", "a", "tile", { mfact: 0.025, nmaster: -1 });
+  assert.equal(ws.layoutOf(s, "in", "a").modes.tile.mfact, 0.95);
+  assert.equal(ws.layoutOf(s, "in", "a").modes.tile.nmaster, 0, "tile can have no main window");
+  for (let i = 0; i < 5; i++) s = ws.adjust(s, "in", "a", "threecol", { nmaster: -1 });
+  assert.equal(ws.layoutOf(s, "in", "a").modes.threecol.nmaster, 1, "the columns keep one");
+  assert.equal(ws.layoutOf(s, "re", "a").modes.tile.mfact, 0.55, "other workspaces untouched");
 });
 
-test("a workspace made after the layout settings changed starts with them", () => {
+test("a part made after the layout settings changed starts with them, and a change reaches every part", () => {
   const modes = { ...ws.DEFAULT_MODE_SETTINGS, tile: { mfact: 0.6, nmaster: 2 } };
-  const s = ws.show(ws.setModes(ws.create(["a"]), modes), "web");
-  assert.deepEqual(s.workspaces.web.modes, modes);
+  let s = ws.adjust(ws.create(["a", "b"]), "in", "a", "tile", { mfact: 0.1 });
+  s = ws.show(ws.setModes(s, modes), "web");
+  assert.deepEqual(ws.layoutOf(s, "web", "a").modes, modes);
+  assert.deepEqual(ws.layoutOf(s, "in", "a").modes, modes, "what the keys gave it is dropped");
+  assert.deepEqual(ws.layoutOf(s, "in", "b").modes, modes);
 });
 
 test("a renamed window keeps its workspace, place and settings", () => {
@@ -471,7 +508,7 @@ test("a numbered state takes names: 1 is home, the rest in use keep their number
   assert.deepEqual(ws.barOrder(s), ["in", "re", "oc", "me", "2", "5", "9"]);
   assert.equal(s.current, "in", "the first display's shows on them all");
   assert.deepEqual(s.workspaces.in.windows, [10]);
-  assert.equal(s.workspaces.in.layout, "monocle", "a workspace keeps its layout");
+  assert.equal(ws.layoutOf(s, "in", "a").layout, "monocle", "a workspace keeps its layout");
   assert.deepEqual(s.workspaces["5"].windows, [50, 51]);
   assert.equal(s.workspaces["5"].focused, 51);
   assert.deepEqual([10, 20, 50, 51].map((id) => s.windows[id].ws), ["in", "2", "5", "5"]);

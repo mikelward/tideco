@@ -125,8 +125,9 @@ function make(s, name) {
     if (checked.error) throw new Error(`${JSON.stringify(String(name))}: ${checked.error}`);
     made = checked.name;
   }
-  // A workspace made after the layout settings changed starts with them.
-  s.workspaces[made] = { windows: [], layout: null, modes: structuredClone(s.modesFrom ?? DEFAULT_MODE_SETTINGS), focused: null };
+  // Each display's part gets its layout settings when they're first set
+  // (layoutOf), from the settings then.
+  s.workspaces[made] = { windows: [], parts: {}, focused: null };
   s.made.push(made);
   return made;
 }
@@ -413,46 +414,71 @@ export function swapMaster(state, winId) {
   });
 }
 
-// Per-workspace layout settings, on a workspace that exists. `mode` null
-// means the display's default.
+// Layout settings, per display's part of a workspace that exists, as tide's
+// and tilemo's (§6.1): its layout (`null` means the display's default), its
+// layout before monocle, and each mode's main share and count. A part not
+// set yet starts from what the workspace kept before parts had their own,
+// else from the settings; a display that goes keeps its parts for when it's
+// back.
 
-export function setLayout(state, name, mode) {
+// The settings of workspace `name`'s part on `displayId`, read only.
+export function layoutOf(state, name, displayId) {
+  const w = state.workspaces[name];
+  return w.parts?.[displayId] ?? { layout: w.layout ?? null, modes: w.modes ?? state.modesFrom ?? DEFAULT_MODE_SETTINGS };
+}
+
+// The same, made in place if it's new, to change.
+function settingsOf(s, name, displayId) {
+  const w = s.workspaces[name];
+  w.parts ??= {};
+  if (!Object.hasOwn(w.parts, displayId)) {
+    w.parts[displayId] = structuredClone({ layout: w.layout ?? null, modes: w.modes ?? s.modesFrom ?? DEFAULT_MODE_SETTINGS });
+    if (w.beforeMonocle !== undefined) w.parts[displayId].beforeMonocle = w.beforeMonocle;
+  }
+  return w.parts[displayId];
+}
+
+export function setLayout(state, name, displayId, mode) {
   const s = clone(state);
-  s.workspaces[name].layout = mode;
+  settingsOf(s, name, displayId).layout = mode;
   return s;
 }
 
-// Toggle monocle on workspace `name`, whose layout is `current` now (resolved
-// from the display's default, `fallback`, when unset). Leaving monocle goes
-// back to the layout before it, or to tile when that was a monocle default,
-// as tide does.
-export function toggleMonocle(state, name, current, fallback) {
+// Toggle monocle on workspace `name`'s part on `displayId`, whose layout is
+// `current` now (resolved from the display's default, `fallback`, when
+// unset). Leaving monocle goes back to the layout before it, or to tile when
+// that was a monocle default, as tide does.
+export function toggleMonocle(state, name, displayId, current, fallback) {
   const s = clone(state);
-  const w = s.workspaces[name];
+  const p = settingsOf(s, name, displayId);
   if (current === "monocle") {
-    w.layout = w.beforeMonocle ?? (fallback === "monocle" ? "tile" : null);
-    delete w.beforeMonocle;
+    p.layout = p.beforeMonocle ?? (fallback === "monocle" ? "tile" : null);
+    delete p.beforeMonocle;
   } else {
-    w.beforeMonocle = w.layout;
-    w.layout = "monocle";
+    p.beforeMonocle = p.layout;
+    p.layout = "monocle";
   }
   return s;
 }
 
-// Every workspace takes `modes`, each mode's main share and count from the
-// settings, dropping what the keys gave it (§5.2, tide's §6). `modesFrom`
-// remembers them, so tileco applies a change once rather than on every step,
-// and a workspace made later starts with them.
+// Every part of every workspace takes `modes`, each mode's main share and
+// count from the settings, dropping what the keys gave it (§5.2, tide's §6).
+// `modesFrom` remembers them, so tileco applies a change once rather than on
+// every step, and a part made later starts with them.
 export function setModes(state, modes) {
   const s = clone(state);
-  for (const n of s.made) s.workspaces[n].modes = structuredClone(modes);
+  for (const n of s.made) {
+    const w = s.workspaces[n];
+    delete w.modes;
+    for (const p of Object.values(w.parts ?? {})) p.modes = structuredClone(modes);
+  }
   s.modesFrom = structuredClone(modes);
   return s;
 }
 
-export function adjust(state, name, mode, change) {
+export function adjust(state, name, displayId, mode, change) {
   const s = clone(state);
-  const m = s.workspaces[name].modes[mode];
+  const m = settingsOf(s, name, displayId).modes[mode];
   if ("mfact" in change) m.mfact = Math.min(0.95, Math.max(0.05, m.mfact + change.mfact));
   // Tile alone works with no main window, as in tide.
   if ("nmaster" in change) m.nmaster = Math.max(mode === "tile" ? 0 : 1, m.nmaster + change.nmaster);
@@ -461,9 +487,9 @@ export function adjust(state, name, mode, change) {
 
 // A main share you set by dragging a window's edge (§5.3), within the
 // bounds the keys keep to.
-export function setMfact(state, name, mode, mfact) {
+export function setMfact(state, name, displayId, mode, mfact) {
   const s = clone(state);
-  s.workspaces[name].modes[mode].mfact = Math.min(0.95, Math.max(0.05, mfact));
+  settingsOf(s, name, displayId).modes[mode].mfact = Math.min(0.95, Math.max(0.05, mfact));
   return s;
 }
 

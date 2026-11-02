@@ -381,6 +381,20 @@ test("a maximized window you move to another display stays there", async () => {
   assert.equal(chrome.box(2).x < 1920, true);
 });
 
+test("a layout key changes only your display's part of the workspace", async () => {
+  const { chrome, tileco } = await setup([HD, UW], [on(HD, 1, { focused: true }), on(HD, 2), on(UW, 3), on(UW, 4)]);
+  await tileco.command("monocle");
+  await tileco.command("grow");
+  assert.equal(chrome.store.view.displays.hd.mode, "monocle");
+  assert.equal(chrome.store.view.displays.uw.mode, "threecol", "the ultrawide keeps its own");
+  assert.equal(ws.layoutOf(tileco.state, "in", "uw").modes.monocle.mfact, 0.5);
+  chrome.focus(3);
+  await tileco.event();
+  await tileco.command("layout-next");
+  assert.equal(chrome.store.view.displays.hd.mode, "monocle");
+  assert.notEqual(chrome.store.view.displays.uw.mode, "threecol");
+});
+
 test("a focused popup on the other display makes commands act there", async () => {
   const { chrome, tileco } = await setup([HD, UW], [on(HD, 1), on(UW, 2), on(UW, 3, { type: "popup", focused: true })]);
   await tileco.command("workspace-3");
@@ -1450,7 +1464,7 @@ test("dragging the master's edge sets the main share, and the stack follows", as
   // You drag the master's right edge to x = 1344, 70% of 1920.
   chrome.win(1).width = 1344;
   await tileco.event();
-  assert.equal(tileco.state.workspaces.in.modes.tile.mfact, 0.7);
+  assert.equal(ws.layoutOf(tileco.state, "in", "hd").modes.tile.mfact, 0.7);
   assert.deepEqual(chrome.box(1), { x: 0, y: 0, w: 1344, h: 1032 });
   assert.deepEqual(chrome.box(2), { x: 1344, y: 0, w: 576, h: 516 });
   assert.deepEqual(chrome.box(3), { x: 1344, y: 516, w: 576, h: 516 });
@@ -1460,7 +1474,7 @@ test("dragging a stack window's left edge sets the main share too", async () => 
   const { chrome, tileco } = await setup([HD], [on(HD, 1, { focused: true }), on(HD, 2)]);
   Object.assign(chrome.win(2), { left: 768, width: 1152 });
   await tileco.event();
-  assert.equal(tileco.state.workspaces.in.modes.tile.mfact, 0.4);
+  assert.equal(ws.layoutOf(tileco.state, "in", "hd").modes.tile.mfact, 0.4);
   assert.deepEqual(chrome.box(1), { x: 0, y: 0, w: 768, h: 1032 });
 });
 
@@ -1469,7 +1483,7 @@ test("a resize the share can't follow is put back", async () => {
   // The master's left edge is the screen's.
   Object.assign(chrome.win(1), { left: 200, width: 856 });
   await tileco.event();
-  assert.equal(tileco.state.workspaces.in.modes.tile.mfact, 0.55);
+  assert.equal(ws.layoutOf(tileco.state, "in", "hd").modes.tile.mfact, 0.55);
   assert.deepEqual(chrome.box(1), { x: 0, y: 0, w: 1056, h: 1032 });
 });
 
@@ -1477,7 +1491,7 @@ test("moving a window without resizing it leaves the share", async () => {
   const { chrome, tileco } = await setup([HD], [on(HD, 1, { focused: true }), on(HD, 2)]);
   Object.assign(chrome.win(2), { left: 900, top: 50 });
   await tileco.event();
-  assert.equal(tileco.state.workspaces.in.modes.tile.mfact, 0.55);
+  assert.equal(ws.layoutOf(tileco.state, "in", "hd").modes.tile.mfact, 0.55);
   assert.deepEqual(chrome.box(2), { x: 1056, y: 0, w: 864, h: 1032 });
 });
 
@@ -1487,7 +1501,7 @@ test("a window resized by a change in the work area isn't a drag", async () => {
   chrome.displaysList = [{ ...HD, workArea: { left: 0, top: 0, width: 1920, height: 1080 } }];
   chrome.win(1).width = 1300;
   await tileco.event();
-  assert.equal(tileco.state.workspaces.in.modes.tile.mfact, 0.55);
+  assert.equal(ws.layoutOf(tileco.state, "in", "hd").modes.tile.mfact, 0.55);
 });
 
 test("a floating window's resize sets nothing", async () => {
@@ -1495,7 +1509,7 @@ test("a floating window's resize sets nothing", async () => {
   await floatAt(chrome, tileco, 3, 100, 100);
   chrome.win(3).width = 700;
   await tileco.event();
-  assert.equal(tileco.state.workspaces.in.modes.tile.mfact, 0.55);
+  assert.equal(ws.layoutOf(tileco.state, "in", "hd").modes.tile.mfact, 0.55);
 });
 
 test("a window back from maximized isn't read as resized", async () => {
@@ -1505,7 +1519,7 @@ test("a window back from maximized isn't read as resized", async () => {
   // chromeOS puts it back somewhere of its own choosing.
   Object.assign(chrome.win(1), { state: "normal", left: 0, width: 1500 });
   await tileco.event();
-  assert.equal(tileco.state.workspaces.in.modes.tile.mfact, 0.55);
+  assert.equal(ws.layoutOf(tileco.state, "in", "hd").modes.tile.mfact, 0.55);
   assert.deepEqual(chrome.box(1), { x: 0, y: 0, w: 1056, h: 1032 });
 });
 

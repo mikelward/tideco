@@ -380,7 +380,7 @@ export class Tileco {
       }
       if (w.focused) s = ws.focused(s, w.id);
     }
-    if (resized) s = ws.setMfact(s, resized.n, resized.mode, resized.mfact);
+    if (resized) s = ws.setMfact(s, resized.n, resized.display, resized.mode, resized.mfact);
     delete s.spanned;
     s.asking = this.asking(s, before, wins);
     s.appPopups = [...appPopups].filter((id) => this.windows.has(id));
@@ -494,7 +494,7 @@ export class Tileco {
   // A drag on a tiled window's edge sets its workspace's main share (§5.3).
   // Its width changed since tileco placed it, on the same display, which has
   // the same work area: a work area that changed may have moved it, and a
-  // drag of the whole window keeps the width. Returns {n, mode, mfact}, or
+  // drag of the whole window keeps the width. Returns {n, display, mode, mfact}, or
   // null if this wasn't such a drag or the share doesn't move that edge.
   resized(before, w, display) {
     const info = before.windows[w.id];
@@ -505,8 +505,8 @@ export class Tileco {
     if (n === null || info.ws !== n || !d || JSON.stringify(area(d)) !== JSON.stringify(p.area)) return null;
     const edge = w.left !== p.left ? "left" : "right";
     const x = edge === "left" ? w.left : w.left + w.width;
-    const mfact = geometry.mfactFor(p.mode, p.area, p.count, before.workspaces[n].modes[p.mode], this.settings.singleRules, p.index, edge, x);
-    return mfact === null ? null : { n, mode: p.mode, mfact };
+    const mfact = geometry.mfactFor(p.mode, p.area, p.count, ws.layoutOf(before, n, display).modes[p.mode], this.settings.singleRules, p.index, edge, x);
+    return mfact === null ? null : { n, display, mode: p.mode, mfact };
   }
 
   // The display of the focused window, any type: a home window or a popup
@@ -522,7 +522,7 @@ export class Tileco {
   }
 
   modeOf(n, display) {
-    return this.state.workspaces[n].layout ?? this.defaultModeOf(display);
+    return ws.layoutOf(this.state, n, display.id).layout ?? this.defaultModeOf(display);
   }
 
   defaultModeOf(display) {
@@ -599,15 +599,15 @@ export class Tileco {
     else if (name === "swap-master") this.state = ws.swapMaster(s, win);
     else if (name === "float") this.state = ws.toggleFloating(s, win);
     else if (n === null || mode === null) return null;
-    else if (name === "grow") this.state = ws.adjust(s, n, mode, { mfact: 0.025 });
-    else if (name === "shrink") this.state = ws.adjust(s, n, mode, { mfact: -0.025 });
-    else if (name === "master-add") this.state = ws.adjust(s, n, mode, { nmaster: 1 });
-    else if (name === "master-remove") this.state = ws.adjust(s, n, mode, { nmaster: -1 });
-    else if (name === "monocle") this.state = ws.toggleMonocle(s, n, mode, this.defaultModeOf(disp));
+    else if (name === "grow") this.state = ws.adjust(s, n, display, mode, { mfact: 0.025 });
+    else if (name === "shrink") this.state = ws.adjust(s, n, display, mode, { mfact: -0.025 });
+    else if (name === "master-add") this.state = ws.adjust(s, n, display, mode, { nmaster: 1 });
+    else if (name === "master-remove") this.state = ws.adjust(s, n, display, mode, { nmaster: -1 });
+    else if (name === "monocle") this.state = ws.toggleMonocle(s, n, display, mode, this.defaultModeOf(disp));
     else if (name === "layout-next" || name === "layout-prev") {
       const i = geometry.modes.indexOf(mode);
       const k = name === "layout-next" ? 1 : -1;
-      this.state = ws.setLayout(s, n, geometry.modes[(i + k + geometry.modes.length) % geometry.modes.length]);
+      this.state = ws.setLayout(s, n, display, geometry.modes[(i + k + geometry.modes.length) % geometry.modes.length]);
     }
     return null;
   }
@@ -887,7 +887,7 @@ export class Tileco {
       // Maximized and fullscreen windows are left alone (§5.1).
       const ids = ws.tiled(s, display.id).filter((id) => this.windows.get(id)?.state === "normal");
       const mode = this.modeOf(n, display);
-      const boxes = geometry.arrange(mode, area(display), ids.length, s.workspaces[n].modes[mode], this.settings.singleRules);
+      const boxes = geometry.arrange(mode, area(display), ids.length, ws.layoutOf(s, n, display.id).modes[mode], this.settings.singleRules);
       await Promise.all(ids.map(async (id, i) => {
         const b = boxes[i];
         const w = await update(id, { left: b.x, top: b.y, width: b.w, height: b.h });

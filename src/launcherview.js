@@ -79,17 +79,11 @@ function renderBar() {
   if (!view) return;
   const display = hereDisplay();
   const here = view.displays[display];
-  const elsewhere = new Set(
-    Object.entries(view.displays)
-      .filter(([id]) => id !== display)
-      .map(([, d]) => d.workspace),
-  );
   // By name in bar order, the standing ones even before they're made (§6.1).
   for (const name of view.bar ?? []) {
     const b = document.createElement("button");
     b.textContent = name;
     if (view.counts[name] > 0) b.classList.add("occupied");
-    if (elsewhere.has(name)) b.classList.add("elsewhere");
     if (view.urgent?.includes(name)) b.classList.add("urgent");
     if (here?.workspace === name) b.classList.add("current");
     b.addEventListener("click", () => send({ workspace: name }));

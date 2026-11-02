@@ -363,7 +363,7 @@ off-ramp.
 | Lone window 80% on ultrawide, 100% otherwise | tileco, per display, from `workArea` aspect | **yes** |
 | Layout per workspace | tileco state per workspace (§6) | **yes** |
 | Named workspaces, home first; go and move by name; the Nth on Search+1…9 / Shift (tide §6.5, §6.6) | tileco workspaces by minimize (§3.2), named as tide's (§6.1) | **partial**: keys need a Chrome window focused; Android/Linux windows on every workspace; the name prompt is the dashboard's, not a window over the app |
-| One workspace per monitor from a shared pool (tide §6.5) | tileco: shared named workspaces, one showing per display (§6.1) | **partial**, same caveats |
+| One workspace spanning every monitor, each with its own part (tide §6.5) | tileco: the workspace showing shows on every display, each window in its display's part (§6.1) | **partial**, same caveats, and one layout per workspace, not per part |
 | Dim inactive, 0.07 (tide §6.2; KDE 0.15) | an overlay injected into the page of each unfocused window (§10.1) | **partial**: page only, not tab strip or title bar; not over `chrome://` pages |
 | No borders, no gaps | chromeOS draws its own frames; tileco margin 0 | **partial** |
 | Maximize, fullscreen, restore (tide §6.3) | native Alt+=, fullscreen key, rebound to Search+Up/Shift+Up/Down in the Shortcuts app | **yes** |
@@ -439,7 +439,7 @@ tide's Lua layout is the reference; the two share test fixtures (§15).
 - **A drag is a request.** When `onBoundsChanged` reports a move tileco didn't
   make, the window takes the tile nearest its center (swapping with that
   tile's window). If the center is on another display, the window first
-  moves to the workspace showing there (§6.1). A resize of a tiled window sets `mfact`. That's
+  moves to that display's part of its workspace (§6.1). A resize of a tiled window sets `mfact`. That's
   Krohnkite's behavior.
   - **Built:** the resize. tileco keeps where it put each tiled window.
     When a tiled window's width has changed on the same display and work
@@ -500,11 +500,9 @@ them over their parent, which is what tide's §6.4 asks for.
   It holds the apps you keep open all day, and only theirs (below).
 - **The others are made by naming them** (the name prompt, below) and
   follow the standing ones, in the order they were made. An empty one is
-  removed once no display shows it. One holding only windows you
+  removed once it isn't showing. One holding only windows you
   minimized isn't empty, and nor is one holding a window a restart hasn't
   brought back yet (§14.2).
-  - A display with every listed workspace showing elsewhere shows a new
-    one named by the lowest number free, "1" first *(a guess)*.
   - A name dropped from the standing list is an ordinary workspace from
     then on *(a guess)*.
 - **Before names**, tileco stored nine numbered workspaces. A state in
@@ -519,8 +517,28 @@ them over their parent, which is what tide's §6.4 asks for.
   list shared.
   Names are compared ignoring case, and keep the case they were made
   with, so `RE` is the standing `re`.
-- Shared across displays, as in tide (§6.5). Each display shows one at a
-  time.
+- **One workspace shows at a time, on every display,** as tide's spans
+  every monitor (tide §6.5) and tilemo's every display (tilemo §6.1).
+  - Each window belongs to a display as well as a workspace: the one it
+    opened on, or you moved it to. A workspace's windows on one display
+    are its **part** there, tiled on that display.
+  - A switch shows every display's part. Focus stays on the display you
+    were on: the workspace's focused window if it's there, else the one
+    there you were in last, else the first tiled there.
+  - A display with no window in the part showing gets a home page (§6.2).
+  - The stack keys (`focus-next`, `move-next`, `swap-master`) work within
+    the focused window's part.
+  - The layout, `mfact` and master count are the workspace's, shared by its
+    parts, each part laid out for its own display; a layout left unset is
+    each display's default *(a guess: tide and tilemo keep one per
+    part)*.
+  - **A display that goes away** hands its windows to the first display
+    left, in the same workspaces, each remembering where it was. When that
+    display comes back, each goes back there, unless you moved it to
+    another display meanwhile. A new display starts with an empty part.
+  - A state stored when each display showed its own workspace loads with
+    the first display's showing on all of them, each window on the display
+    that showed its workspace; the rest are placed where they are.
 - Each workspace stores, in `chrome.storage.local` (§14.2):
   - its windows in tile order;
   - its layout, `mfact` and master count;
@@ -528,10 +546,10 @@ them over their parent, which is what tide's §6.4 asks for.
 - Each window belongs to exactly one workspace, and carries one flag:
   **minimized by you**, set when it's minimized while its workspace is
   showing.
-- A new window joins the workspace showing on the display it opens on,
-  except a window of one of home's apps, which always joins home. Your
-  display stays put, so it's hidden there if home isn't showing, as a
-  window moved there is.
+- A new window joins the workspace showing, in the part of the display it
+  opens on, except a window of one of home's apps, which always joins
+  home. The workspace showing stays put, so it's hidden if home isn't
+  showing, as a window moved there is.
 
 **The home workspace's apps** are the web apps you keep open all day: the
 app keys' Calendar, Chat and YouTube Music by default. §9.1 has no mail
@@ -571,7 +589,8 @@ an extension page is the only place tileco can take typing:
   short name, selected, so typing replaces it. Enter moves the window
   there; Esc leaves it on home, since tileco can't close a window politely
   *(differs from tide, whose Esc closes it)*.
-  - It's `Search+Shift+W`'s prompt for that window, on home's display.
+  - It's `Search+Shift+W`'s prompt for that window, on the window's
+    display.
   - tileco never takes focus, so a window that opens unfocused asks when
     it's first focused. Each window asks once: a prompt you close, or
     click away from, isn't asked again.
@@ -611,29 +630,30 @@ workspace does nothing.
 **One rule decides what's on screen.** A window is shown if and only if its
 workspace is showing on some display and you haven't minimized it.
 
-- Every operation below changes only the state: which workspace each
-  display shows, and which workspace each window belongs to.
+- Every operation below changes only the state: which workspace shows,
+  and which workspace and display each window belongs to.
 - Then one **reconcile** step makes the screen match the rule. It restores
   the windows that should show, in tile order, and only then minimizes the
   ones that shouldn't, so the screen never goes empty in between. Then it
-  retiles each display.
+  retiles each display's part.
 - Nothing minimizes or restores a window any other way. That's what keeps
   the cases consistent, including two displays and windows you minimized
   yourself.
 
 | Operation | State change | Focus |
 |---|---|---|
-| **Show** workspace W on display D: `Search+W`'s prompt, the Workspaces scope, `Search+Home`, `Search+End`, `Search+1…9`, a click on the bar | D shows W, making it if it's a standing one not made yet. If W was showing on another display, that display takes D's old workspace (a swap, as in tide). | W's stored window |
-| **Move** a window to W: `Search+Shift+W`'s prompt, which then shows W; `Search+Shift+1…9` and `Search+Shift+Page Up/Down`, which stay put | The window moves to the end of W's stack, a new name making W first, at the end of the list. If W is showing on any display, the window appears there at once; if not, it's hidden. | the prompt: that window, as tide's move; the keys: stays put, as tide's `Super+Shift+1…9` |
-| **Activate** a window: a tab from the launcher (§9.4), `Search+Tab` (§10.3) | If its workspace isn't showing, show it on the focused display, as Show N. Clear the window's minimized-by-you flag. | that window |
-| **Moved to another display** by you: the native `Search+Alt+M`, or a drag ending with the window's center on another display, seen as an `onBoundsChanged` tileco didn't cause | The window joins the end of the stack of the workspace showing on that display. | that window |
+| **Show** workspace W: `Search+W`'s prompt, the Workspaces scope, `Search+Home`, `Search+End`, `Search+1…9`, a click on the bar | Every display shows its part of W, making W if it's new. | W's window on your display (above) |
+| **Move** a window to W: `Search+Shift+W`'s prompt, which then shows W; `Search+Shift+1…9` and `Search+Shift+Page Up/Down`, which stay put | The window moves to the end of W's stack, keeping its display, a new name making W first, at the end of the list. If W is showing, the window stays; if not, it's hidden. | the prompt: that window, as tide's move; the keys: stays put, as tide's `Super+Shift+1…9` |
+| **Activate** a window: a tab from the launcher (§9.4), `Search+Tab` (§10.3) | If its workspace isn't showing, show it, as Show W. Clear the window's minimized-by-you flag. | that window |
+| **Moved to another display** by you: the native `Search+Alt+M`, or a drag ending with the window's center on another display, seen as an `onBoundsChanged` tileco didn't cause | The window belongs to that display from now on, at the end of its part, in the same workspace. A window chromeOS moves off a display that went, or tileco hands back, isn't one. | that window |
 | **Minimize** by you | Set the flag. | chromeOS picks |
 | **Restore** by you: any un-minimize tileco didn't cause, from the shelf or Alt+Tab | Clear the window's minimized-by-you flag. If its workspace is hidden, this is Activate, so the workspace comes with it. | that window |
 
 ### 6.2 Empty workspaces get a home page
 
 Keys work only while a Chrome window has focus (§2.2), so an empty
-workspace would strand you: no window, no keys. tileco opens its **home
+workspace, or a display with nothing in its part of the workspace showing
+(§6.1), would strand you: no window, no keys. tileco opens its **home
 page** there instead: an extension page in a `popup` window, opened on that
 display and then made full screen. It shows:
 
@@ -1242,7 +1262,7 @@ program, so tileco's list is web addresses alone.
 - **At login**, chromeOS starts Chrome and tileco hears
   `runtime.onStartup`. tileco then opens each address as an app key opens
   its app (§9.1): an app-like `popup` window that tileco tiles as an app
-  window. They join the workspace showing on the focused display, else
+  window. They join the workspace showing, on the focused display, else
   the first, in the list's order, and none takes focus, as tide's
   background launches don't. One of home's apps (§6.1) joins home, as
   tide's do.

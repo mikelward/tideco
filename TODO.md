@@ -22,28 +22,33 @@ Replace the nine numbered workspaces with tide's named ones, a PR each:
 All five are built, tested with FakeChrome and the smoke test; what's left
 is trying them on a Chromebook, with M2's device checks.
 
-## One workspace across every display, as in tide and tilemo
+## Check workspaces spanning displays on a Chromebook
 
-tide and tilemo now show one workspace on every display at once, each
-display with its own part of it and its own layout (tide SPEC.md §6.5,
-tilemo SPEC.md §6.1); tileco still shows one workspace per display from a
-shared pool (SPEC.md §6.1, its parity table says **partial**). Bring
-tileco to the same model:
-
-- First, check on a Chromebook with two displays whether chromeOS lets an
-  extension show a workspace on every display together without a visible
-  flicker: tileco shows and hides windows itself, so a switch is one
-  minimize or restore per window, on every display.
-- Then: each window keeps its display within its workspace; a switch
-  shows every display's part, focus staying on the display it was on;
-  the bar and the launcher's Workspaces list each workspace once; a
-  display that goes away hands its windows to the first one left, and
-  gets them back when it returns. tide's `hypr/tide/span.lua` and
-  tilemo's `wm.lua` are the models to follow.
+One workspace now shows on every display (SPEC.md §6.1), tested only
+against the fake Chrome. On a Chromebook with two displays, check that a
+switch, a minimize or restore per window on every display, shows no
+visible flicker; that unplugging a display hands its windows to the first
+left, and plugging it back returns them; and that a window chromeOS moves
+with the unplug isn't read as a drag.
 
 ## Decisions needing review
 
 Guesses made on autopilot (2026-10-24), each cheap to undo.
+
+- **A workspace's layout, `mfact` and master count are shared by its
+  displays' parts** (2026-11-02), each part laid out for its own display,
+  where tide and tilemo keep one per part. Simpler state and keys; the
+  alternative is a layout per workspace and display. Reversible: the
+  `layout` and `modes` of each workspace in `src/workspaces.js`.
+- **A window keeps one place in its workspace's single stack across
+  displays** (2026-11-02): a part's order is the stack's order filtered by
+  display, so a window handed to the first display and back keeps its
+  place, where tilemo moves it to the end of the other display's stack
+  and back to its old index. Reversible: `setDisplays` in
+  `src/workspaces.js`.
+- **A switch focuses the window you were last in on your display** when
+  the workspace's remembered window is on another (2026-11-02), so focus
+  never jumps displays. Reversible: `showWorkspace` in `src/tileco.js`.
 
 - **Launch's empty query lists only the apps; the commands moved to
   Actions** (2026-11-01), so Launch reads as a start menu. A query in

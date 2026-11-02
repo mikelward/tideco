@@ -3,8 +3,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import * as ws from "./workspaces.js";
 
-// Two displays, "a" showing home ("in") and "b" showing "re", with windows
-// 10 and 11 on home and 20 on "re".
+// Two displays, "a" and "b", both showing home ("in"): windows 10 and 11
+// in a's part and 20 in b's.
 function twoDisplays() {
   let s = ws.create(["a", "b"]);
   s = ws.addWindow(s, 10, "a");
@@ -16,10 +16,12 @@ function twoDisplays() {
 const none = new Set();
 const shown = (s) => [10, 11, 20, 30].filter((id) => ws.isShown(s, id));
 
-test("home is made at once, and each display starts on its own workspace", () => {
+test("home is made at once, and shows on every display", () => {
   const s = ws.create(["a", "b"]);
   assert.equal(ws.showing(s, "a"), "in");
-  assert.equal(ws.showing(s, "b"), "re");
+  assert.equal(ws.showing(s, "b"), "in");
+  assert.equal(ws.showing(s, "gone"), null, "nothing on a display that isn't there");
+  assert.deepEqual(s.made, ["in"], "no other workspace is made for a second display");
   assert.deepEqual(ws.create([]).made, ["in"], "home even with no display");
 });
 
@@ -30,10 +32,12 @@ test("the first standing name is home, whatever it is", () => {
   assert.deepEqual(ws.barOrder(s), ["mail", "code"]);
 });
 
-test("a new window joins the end of the stack on its display's workspace", () => {
+test("a new window joins the end of the stack of the workspace showing, in its display's part", () => {
   const s = twoDisplays();
-  assert.deepEqual(s.workspaces.in.windows, [10, 11]);
-  assert.deepEqual(s.workspaces.re.windows, [20]);
+  assert.deepEqual(s.workspaces.in.windows, [10, 11, 20]);
+  assert.deepEqual(ws.part(s, "a"), [10, 11]);
+  assert.deepEqual(ws.part(s, "b"), [20]);
+  assert.equal(s.windows[20].display, "b");
 });
 
 test("a new window joins home when nothing shows on its display", () => {
@@ -43,16 +47,14 @@ test("a new window joins home when nothing shows on its display", () => {
 
 test("a new window can join a named workspace wherever it opened, hidden there", () => {
   let s = twoDisplays();
-  s = ws.addWindow(s, 30, "b", { to: "in" });
-  assert.equal(s.windows[30].ws, "in", "home, not b's re");
-  assert.deepEqual(s.workspaces.in.windows, [10, 11, 30]);
-  assert.equal(ws.showing(s, "b"), "re", "no display switched");
-  assert.equal(ws.isShown(s, 30), true, "home is showing on a");
-  s = ws.show(s, "a", "oc");
-  s = ws.addWindow(s, 31, "a", { to: "in" });
-  assert.equal(s.windows[31].ws, "in");
+  s = ws.show(s, "oc");
+  s = ws.addWindow(s, 31, "b", { to: "in" });
+  assert.equal(s.windows[31].ws, "in", "home, not the oc showing");
+  assert.equal(s.windows[31].display, "b", "on the display it opened on");
   assert.equal(ws.isShown(s, 31), false, "hidden, as a send to a hidden workspace is");
   assert.deepEqual(ws.plan(s, none).minimize.includes(31), true);
+  s = ws.show(s, "in");
+  assert.deepEqual(ws.part(s, "b"), [20, 31]);
   // A standing workspace not made yet is made.
   s = ws.addWindow(s, 32, "a", { to: "me" });
   assert.ok(s.made.includes("me"));
@@ -88,42 +90,42 @@ test("the bar lists the standing ones, made or not, then the rest as made", () =
   s = ws.addWindow(s, 2, "a");
   s = ws.send(s, 1, "web");
   s = ws.send(s, 2, "chat");
-  s = ws.show(s, "a", "me");
+  s = ws.show(s, "me");
   assert.deepEqual(ws.barOrder(s), ["in", "re", "oc", "me", "web", "chat"]);
 });
 
 test("standing workspaces are made on first use and never removed", () => {
   let s = ws.addWindow(ws.create(["a"]), 1, "a");
-  s = ws.show(s, "a", "oc");
+  s = ws.show(s, "oc");
   assert.ok("oc" in s.workspaces, "showing makes it");
   s = ws.send(s, 1, "me");
   assert.ok("me" in s.workspaces, "sending makes it");
-  s = ws.show(s, "a", "in");
+  s = ws.show(s, "in");
   s = ws.removeWindow(s, 1);
   assert.deepEqual(s.made, ["in", "oc", "me"], "left empty and hidden, they stay");
 });
 
 test("a made workspace goes once it's empty and hidden", () => {
   let s = ws.addWindow(ws.create(["a"]), 1, "a");
-  s = ws.show(s, "a", "web");
+  s = ws.show(s, "web");
   assert.ok("web" in s.workspaces, "showing a new name makes it, empty");
-  s = ws.show(s, "a", "in");
+  s = ws.show(s, "in");
   assert.equal("web" in s.workspaces, false, "left empty, it goes");
   s = ws.send(s, 1, "web");
-  s = ws.show(s, "a", "web");
+  s = ws.show(s, "web");
   s = ws.send(s, 1, "in");
   assert.ok("web" in s.workspaces, "empty but showing, it stays");
-  s = ws.show(s, "a", "in");
+  s = ws.show(s, "in");
   assert.equal("web" in s.workspaces, false);
   assert.deepEqual(ws.barOrder(s), ["in", "re", "oc", "me"]);
 });
 
 test("a made workspace holding only a window you minimized stays", () => {
   let s = ws.addWindow(ws.create(["a"]), 1, "a");
-  s = ws.show(s, "a", "web");
+  s = ws.show(s, "web");
   s = ws.addWindow(s, 2, "a");
   s = ws.userMinimized(s, 2);
-  s = ws.show(s, "a", "in");
+  s = ws.show(s, "in");
   assert.deepEqual(s.workspaces.web.windows, [2]);
   s = ws.removeWindow(s, 2);
   assert.equal("web" in s.workspaces, false, "closing it empties it");
@@ -135,7 +137,7 @@ test("names match ignoring case and keep the case they were made with", () => {
   assert.equal(ws.lookup(s, "WEB"), "Web");
   assert.equal(ws.lookup(s, "RE"), "re", "a standing one not made yet");
   assert.equal(ws.lookup(s, "new"), null);
-  s = ws.show(s, "a", "web");
+  s = ws.show(s, "web");
   assert.equal(ws.showing(s, "a"), "Web");
   s = ws.send(s, 1, "RE");
   assert.equal(s.windows[1].ws, "re", "RE is the standing re");
@@ -158,13 +160,13 @@ test("the Nth in bar order, and the steps stop at either end", () => {
 test("the last workspace other than home toggles between the last two", () => {
   let s = ws.create(["a"]);
   assert.equal(ws.last(s, "in"), null, "none shown yet");
-  s = ws.show(s, "a", "oc");
-  s = ws.show(s, "a", "re");
-  s = ws.show(s, "a", "in");
+  s = ws.show(s, "oc");
+  s = ws.show(s, "re");
+  s = ws.show(s, "in");
   assert.equal(ws.last(s, "in"), "re", "from home, the last one");
   assert.equal(ws.last(s, "re"), "oc", "from it, the one before");
-  s = ws.show(s, "a", "web");
-  s = ws.show(s, "a", "in");
+  s = ws.show(s, "web");
+  s = ws.show(s, "in");
   assert.equal(ws.last(s, "in"), "re", "one that's gone is skipped");
 });
 
@@ -175,58 +177,67 @@ test("a name is one trimmed line of at most 32 characters, with nothing to quote
   for (const bad of ["", "   ", "x".repeat(33), 'a"b', "a'b", "a`b", "a\\b", "a\nb", "a\tb", "a\u0007b", "a b", "re@DP-2"]) {
     assert.ok(ws.checkName(bad).error, JSON.stringify(bad));
   }
-  assert.throws(() => ws.show(ws.create(["a"]), "a", 'a"b'), /quotes/);
+  assert.throws(() => ws.show(ws.create(["a"]), 'a"b'), /quotes/);
   assert.match(ws.checkName("re@DP-2").error, /@/, "tide keeps @ for a monitor's part");
   assert.equal(ws.shortName("mail@example.com - Inbox"), "mailexample.com", "a short name drops it");
 });
 
 test("switching hides the old workspace's windows and shows the new one's", () => {
   let s = twoDisplays();
-  s = ws.addWindow(ws.show(s, "a", "oc"), 30, "a");
-  s = ws.show(s, "a", "in");
+  s = ws.addWindow(ws.show(s, "oc"), 30, "a");
+  s = ws.show(s, "in");
   assert.deepEqual(shown(s), [10, 11, 20]);
   assert.deepEqual(ws.plan(s, new Set([10, 11])), { restore: [10, 11], minimize: [30] });
 });
 
-test("showing a workspace that's on the other display swaps them", () => {
-  const s = ws.show(twoDisplays(), "a", "re");
+test("showing a workspace shows it on every display, each its own part", () => {
+  let s = twoDisplays();
+  s = ws.send(s, 11, "re");
+  s = ws.send(s, 20, "re");
+  s = ws.show(s, "re");
   assert.equal(ws.showing(s, "a"), "re");
-  assert.equal(ws.showing(s, "b"), "in");
-  assert.deepEqual(shown(s), [10, 11, 20]);
+  assert.equal(ws.showing(s, "b"), "re");
+  assert.deepEqual(ws.part(s, "a"), [11]);
+  assert.deepEqual(ws.part(s, "b"), [20], "a sent window keeps its display");
+  assert.deepEqual(shown(s), [11, 20]);
+  assert.deepEqual(ws.plan(s, none), { restore: [], minimize: [10] });
 });
 
 test("a window you minimized stays minimized across a switch", () => {
   let s = ws.userMinimized(twoDisplays(), 11);
-  s = ws.show(s, "a", "oc");
-  s = ws.show(s, "a", "in");
+  s = ws.show(s, "oc");
+  s = ws.show(s, "in");
   assert.deepEqual(ws.plan(s, new Set([10, 11])), { restore: [10], minimize: [] });
 });
 
 test("minimize then restore on the same workspace keeps the window up", () => {
   let s = ws.userMinimized(twoDisplays(), 11);
-  s = ws.userRestored(s, 11, "a");
+  s = ws.userRestored(s, 11);
   assert.equal(ws.isShown(s, 11), true);
   assert.deepEqual(ws.plan(s, none), { restore: [], minimize: [] });
 });
 
 test("restoring a window on a hidden workspace brings the workspace", () => {
-  let s = ws.show(twoDisplays(), "a", "oc");
-  s = ws.userRestored(s, 10, "a");
+  let s = ws.show(twoDisplays(), "oc");
+  s = ws.userRestored(s, 10);
   assert.equal(ws.showing(s, "a"), "in");
   assert.equal(s.workspaces.in.focused, 10);
 });
 
-test("sending to a workspace showing on another display shows it there", () => {
-  const s = ws.send(twoDisplays(), 10, "re");
-  assert.deepEqual(s.workspaces.re.windows, [20, 10]);
-  assert.equal(ws.isShown(s, 10), true);
-  assert.deepEqual(ws.plan(s, none), { restore: [], minimize: [] });
+test("sending to the workspace showing keeps the window shown on its display", () => {
+  let s = ws.send(twoDisplays(), 10, "re");
+  s = ws.show(s, "re");
+  s = ws.send(s, 20, "re");
+  assert.deepEqual(s.workspaces.re.windows, [10, 20]);
+  assert.equal(ws.isShown(s, 20), true);
+  assert.deepEqual(ws.part(s, "b"), [20]);
 });
 
 test("a focused window stays focused on the workspace it moves to", () => {
-  let s = ws.focused(twoDisplays(), 20);
+  let s = ws.send(twoDisplays(), 20, "re");
+  s = ws.focused(s, 20);
   s = ws.focused(s, 10);
-  s = ws.movedToDisplay(s, 10, "b");
+  s = ws.send(s, 10, "re");
   assert.equal(s.workspaces.re.focused, 10);
   assert.equal(s.workspaces.in.focused, null);
   s = ws.send(s, 11, "re");
@@ -239,44 +250,72 @@ test("sending to a hidden workspace hides the window", () => {
   assert.deepEqual(ws.plan(s, none), { restore: [], minimize: [10] });
 });
 
-test("activating a window on a hidden workspace shows that workspace on the focused display", () => {
+test("activating a window on a hidden workspace shows that workspace", () => {
   let s = ws.send(twoDisplays(), 10, "web");
-  s = ws.activate(s, 10, "b");
+  s = ws.activate(s, 10);
+  assert.equal(ws.showing(s, "a"), "web");
   assert.equal(ws.showing(s, "b"), "web");
-  assert.equal(ws.showing(s, "a"), "in");
   assert.equal(ws.isShown(s, 10), true);
-});
-
-test("activating a window on a showing workspace changes no display", () => {
-  const before = twoDisplays();
-  const s = ws.activate(before, 20, "a");
-  assert.deepEqual(s.displays, before.displays);
-  assert.equal(s.workspaces.re.focused, 20);
-});
-
-test("moving a window to another display moves it to the workspace there", () => {
-  const s = ws.movedToDisplay(twoDisplays(), 11, "b");
-  assert.deepEqual(s.workspaces.in.windows, [10]);
-  assert.deepEqual(s.workspaces.re.windows, [20, 11]);
-  assert.equal(ws.isShown(s, 11), true);
-});
-
-test("a removed display's workspace hides, and a new one takes the first not showing", () => {
-  let s = ws.setDisplays(twoDisplays(), ["a"]);
   assert.equal(ws.isShown(s, 20), false);
-  s = ws.setDisplays(s, ["a", "c"]);
-  assert.equal(ws.showing(s, "c"), "re");
 });
 
-test("a display beyond the standing ones shows a new workspace", () => {
+test("activating a window on the workspace showing switches nothing", () => {
+  const before = twoDisplays();
+  const s = ws.activate(before, 20);
+  assert.equal(s.current, before.current);
+  assert.deepEqual(s.recent, before.recent);
+  assert.equal(s.workspaces.in.focused, 20);
+});
+
+test("moving a window to another display keeps its workspace, at the end of that display's part", () => {
+  let s = ws.addWindow(twoDisplays(), 21, "b");
+  s = ws.movedToDisplay(s, 10, "b");
+  assert.equal(s.windows[10].ws, "in");
+  assert.deepEqual(ws.part(s, "a"), [11]);
+  assert.deepEqual(ws.part(s, "b"), [20, 21, 10]);
+  assert.equal(ws.isShown(s, 10), true);
+  assert.equal(ws.movedToDisplay(s, 10, "gone"), s, "not to a display that isn't there");
+});
+
+test("a removed display hands its windows to the first left, and gets them back", () => {
+  let s = ws.send(twoDisplays(), 11, "re");
+  s = ws.addWindow(s, 21, "b");
+  s = ws.send(s, 21, "re");
+  s = ws.setDisplays(s, ["a"]);
+  assert.deepEqual(ws.part(s, "a"), [10, 20], "in the same workspace, on the first display");
+  assert.equal(s.windows[21].display, "a", "a hidden workspace's windows too");
+  assert.deepEqual(shown(s), [10, 20]);
+  s = ws.setDisplays(s, ["a", "b"]);
+  assert.deepEqual(ws.part(s, "a"), [10]);
+  assert.deepEqual(ws.part(s, "b"), [20]);
+  assert.equal(s.windows[21].display, "b");
+  assert.equal(s.windows[11].display, "a", "one that never left stays");
+  assert.equal("from" in s.windows[20], false, "nothing left to go back to");
+});
+
+test("a window you moved while its display was away stays where you put it", () => {
+  let s = ws.setDisplays(ws.setDisplays(twoDisplays(), ["a"]), ["a", "c"]);
+  s = ws.movedToDisplay(s, 20, "c");
+  s = ws.setDisplays(s, ["a", "b", "c"]);
+  assert.equal(s.windows[20].display, "c");
+});
+
+test("a window you put on the display it was handed to stays there", () => {
+  let s = ws.setDisplays(twoDisplays(), ["a"]);
+  s = ws.movedToDisplay(s, 20, "a");
+  s = ws.setDisplays(s, ["a", "b"]);
+  assert.equal(s.windows[20].display, "a", "you put it there, so it stays");
+});
+
+test("more displays than standing workspaces make no new workspace", () => {
   const s = ws.create(["a", "b", "c"], ["in", "re"]);
-  assert.deepEqual(Object.values(s.displays), ["in", "re", "1"]);
-  assert.deepEqual(ws.barOrder(s), ["in", "re", "1"]);
+  assert.deepEqual(["a", "b", "c"].map((d) => ws.showing(s, d)), ["in", "in", "in"]);
+  assert.deepEqual(ws.barOrder(s), ["in", "re"]);
 });
 
 test("a workspace no longer standing goes once it's empty", () => {
-  let s = ws.show(ws.create(["a"]), "a", "oc");
-  s = ws.show(s, "a", "in");
+  let s = ws.show(ws.create(["a"]), "oc");
+  s = ws.show(s, "in");
   s = ws.setStanding(s, ["in", "re"]);
   assert.equal("oc" in s.workspaces, false);
   s = ws.setStanding(s, ["home", "re"]);
@@ -288,7 +327,7 @@ test("a workspace no longer standing goes once it's empty", () => {
 test("operations don't change the state they were given", () => {
   const s = twoDisplays();
   const copy = structuredClone(s);
-  ws.show(s, "a", "oc");
+  ws.show(s, "oc");
   ws.send(s, 10, "me");
   ws.userMinimized(s, 11);
   ws.removeWindow(s, 20);
@@ -297,20 +336,22 @@ test("operations don't change the state they were given", () => {
 
 test("removing a window drops it from its workspace", () => {
   const s = ws.removeWindow(twoDisplays(), 10);
-  assert.deepEqual(s.workspaces.in.windows, [11]);
+  assert.deepEqual(s.workspaces.in.windows, [11, 20]);
   assert.equal(10 in s.windows, false);
 });
 
-test("stack moves wrap and swapMaster swaps with the master", () => {
+test("stack moves wrap within a display's part, and swapMaster swaps with its master", () => {
   let s = ws.addWindow(twoDisplays(), 12, "a");
   assert.equal(ws.neighbor(s, 12, 1), 10);
   assert.equal(ws.neighbor(s, 10, -1), 12);
+  assert.equal(ws.neighbor(s, 20, 1), 20, "b's part holds only 20");
   s = ws.swapMaster(s, 12);
-  assert.deepEqual(s.workspaces.in.windows, [12, 11, 10]);
+  assert.deepEqual(s.workspaces.in.windows, [12, 11, 20, 10]);
   s = ws.swapMaster(s, 12);
-  assert.deepEqual(s.workspaces.in.windows, [11, 12, 10]);
+  assert.deepEqual(s.workspaces.in.windows, [11, 12, 20, 10]);
   s = ws.moveInStack(s, 11, -1);
-  assert.deepEqual(s.workspaces.in.windows, [10, 12, 11]);
+  assert.deepEqual(s.workspaces.in.windows, [10, 12, 20, 11], "20, on b, keeps its place");
+  assert.deepEqual(ws.swapMaster(s, 20).workspaces.in.windows, s.workspaces.in.windows, "alone in its part");
 });
 
 test("tiled lists the showing workspace's windows you haven't minimized", () => {
@@ -322,16 +363,16 @@ test("a floating window shows and hides with its workspace but takes no tile", (
   let s = ws.toggleFloating(twoDisplays(), 11);
   assert.deepEqual(ws.tiled(s, "a"), [10]);
   assert.equal(ws.neighbor(s, 10, 1), 10, "the stack skips it");
-  s = ws.show(s, "a", "oc");
+  s = ws.show(s, "oc");
   assert.equal(ws.isShown(s, 11), false);
-  s = ws.toggleFloating(ws.show(s, "a", "in"), 11);
+  s = ws.toggleFloating(ws.show(s, "in"), 11);
   assert.deepEqual(ws.tiled(s, "a"), [10, 11]);
 });
 
 test("stack moves on a window that isn't tiled change nothing", () => {
   const s = ws.toggleFloating(twoDisplays(), 11);
-  assert.deepEqual(ws.moveInStack(s, 11, 1).workspaces.in.windows, [10, 11]);
-  assert.deepEqual(ws.swapMaster(s, 11).workspaces.in.windows, [10, 11]);
+  assert.deepEqual(ws.moveInStack(s, 11, 1).workspaces.in.windows, [10, 11, 20]);
+  assert.deepEqual(ws.swapMaster(s, 11).workspaces.in.windows, [10, 11, 20]);
 });
 
 test("monocle toggles back to the layout before it", () => {
@@ -346,11 +387,12 @@ test("monocle toggles back to the layout before it", () => {
 });
 
 test("stack moves leave minimized and floating windows in their places", () => {
-  let s = ws.addWindow(twoDisplays(), 12, "a");
+  let s = ws.removeWindow(twoDisplays(), 20);
+  s = ws.addWindow(s, 12, "a");
   s = ws.userMinimized(s, 10);
   s = ws.swapMaster(s, 12);
   assert.deepEqual(s.workspaces.in.windows, [10, 12, 11], "10 keeps the master slot");
-  s = ws.userRestored(s, 10, "a");
+  s = ws.userRestored(s, 10);
   assert.deepEqual(ws.tiled(s, "a"), [10, 12, 11]);
   s = ws.toggleFloating(s, 12);
   s = ws.moveInStack(s, 11, -1);
@@ -358,7 +400,7 @@ test("stack moves leave minimized and floating windows in their places", () => {
 });
 
 test("mfact and the master count stay in range", () => {
-  let s = ws.create(["a", "b"]);
+  let s = ws.show(ws.show(ws.create(["a", "b"]), "re"), "in");
   for (let i = 0; i < 40; i++) s = ws.adjust(s, "in", "tile", { mfact: 0.025, nmaster: -1 });
   assert.equal(s.workspaces.in.modes.tile.mfact, 0.95);
   assert.equal(s.workspaces.in.modes.tile.nmaster, 0, "tile can have no main window");
@@ -369,7 +411,7 @@ test("mfact and the master count stay in range", () => {
 
 test("a workspace made after the layout settings changed starts with them", () => {
   const modes = { ...ws.DEFAULT_MODE_SETTINGS, tile: { mfact: 0.6, nmaster: 2 } };
-  const s = ws.show(ws.setModes(ws.create(["a"]), modes), "a", "web");
+  const s = ws.show(ws.setModes(ws.create(["a"]), modes), "web");
   assert.deepEqual(s.workspaces.web.modes, modes);
 });
 
@@ -425,9 +467,9 @@ function numbered() {
 test("a numbered state takes names: 1 is home, the rest in use keep their numbers", () => {
   const s = ws.migrate(numbered());
   assert.equal(ws.home(s), "in");
-  assert.deepEqual(s.made, ["in", "2", "5", "7", "9"], "the empty hidden ones go");
-  assert.deepEqual(ws.barOrder(s), ["in", "re", "oc", "me", "2", "5", "7", "9"]);
-  assert.deepEqual(s.displays, { a: "in", b: "7" });
+  assert.deepEqual(s.made, ["in", "2", "5", "9"], "the empty hidden ones go, b's empty 7 too");
+  assert.deepEqual(ws.barOrder(s), ["in", "re", "oc", "me", "2", "5", "9"]);
+  assert.equal(s.current, "in", "the first display's shows on them all");
   assert.deepEqual(s.workspaces.in.windows, [10]);
   assert.equal(s.workspaces.in.layout, "monocle", "a workspace keeps its layout");
   assert.deepEqual(s.workspaces["5"].windows, [50, 51]);
@@ -447,9 +489,9 @@ test("a named state, or none, isn't migrated", () => {
 
 test("a migrated state works by name", () => {
   let s = ws.migrate(numbered());
-  s = ws.show(s, "a", "5");
+  s = ws.show(s, "5");
   assert.deepEqual(ws.plan(s, new Set([20, 50, 51])), { restore: [50, 51], minimize: [10] });
-  s = ws.removeWindow(ws.removeWindow(ws.show(s, "a", "in"), 50), 51);
+  s = ws.removeWindow(ws.removeWindow(ws.show(s, "in"), 50), 51);
   assert.equal("5" in s.workspaces, false, "an emptied numbered one goes like any made one");
 });
 
@@ -466,27 +508,37 @@ test("names like constructor and toString are workspaces like any other", () => 
 test("__proto__ can't name a workspace, since it can't be stored as one", () => {
   assert.ok(ws.checkName("__proto__").error);
   assert.ok(ws.checkName("__Proto__").error, "ignoring case, as names are");
-  assert.throws(() => ws.show(ws.create(["a"]), "a", "__proto__"));
+  assert.throws(() => ws.show(ws.create(["a"]), "__proto__"));
 });
 
 test("Search+End never goes to home, even one the standing list just made home", () => {
   let s = ws.create(["a"]);
-  s = ws.show(s, "a", "oc");
-  s = ws.show(s, "a", "re");
-  s = ws.show(s, "a", "in");
+  s = ws.show(s, "oc");
+  s = ws.show(s, "re");
+  s = ws.show(s, "in");
   s = ws.setStanding(s, ["re", "in", "oc", "me"]);
   assert.equal(ws.home(s), "re");
   assert.equal(ws.last(s, "in"), "oc");
 });
 
-test("two displays never share a workspace when migration merges names", () => {
-  // A standing "2" as home takes old 1 and 2, which two displays showed.
-  const stored = numbered();
-  stored.displays = { a: 1, b: 2 };
-  const s = ws.migrate(stored, ["2", "re"]);
-  assert.equal(ws.home(s), "2");
-  assert.deepEqual(s.workspaces["2"].windows, [10, 20], "the merged workspace keeps both stacks");
-  assert.equal(s.displays.a, "2");
-  assert.notEqual(s.displays.b, "2");
-  assert.equal(s.displays.b, "re", "the other takes the next free one in bar order");
+test("migration from a workspace per display puts each window on its display", () => {
+  const stored = ws.create([]);
+  delete stored.current;
+  delete stored.present;
+  stored.made = ["in", "re", "web"];
+  stored.workspaces.re = { ...structuredClone(stored.workspaces.in), windows: [20] };
+  stored.workspaces.web = { ...structuredClone(stored.workspaces.in), windows: [30] };
+  stored.workspaces.in.windows = [10];
+  stored.displays = { b: "re", a: "in" };
+  stored.windows = {
+    10: { ws: "in", minimizedByYou: false, floating: false },
+    20: { ws: "re", minimizedByYou: false, floating: false },
+    30: { ws: "web", minimizedByYou: false, floating: false },
+  };
+  const s = ws.migrate(stored);
+  assert.equal("displays" in s, false);
+  assert.equal(s.current, "re", "the first display's workspace shows on them all");
+  assert.deepEqual(s.present, ["b", "a"]);
+  assert.deepEqual([10, 20, 30].map((id) => s.windows[id].display), ["a", "b", null], "a hidden one's is found where it is");
+  assert.equal(ws.migrate(s), s, "and only once");
 });

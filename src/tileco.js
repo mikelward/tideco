@@ -159,8 +159,8 @@ export class Tileco {
     });
   }
 
-  // A click on the bar's workspace `name` (§8.1): it shows on the display
-  // you're on, made if it's new.
+  // A click on the bar's workspace `name` (§8.1): it shows on every
+  // display, made if it's new.
   workspace(name) {
     return this.run(async () => {
       await this.sync();
@@ -170,8 +170,8 @@ export class Tileco {
   }
 
   // Enter in Search+Shift+W's prompt (§6.1): the window the dashboard opened
-  // over moves to workspace `name`, made if it's new, which then shows on the
-  // display you're on with that window focused, as tide's Super+Shift+Return.
+  // over moves to workspace `name`, made if it's new, which then shows with
+  // that window focused, as tide's Super+Shift+Return.
   // Home holds only its apps, so it's refused for any other window. Only
   // the prompt's own dashboard can ask: no other has a window to move.
   moveTo(name) {
@@ -183,9 +183,8 @@ export class Tileco {
       if (id === undefined || !(id in s.windows)) throw new Error(`no window to move to ${name}: the prompt that asked has gone`);
       if (ws.lookup(s, name) === ws.home(s) && !this.isHomeApp(id)) throw new Error(`window ${id} can't go to ${name}: home holds only its own apps`);
       this.state = ws.send(s, id, name);
-      const display = this.focusedDisplay();
-      this.showWorkspace(display, this.state.windows[id].ws);
-      await this.apply(this.activate(id, display));
+      this.showWorkspace(this.focusedDisplay(), this.state.windows[id].ws);
+      await this.apply(this.activate(id));
     });
   }
 
@@ -236,8 +235,8 @@ export class Tileco {
   }
 
   // The next waiting window's name prompt, once no dashboard is open, as
-  // one prompt at a time (§6.1): Search+Shift+W's, on home's display, or
-  // yours while home's hidden, the field starting as the window's short name.
+  // one prompt at a time (§6.1): Search+Shift+W's, on the window's display,
+  // the field starting as the window's short name.
   async ask() {
     const s = this.state;
     if (s.dashboard !== undefined) return;
@@ -248,7 +247,8 @@ export class Tileco {
       // A new tab page's title, "New Tab", names nothing.
       const tab = w.tabs?.find((t) => t.active);
       const name = /^https?:/.test(tab?.url ?? "") ? ws.shortName(tab.title) : "";
-      await this.dashboard(ws.displayOf(s, ws.home(s)) ?? this.focusedDisplay(), "move", id, name);
+      const display = s.windows[id].display;
+      await this.dashboard(this.displays.some((d) => d.id === display) ? display : this.focusedDisplay(), "move", id, name);
       return;
     }
   }
@@ -265,7 +265,8 @@ export class Tileco {
   }
 
   // What the dashboard and home window show: the workspaces in bar order,
-  // which of them are made, each display's workspace and layout, how many
+  // which of them are made, the workspace showing, each display's layout of
+  // it, how many
   // windows each workspace holds, and which hold a marked window, all by
   // name.
   view() {
@@ -278,7 +279,7 @@ export class Tileco {
     const bar = ws.barOrder(s);
     const counts = Object.fromEntries(bar.map((n) => [n, Object.hasOwn(s.workspaces, n) ? s.workspaces[n].windows.length : 0]));
     const urgent = [...new Set(s.marks.map((id) => s.windows[id]?.ws).filter((n) => n !== undefined))];
-    return { focusedDisplay: this.focusedDisplay() ?? null, displays, bar, made: [...s.made], counts, urgent, dim: this.dimOn() };
+    return { focusedDisplay: this.focusedDisplay() ?? null, current: s.current, displays, bar, made: [...s.made], counts, urgent, dim: this.dimOn() };
   }
 
   // Bring the state up to date with Chrome: displays, new and closed
@@ -320,7 +321,6 @@ export class Tileco {
     for (const id of Object.keys(s.windows).map(Number)) {
       if (!this.windows.has(id)) s = ws.removeWindow(s, id);
     }
-    const focusedDisplay = this.focusedDisplay();
     // After every step the screen matches the state, so a mismatch now is
     // something you did. Judge each window against the state the last step
     // left, before any display came or went and before this sync changed
@@ -337,6 +337,9 @@ export class Tileco {
         if (w.focused) s = ws.focused(s, w.id);
         continue;
       }
+      // A window from a state stored before workspaces spanned displays
+      // belongs to the display it's on.
+      if (w.id in s.windows && s.windows[w.id].display == null) s.windows[w.id].display = displayFor(w, this.displays);
       if (!(w.id in s.windows) || !before || !(w.id in before.windows)) {
         const ask = asks && ASKING.includes(w.type) && !appPopups.has(w.id);
         s = this.join(s, w.id, displayFor(w, this.displays), { homeApp: this.homeApp(w), ask });
@@ -348,18 +351,25 @@ export class Tileco {
       const minimized = w.state === "minimized";
       const shouldShow = ws.isShown(before, w.id);
       if (minimized && shouldShow) s = ws.userMinimized(s, w.id);
-      else if (!minimized && !shouldShow) s = ws.userRestored(s, w.id, focusedDisplay);
-      else if (!minimized && w.state === "normal") {
-        // A window chromeOS moved off a display that's gone wasn't dragged;
-        // its workspace just hides.
-        const was = ws.displayOf(before, before.windows[w.id].ws);
+      // Before the first sync of a state from when each display showed its
+      // own workspace, the others' windows are still up, and not by you.
+      else if (!minimized && !shouldShow && !before.spanned) s = ws.userRestored(s, w.id);
+      else if (!minimized) {
+        // A window you moved is on another display than when tileco last
+        // looked, maximized or not. One chromeOS moved off a display that's
+        // gone wasn't moved by you, and nor is one tileco is handing back:
+        // that one is still where it was, until tileco places it, which
+        // waits while it's maximized.
+        const was = before.windows[w.id].display;
+        const last = before.windows[w.id].on ?? was;
         const d = displayFor(w, this.displays);
-        if (was !== null && ids.includes(was) && was !== d) s = ws.movedToDisplay(s, w.id, d);
-        else if (was === d) resized ??= this.resized(before, w, d);
+        if (last !== null && ids.includes(last) && last !== d) s = ws.movedToDisplay(s, w.id, d);
+        else if (w.state === "normal" && was === d && last === d && s.windows[w.id]?.display === was) resized ??= this.resized(before, w, d);
       }
       if (w.focused) s = ws.focused(s, w.id);
     }
     if (resized) s = ws.setMfact(s, resized.n, resized.mode, resized.mfact);
+    delete s.spanned;
     s.asking = this.asking(s, before, wins);
     s.appPopups = [...appPopups].filter((id) => this.windows.has(id));
     s.refused = [...refused];
@@ -509,16 +519,16 @@ export class Tileco {
   }
 
   // A floating window keeps its size and its place relative to its display,
-  // but moves with its workspace when that shows on another display, so
-  // every shown window is on its workspace's display and the next sync
-  // doesn't read the difference as a drag.
+  // but moves to the display it belongs on when that's another (a display
+  // went or came back), so every shown window is on its own display and the
+  // next sync doesn't read the difference as a drag.
   async placeFloating(update) {
     const s = this.state;
     for (const [key, info] of Object.entries(s.windows)) {
       const id = Number(key);
       const w = this.windows.get(id);
       if (!info.floating || !w || w.state !== "normal" || !ws.isShown(s, id)) continue;
-      const target = this.displays.find((d) => d.id === ws.displayOf(s, info.ws));
+      const target = this.displays.find((d) => d.id === info.display);
       const source = this.displays.find((d) => d.id === displayFor(w, this.displays));
       if (!target || !source || target.id === source.id) continue;
       const t = target.workArea;
@@ -537,9 +547,11 @@ export class Tileco {
     const display = this.focusedDisplay();
     const n = ws.showing(s, display);
     // With the dashboard or another untracked window in front, a command acts
-    // on the window you were last in on this workspace.
+    // on the window you were last in on this workspace, if it's on this
+    // display: an empty display's home page has none.
     const remembered = n === null ? null : s.workspaces[n].focused;
-    const win = this.focusedWindow() ?? (remembered !== null && ws.isShown(s, remembered) ? remembered : null);
+    const here = remembered !== null && ws.isShown(s, remembered) && ws.part(s, display).includes(remembered);
+    const win = this.focusedWindow() ?? (here ? remembered : null);
     const tracked = win !== null && win in s.windows;
     const disp = this.displays.find((d) => d.id === display);
     const mode = n === null || !disp ? null : this.modeOf(n, disp);
@@ -554,7 +566,7 @@ export class Tileco {
     if (name === "popup") return this.dashboard(display);
     if (name === "workspace-go") return this.dashboard(display, "go");
     if (name === "app-browser") return this.browser(display);
-    if (name === "attention") return this.attention(display);
+    if (name === "attention") return this.attention();
     if (name === "keep-awake") {
       await toggleKeepAwake(this.api);
       return null;
@@ -588,7 +600,7 @@ export class Tileco {
     return null;
   }
 
-  // Dim every shown window but the focused one, on workspaces showing more
+  // Dim every shown window but the focused one, on displays showing more
   // than one (§10.1). A hidden window keeps its overlay until it's back.
   async dim(focused) {
     const s = this.state;
@@ -596,9 +608,7 @@ export class Tileco {
     const want = new Set();
     const shown = new Set();
     for (const display of this.displays) {
-      const n = ws.showing(s, display.id);
-      if (n === null) continue;
-      const ids = s.workspaces[n].windows.filter((id) => ws.isShown(s, id));
+      const ids = ws.part(s, display.id).filter((id) => ws.isShown(s, id));
       for (const id of ids) shown.add(id);
       if (!this.dimOn() || ids.length < 2) continue;
       for (const id of ids) {
@@ -700,16 +710,16 @@ export class Tileco {
     return this.run(async () => {
       await this.sync();
       await this.api.tabs.update(tabId, { active: true });
-      const focus = windowId in this.state.windows ? this.activate(windowId, this.focusedDisplay()) : windowId;
+      const focus = windowId in this.state.windows ? this.activate(windowId) : windowId;
       await this.apply(focus);
     });
   }
 
   // Search+Tab (§10.3): the most recent mark, so pressing again goes to the
   // next; with none, the last window you were in.
-  attention(display) {
+  attention() {
     const s = this.state;
-    if (s.marks.length > 0) return this.activate(s.marks.pop(), display);
+    if (s.marks.length > 0) return this.activate(s.marks.pop());
     const current = this.focusedWindow();
     let last = null;
     for (const [key, info] of Object.entries(s.windows)) {
@@ -717,12 +727,12 @@ export class Tileco {
       if (id === current || !info.lastFocused) continue;
       if (last === null || info.lastFocused > s.windows[last].lastFocused) last = id;
     }
-    return last === null ? null : this.activate(last, display);
+    return last === null ? null : this.activate(last);
   }
 
   // Bring up a window, with its workspace (§6.1 Activate).
-  activate(id, display) {
-    this.state = ws.activate(this.state, id, display);
+  activate(id) {
+    this.state = ws.activate(this.state, id);
     return id;
   }
 
@@ -774,20 +784,20 @@ export class Tileco {
     const homeApp = this.settings.homeApps.includes(appOfUrl(app.url, this.apps)?.command);
     const w = await this.open({ url: app.url, type: "popup", focused }, display, { homeApp });
     this.state.appPopups.push(w.id);
-    return homeApp && focused ? this.activate(w.id, display) : w.id;
+    return homeApp && focused ? this.activate(w.id) : w.id;
   }
 
-  // An empty workspace gets a home window, so tileco's keys still have a
-  // Chrome window to work in (§6.2). It isn't tiled or counted, and closes
-  // when a window arrives. One you close stays closed until the display
-  // shows another empty workspace.
+  // A display with no window of the workspace showing gets a home window, so
+  // tileco's keys still have a Chrome window to work in (§6.2). It isn't
+  // tiled or counted, and closes when a window arrives. One you close stays
+  // closed until the display shows another empty part.
   async homes(focus) {
     const s = this.state;
     s.homeShownFor ??= {};
     const target = this.switchedTo ?? this.focusedDisplay();
     for (const display of this.displays) {
       const n = ws.showing(s, display.id);
-      const empty = n !== null && !s.workspaces[n].windows.some((id) => ws.isShown(s, id));
+      const empty = n !== null && !ws.part(s, display.id).some((id) => ws.isShown(s, id));
       const home = s.homes[display.id];
       // Only one display's home may take focus: the one you switched, else
       // the one you're on.
@@ -808,16 +818,20 @@ export class Tileco {
     this.switchedTo = undefined;
   }
 
-  // Show workspace `n` on `display`; null, as a number past the last or a
-  // step past an end gives, shows nothing.
+  // Show workspace `n` on every display, focus staying on `display`, the one
+  // you're on; null, as a number past the last or a step past an end gives,
+  // shows nothing. Returns the window to focus: the workspace's remembered
+  // one if it's on `display` and you haven't minimized it since, else the
+  // one there you were in last, else the first tiled there.
   showWorkspace(display, n) {
     if (display === undefined || n === null) return null;
     this.switchedTo = display;
-    this.state = ws.show(this.state, display, n);
-    const w = this.state.workspaces[ws.showing(this.state, display)];
-    // The remembered window, unless you've minimized it since.
-    const remembered = w.focused !== null && ws.isShown(this.state, w.focused) ? w.focused : null;
-    return remembered ?? ws.tiled(this.state, display)[0] ?? null;
+    const s = (this.state = ws.show(this.state, n));
+    const here = ws.part(s, display).filter((id) => ws.isShown(s, id));
+    const remembered = s.workspaces[s.current].focused;
+    if (here.includes(remembered)) return remembered;
+    const last = here.filter((id) => s.windows[id].lastFocused).sort((a, b) => s.windows[b].lastFocused - s.windows[a].lastFocused)[0];
+    return last ?? ws.tiled(s, display)[0] ?? null;
   }
 
   // Make the screen match the state, then save it.
@@ -872,6 +886,12 @@ export class Tileco {
       }));
     }
     await this.placeFloating(update);
+    // Which display each window is on now, so the next sync can tell your
+    // move from one tileco hasn't made yet.
+    for (const [key, info] of Object.entries(this.state.windows)) {
+      const w = this.windows.get(Number(key));
+      if (w) info.on = displayFor(w, this.displays);
+    }
     if (focus !== null) {
       await update(focus, { focused: true });
       this.state = ws.focused(this.state, focus);

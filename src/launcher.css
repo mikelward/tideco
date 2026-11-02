@@ -192,9 +192,6 @@ nav button.occupied {
   background: var(--raised);
   color: var(--fg);
 }
-nav button.elsewhere {
-  border-color: var(--accent);
-}
 nav button.urgent {
   background: var(--urgent);
   color: var(--on-accent);

@@ -136,8 +136,9 @@ function make(s, name) {
 // restart hasn't brought back yet (§14.2).
 function tidy(s) {
   make(s, s.standing[0]);
+  if (s.current === null || !Object.hasOwn(s.workspaces, s.current)) s.current = lookup(s, s.standing[0]);
   const keep = new Set([
-    ...Object.values(s.displays),
+    s.current,
     ...Object.values(s.restoring ?? {}).map((info) => info.ws),
   ]);
   for (const n of s.made) {
@@ -155,10 +156,10 @@ export function prune(state) {
 }
 
 // A fresh state for `displayIds`, with `standing` the setting's list: home
-// is made now, and each display shows the next in bar order.
+// is made now, and shows on every display.
 export function create(displayIds, standing = DEFAULT_STANDING) {
-  const s = { standing: [...standing], made: [], workspaces: {}, displays: {}, windows: {}, recent: [] };
-  make(s, standing[0]);
+  const s = { standing: [...standing], made: [], workspaces: {}, current: null, present: [], windows: {}, recent: [] };
+  s.current = make(s, standing[0]);
   return setDisplays(s, displayIds);
 }
 
@@ -171,35 +172,31 @@ export function setStanding(state, standing) {
   return tidy(s);
 }
 
-// The workspace showing on `displayId`, or null.
+// The workspace showing on `displayId`, or null if there's no such display.
+// One workspace shows on every display at once, each display with its own
+// part of it: the workspace's windows that belong to that display (§6.1).
 export function showing(state, displayId) {
-  return state.displays[displayId] ?? null;
+  return state.present.includes(displayId) ? state.current : null;
 }
 
-// The display showing workspace `name`, or null.
-export function displayOf(state, name) {
-  for (const [id, shown] of Object.entries(state.displays)) if (shown === name) return id;
-  return null;
-}
-
-// The lowest number no workspace is named, for a display with nothing else
-// to show.
-function freshName(s) {
-  for (let i = 1; ; i++) if (lookup(s, String(i)) === null) return String(i);
-}
-
-// Displays came or went. A display that stays keeps its workspace; a new one
-// shows the first in bar order not showing, else a new one; a gone one's
-// workspace hides.
+// Displays came or went (§6.1, as tide's span.lua and tilemo's wm.lua). A
+// window whose display went goes to the first display left, in the same
+// workspace, remembering where it was; one whose display came back returns
+// there, unless you've moved it since. A window whose display isn't known
+// yet (null, from a state stored before workspaces spanned displays) is
+// left for the next sync to place where it is.
 export function setDisplays(state, displayIds) {
   const s = clone(state);
-  const keep = {};
-  for (const id of displayIds) if (id in s.displays) keep[id] = s.displays[id];
-  s.displays = keep;
-  for (const id of displayIds) {
-    if (id in s.displays) continue;
-    const shown = new Set(Object.values(s.displays));
-    s.displays[id] = make(s, barOrder(s).find((n) => !shown.has(n)) ?? freshName(s));
+  s.present = [...displayIds];
+  const first = displayIds[0];
+  for (const w of Object.values(s.windows)) {
+    if (w.from !== undefined && displayIds.includes(w.from)) {
+      w.display = w.from;
+      delete w.from;
+    } else if (w.display != null && !displayIds.includes(w.display) && first !== undefined) {
+      w.from ??= w.display;
+      w.display = first;
+    }
   }
   return tidy(s);
 }
@@ -214,18 +211,19 @@ function detach(s, winId) {
 
 function attach(s, winId, name) {
   s.workspaces[name].windows.push(winId);
-  s.windows[winId] = { ...(s.windows[winId] || { minimizedByYou: false, floating: false }), ws: name };
+  s.windows[winId] = { ...(s.windows[winId] || { minimizedByYou: false, floating: false, display: null }), ws: name };
 }
 
-// A new window joins the end of the stack of the workspace showing on the
-// display it opened on, or home's if nothing shows there. `to` names the
-// workspace it joins instead, wherever it opened, as one of home's apps
-// always joins home (§6.1); like a send, it's hidden if that isn't showing.
+// A new window joins the end of the stack of the workspace showing, on the
+// display it opened on. `to` names the workspace it joins instead, as one of
+// home's apps always joins home (§6.1); like a send, it's hidden if that
+// isn't showing.
 export function addWindow(state, winId, displayId, { floating = false, to = null } = {}) {
   if (winId in state.windows) return state;
   const s = clone(state);
-  attach(s, winId, to !== null ? make(s, to) : (showing(s, displayId) ?? home(s)));
+  attach(s, winId, to !== null ? make(s, to) : s.current);
   s.windows[winId].floating = floating;
+  s.windows[winId].display = displayId ?? null;
   return s;
 }
 
@@ -246,22 +244,19 @@ export function removeWindow(state, winId) {
   return tidy(s);
 }
 
-// Show workspace `name` on `displayId`, making it if it's new. If it was
-// showing on another display, that display takes this one's old workspace:
-// a swap, as in tide.
-export function show(state, displayId, name) {
+// Show workspace `name`, making it if it's new: every display shows its
+// part of it, as tide's switch does.
+export function show(state, name) {
   const s = clone(state);
   const n = make(s, name);
-  const old = s.displays[displayId];
-  const other = displayOf(s, n);
-  if (other !== null && other !== String(displayId)) s.displays[other] = old;
-  s.displays[displayId] = n;
+  s.current = n;
   if (n !== home(s)) s.recent = [n, ...s.recent.filter((r) => r !== n)];
   return tidy(s);
 }
 
 // Send a window to the end of workspace `name`'s stack, making it if it's
-// new. Whether it's then shown depends only on whether that's showing.
+// new. It keeps its display. Whether it's then shown depends only on whether
+// that's showing.
 export function send(state, winId, name) {
   if (!(winId in state.windows) || state.windows[winId].ws === lookup(state, name)) return state;
   const s = clone(state);
@@ -275,13 +270,13 @@ export function send(state, winId, name) {
   return tidy(s);
 }
 
-// Bring a window up: show its workspace on the focused display if it isn't
-// showing anywhere, clear its minimized-by-you flag, and focus it there.
-export function activate(state, winId, focusedDisplayId) {
+// Bring a window up: show its workspace if it isn't showing, clear its
+// minimized-by-you flag, and focus it.
+export function activate(state, winId) {
   if (!(winId in state.windows)) return state;
   let s = clone(state);
   const n = s.windows[winId].ws;
-  if (displayOf(s, n) === null) s = show(s, focusedDisplayId, n);
+  if (s.current !== n) s = show(s, n);
   s.windows[winId].minimizedByYou = false;
   s.workspaces[n].focused = winId;
   return s;
@@ -295,16 +290,22 @@ export function userMinimized(state, winId) {
 }
 
 // Any un-minimize tileco didn't cause. On a hidden workspace this is Activate.
-export function userRestored(state, winId, focusedDisplayId) {
-  return activate(state, winId, focusedDisplayId);
+export function userRestored(state, winId) {
+  return activate(state, winId);
 }
 
 // You moved a window to another display (the native shortcut, or a drag): it
-// joins the workspace showing there.
+// belongs there from now on, in the same workspace, at the end of that
+// display's part of the stack.
 export function movedToDisplay(state, winId, displayId) {
-  const n = showing(state, displayId);
-  if (n === null) return state;
-  return send(state, winId, n);
+  const w = state.windows[winId];
+  if (!w || !state.present.includes(displayId) || (w.display === displayId && w.from === undefined)) return state;
+  const s = clone(state);
+  const ws = s.workspaces[w.ws];
+  ws.windows = [...ws.windows.filter((id) => id !== winId), winId];
+  s.windows[winId].display = displayId;
+  delete s.windows[winId].from;
+  return s;
 }
 
 export function focused(state, winId) {
@@ -321,7 +322,7 @@ export function focused(state, winId) {
 // Whether `winId` should be on screen, by the one rule.
 export function isShown(state, winId) {
   const w = state.windows[winId];
-  return !!w && !w.minimizedByYou && displayOf(state, w.ws) !== null;
+  return !!w && !w.minimizedByYou && w.ws === state.current && state.present.length > 0;
 }
 
 // What to do to make the screen match the rule, given which windows are
@@ -346,14 +347,29 @@ function tileable(state, id) {
   return !w.minimizedByYou && !w.floating;
 }
 
-// The tiled windows of the workspace showing on `displayId`, in tile order.
-export function tiled(state, displayId) {
+// The windows of the workspace showing that belong on `displayId`: its
+// part there, in tile order. A window whose display isn't known yet is the
+// first display's.
+export function part(state, displayId) {
   const n = showing(state, displayId);
   if (n === null) return [];
-  return state.workspaces[n].windows.filter((id) => tileable(state, id));
+  return state.workspaces[n].windows.filter((id) => (state.windows[id].display ?? state.present[0]) === displayId);
 }
 
-// Stack operations on the workspace holding `winId`.
+// The tiled windows of `displayId`'s part, in tile order.
+export function tiled(state, displayId) {
+  return part(state, displayId).filter((id) => tileable(state, id));
+}
+
+// Whether two windows are in the same part: the same display.
+function samePart(state, a, b) {
+  const da = state.windows[a].display ?? state.present[0];
+  const db = state.windows[b].display ?? state.present[0];
+  return da === db;
+}
+
+// Stack operations on the part holding `winId`: its workspace's windows on
+// its display.
 
 function withStack(state, winId, fn) {
   if (!(winId in state.windows) || !tileable(state, winId)) return state;
@@ -362,17 +378,17 @@ function withStack(state, winId, fn) {
   // Reorder only the tiled windows, each into a slot a tiled window held,
   // so minimized and floating windows keep their places in the stack.
   const slots = [];
-  ws.windows.forEach((id, i) => tileable(s, id) && slots.push(i));
+  ws.windows.forEach((id, i) => tileable(s, id) && samePart(s, id, winId) && slots.push(i));
   const list = slots.map((i) => ws.windows[i]);
   fn(list, list.indexOf(winId)).forEach((id, k) => (ws.windows[slots[k]] = id));
   return s;
 }
 
-// The window `step` places from `winId` in its stack, wrapping.
+// The window `step` places from `winId` in its part's stack, wrapping.
 export function neighbor(state, winId, step) {
   const w = state.windows[winId];
   if (!w) return null;
-  const list = state.workspaces[w.ws].windows.filter((id) => tileable(state, id));
+  const list = state.workspaces[w.ws].windows.filter((id) => tileable(state, id) && samePart(state, id, winId));
   const i = list.indexOf(winId);
   if (i < 0 || list.length === 0) return null;
   return list[(i + step + list.length) % list.length];
@@ -467,12 +483,37 @@ export function renameWindows(state, renames) {
   return s;
 }
 
-// A state stored before workspaces had names, numbered 1 to 9 with no `made`
-// list, in the named shape; any other state as it is. Workspace 1 becomes
-// home, and each other one holding a window or showing keeps its number as
-// its name, in number order; the empty hidden ones go.
+// A state stored before workspaces had names, or before they spanned
+// displays, in today's shape; any other state as it is.
 export function migrate(stored, standing = DEFAULT_STANDING) {
-  if (!stored || Array.isArray(stored.made)) return stored;
+  if (!stored) return stored;
+  const named = Array.isArray(stored.made) ? stored : nameNumbered(stored, standing);
+  return Object.hasOwn(named, "current") ? named : span(named);
+}
+
+// A state from when each display showed its own workspace (§6.1). The first
+// display's workspace shows on them all; each window belongs to the display
+// that showed its workspace, and the rest to wherever the next sync finds
+// them. `spanned` tells that sync the other displays' windows are still on
+// screen from before, not restored by you.
+function span(stored) {
+  const s = clone(stored);
+  s.spanned = true;
+  const displays = s.displays ?? {};
+  delete s.displays;
+  s.present = Object.keys(displays);
+  s.current = Object.values(displays)[0] ?? lookup(s, s.standing[0]);
+  const where = {};
+  for (const [id, n] of Object.entries(displays)) where[n] ??= id;
+  for (const w of [...Object.values(s.windows ?? {}), ...Object.values(s.restoring ?? {})]) w.display = where[w.ws] ?? null;
+  return tidy(s);
+}
+
+// A state stored before workspaces had names, numbered 1 to 9 with no `made`
+// list, in the named shape, still showing a workspace per display. Workspace
+// 1 becomes home, and each other one holding a window or showing keeps its
+// number as its name, in number order; the empty hidden ones go.
+function nameNumbered(stored, standing) {
   const s = clone(stored);
   const old = s.workspaces ?? {};
   s.displays ??= {};
@@ -496,18 +537,8 @@ export function migrate(stored, standing = DEFAULT_STANDING) {
     }
   }
   const rename = (n) => names[Number(n)] ?? standing[0];
-  // Two old workspaces can merge into one name (a standing "2" home takes
-  // 1 and 2), and a workspace shows on one display only, so a display
-  // whose workspace another already shows takes the next free one, as a
-  // new display does.
-  const displays = {};
-  for (const [id, n] of Object.entries(s.displays)) {
-    const name = rename(n);
-    const shown = new Set(Object.values(displays));
-    displays[id] = shown.has(name) ? make(s, barOrder(s).find((b) => !shown.has(b)) ?? freshName(s)) : name;
-  }
-  s.displays = displays;
+  s.displays = Object.fromEntries(Object.entries(s.displays).map(([id, n]) => [id, rename(n)]));
   for (const w of [...Object.values(s.windows), ...waiting]) w.ws = rename(w.ws);
   if (s.homeShownFor) s.homeShownFor = Object.fromEntries(Object.entries(s.homeShownFor).map(([id, n]) => [id, rename(n)]));
-  return tidy(s);
+  return s;
 }

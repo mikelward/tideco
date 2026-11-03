@@ -155,7 +155,9 @@ function placeholder() {
 function update() {
   if (scope === "workspaces") {
     const current = view?.displays?.[hereDisplay()]?.workspace ?? null;
-    shown = workspaceRows({ bar: view?.bar, counts: view?.counts, made: view?.made, current, query: query.value });
+    // Until you type, a new window's short name lists every workspace.
+    const suggested = opened.name !== "" && query.value === opened.name;
+    shown = workspaceRows({ bar: view?.bar, counts: view?.counts, made: view?.made, current, query: query.value, suggested });
   } else shown = scope === "tabs" && !tabsAllowed ? [ALLOW_TABS] : rank(query.value, all, { scope, limit: limitFor(scope, query.value) });
   selected = Math.min(selected, Math.max(shown.length - 1, 0));
   for (const b of document.querySelectorAll(".scopes button")) {

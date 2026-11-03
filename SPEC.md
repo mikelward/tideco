@@ -587,7 +587,8 @@ an extension page is the only place tileco can take typing:
   an empty workspace, the key does nothing.
 - **A new window on home** that isn't one of home's apps opens it too,
   once the window is focused, with the field starting as the window's
-  short name, selected, so typing replaces it. Enter moves the window
+  short name, selected, so typing replaces it. Until you type, it filters
+  nothing: every workspace follows it, in bar order. Enter moves the window
   there; Esc leaves it on home, since tileco can't close a window politely
   *(differs from tide, whose Esc closes it)*.
   - It's `Search+Shift+W`'s prompt for that window, on the window's

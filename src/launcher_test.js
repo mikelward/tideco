@@ -131,6 +131,15 @@ test("typing filters the workspaces, a new name coming first, to be made", () =>
   assert.deepEqual(rows("notes"), [["new", "notes", "new workspace"]], "nothing else matches");
 });
 
+test("a new window's short name, untouched, comes first with every workspace after it", () => {
+  const titles = (query) => workspaceRows({ ...view, query, suggested: true }).map((r) => [r.kind, r.title]);
+  assert.deepEqual(titles("ABC-123"), [["new", "ABC-123"], ...view.bar.map((n) => ["workspace", n])]);
+  // A workspace's name: that one first, then the rest, once each.
+  assert.deepEqual(titles("web").map(([, t]) => t), ["web", ...view.bar.filter((n) => n !== "web")]);
+  // Typed, it filters.
+  assert.deepEqual(rows("ABC-123"), [["new", "ABC-123", "new workspace"]]);
+});
+
 test("a name typed in another case is that workspace's, first, with nothing to make", () => {
   assert.deepEqual(rows("WEB")[0], ["workspace", "web", "3 windows"]);
   assert.ok(!rows("WEB").some(([kind]) => kind === "new"));

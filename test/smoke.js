@@ -464,17 +464,17 @@ test("the Workspaces scope lists the workspaces, and Enter on a new name shows i
   await page.close();
 });
 
-// Search+Shift+W's prompt keeps to Workspaces, and refuses home.
-test("the move prompt keeps to Workspaces and refuses home, saying why", async () => {
+// Search+Shift+W's prompt keeps to Workspaces, and offers home.
+test("the move prompt keeps to Workspaces and offers home", async () => {
   const { page, errors } = await open("src/launcher.html?mode=dashboard&scope=workspaces&move=1");
   await page.waitForSelector("#workspaces button");
   assert.deepEqual(await page.locator(".scopes button:visible").allInnerTexts(), ["Workspaces"]);
   assert.equal(await page.locator("#query").getAttribute("placeholder"), "Move this window to the workspace named");
-  await page.waitForFunction(() => document.querySelectorAll("#results li").length >= 3);
-  assert.deepEqual((await page.locator("#results .title").allInnerTexts()).slice(0, 3), ["re", "oc", "me"]);
+  await page.waitForFunction(() => document.querySelectorAll("#results li").length >= 4);
+  assert.deepEqual((await page.locator("#results .title").allInnerTexts()).slice(0, 4), ["in", "re", "oc", "me"]);
   await page.locator("#query").fill("IN");
-  assert.deepEqual(await page.locator("#results li .kind").allInnerTexts(), ["home holds only its own apps"]);
-  assert.equal(await page.locator("#results li").first().getAttribute("aria-disabled"), "true");
+  assert.deepEqual(await page.locator("#results li .title").first().innerText(), "in");
+  assert.equal(await page.locator("#results li").first().getAttribute("aria-disabled"), null);
   await page.locator("#query").press("Tab");
   assert.equal(await page.locator('.scopes [aria-selected="true"]').innerText(), "Workspaces");
   assert.equal(await page.locator("#keys").innerText(), "Enter to move the window there · ↑ ↓ to choose · Esc to clear or close");
@@ -483,9 +483,9 @@ test("the move prompt keeps to Workspaces and refuses home, saying why", async (
 });
 
 // A new window's prompt (§6.1) starts with its short name, selected, and
-// offers home only to one of home's apps' windows.
+// offers home.
 test("a new window's prompt starts with its name selected, and Esc leaves at once", async () => {
-  const { page, errors } = await open("src/launcher.html?mode=dashboard&scope=workspaces&move=1&allowHome=1&name=Caf%C3%A9%26co");
+  const { page, errors } = await open("src/launcher.html?mode=dashboard&scope=workspaces&move=1&name=Caf%C3%A9%26co");
   await page.evaluate(() => {
     window.shut = false;
     window.close = () => (window.shut = true);
@@ -495,7 +495,7 @@ test("a new window's prompt starts with its name selected, and Esc leaves at onc
   assert.deepEqual(await page.locator("#query").evaluate((q) => [q.selectionStart, q.selectionEnd]), [0, 7], "selected");
   assert.deepEqual(await page.locator('#results li[aria-selected="true"] .title').allInnerTexts(), ["Café&co"]);
   assert.equal(await page.locator('#results li[aria-selected="true"] .kind').innerText(), "new workspace");
-  // Typing replaces it; with it gone, home is listed, as this one may go there.
+  // Typing replaces it; with it gone, home is listed.
   await page.locator("#query").press("Backspace");
   await page.waitForFunction(() => document.querySelectorAll("#results li").length >= 4);
   assert.deepEqual((await page.locator("#results .title").allInnerTexts()).slice(0, 4), ["in", "re", "oc", "me"]);

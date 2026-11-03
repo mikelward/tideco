@@ -581,9 +581,8 @@ an extension page is the only place tileco can take typing:
 - **`Search+Shift+W`** (tide: `Super+Shift+Return`) opens it for the
   focused window, or, from the dashboard, the window you were last in. Enter
   moves the window there, making the workspace if it's new, and shows it;
-  Esc leaves it. Home is refused for a window that isn't one of its apps:
-  it isn't listed, and typing its name shows why. A window of one of them
-  sees home listed, and Enter moves it there. This prompt keeps to
+  Esc leaves it. Home is listed for every window, one of its apps' or
+  not, so an app closed there can be put back. This prompt keeps to
   Workspaces: no other chip, and Tab stays. With no window to move, as on
   an empty workspace, the key does nothing.
 - **A new window on home** that isn't one of home's apps opens it too,

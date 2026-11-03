@@ -183,9 +183,9 @@ export class Tileco {
 
   // Enter in Search+Shift+W's prompt (§6.1): the window the dashboard opened
   // over moves to workspace `name`, made if it's new, which then shows with
-  // that window focused, as tide's Super+Shift+Return.
-  // Home holds only its apps, so it's refused for any other window. Only
-  // the prompt's own dashboard can ask: no other has a window to move.
+  // that window focused, as tide's Super+Shift+Return. Home takes any
+  // window. Only the prompt's own dashboard can ask: no other has a window
+  // to move.
   moveTo(name) {
     return this.run(async () => {
       await this.sync();
@@ -193,7 +193,6 @@ export class Tileco {
       const s = this.state;
       const id = s.moving;
       if (id === undefined || !(id in s.windows)) throw new Error(`no window to move to ${name}: the prompt that asked has gone`);
-      if (ws.lookup(s, name) === ws.home(s) && !this.isHomeApp(id)) throw new Error(`window ${id} can't go to ${name}: home holds only its own apps`);
       this.state = ws.send(s, id, name);
       this.showWorkspace(this.focusedDisplay(), this.state.windows[id].ws);
       await this.apply(this.activate(id));
@@ -208,13 +207,8 @@ export class Tileco {
     this.state = ws.prune(this.state);
   }
 
-  // Whether window `id` is one of home's apps' (§6.1), by its tab's site as
-  // the last sync saw it: what a window update returns has no tabs.
-  isHomeApp(id) {
-    const w = this.all?.get(id);
-    return w !== undefined && this.homeApp(w);
-  }
-
+  // Whether window `w`, as a sync saw it, is one of home's apps' (§6.1), by
+  // its tab's site.
   homeApp(w) {
     return homeAppOf(w, this.apps, this.settings.homeApps) !== null;
   }
@@ -708,7 +702,6 @@ export class Tileco {
     }
     const d = this.displays.find((x) => x.id === display) ?? this.displays[0];
     let extra = { tabs: "", go: "&scope=workspaces", move: "&scope=workspaces&move=1" }[how];
-    if (moving !== null && this.isHomeApp(moving)) extra += "&allowHome=1";
     if (name) extra += `&name=${encodeURIComponent(name)}`;
     s.dashboard = (await this.fullscreen("dashboard", d, true, extra)).id;
     if (how !== "tabs") s.dashboardFor = how;

@@ -18,9 +18,7 @@ const SYMBOLS = { tile: "[]=", threecol: "|M|", twocol: "||=", monocle: "[M]" };
 const opened = opening(location.search);
 const home = opened.home;
 // Search+Shift+W's prompt: Enter moves a window, so it keeps to Workspaces.
-// Home is offered only for one of home's apps' windows.
 const move = opened.move;
-const allowHome = opened.allowHome;
 const $ = (id) => document.getElementById(id);
 const query = $("query");
 const results = $("results");
@@ -157,7 +155,7 @@ function placeholder() {
 function update() {
   if (scope === "workspaces") {
     const current = view?.displays?.[hereDisplay()]?.workspace ?? null;
-    shown = workspaceRows({ bar: view?.bar, counts: view?.counts, made: view?.made, current, query: query.value, move, allowHome });
+    shown = workspaceRows({ bar: view?.bar, counts: view?.counts, made: view?.made, current, query: query.value });
   } else shown = scope === "tabs" && !tabsAllowed ? [ALLOW_TABS] : rank(query.value, all, { scope, limit: limitFor(scope, query.value) });
   selected = Math.min(selected, Math.max(shown.length - 1, 0));
   for (const b of document.querySelectorAll(".scopes button")) {

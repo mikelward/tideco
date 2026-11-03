@@ -92,11 +92,6 @@ Guesses made on autopilot (2026-10-24), each cheap to undo.
   Launch or Tabs chip, and Tab stays, so Enter can only ever move the
   window. The alternative is every scope, Enter moving the window only on
   Workspaces. Reversible: `scopes` in `src/launcherview.js`.
-- **Home isn't listed in `Search+Shift+W`'s prompt** (2026-11-01), as in
-  tide's, but for a window of one of home's apps, and typing its name
-  shows "home holds only its own apps". The
-  alternative is listing it, greyed, with that reason. Reversible:
-  `workspaceRows` in `src/launcher.js`.
 - **Tab cycles Launch, Tabs, Workspaces, and Shift+Tab goes back**
   (2026-11-01), so Tab from Tabs now goes to Workspaces, not back to
   Launch. The alternative is Tab flipping Launch and Tabs, with Workspaces

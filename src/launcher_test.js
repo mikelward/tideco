@@ -147,31 +147,22 @@ test("a name that can't be one says why, in a row that can't be chosen", () => {
   assert.match(workspaceRows({ ...view, query: "x".repeat(33) })[0].detail, /at most 32 characters/);
 });
 
-test("moving a window, home is refused, saying why, and the rest are offered", () => {
-  assert.deepEqual(rows("", { move: true }).map(([, title]) => title), ["re", "oc", "me", "web", "docs"]);
-  assert.deepEqual(rows("IN", { move: true }), [["refused", "in", "home holds only its own apps"]]);
+test("moving any window, home is offered with the rest", () => {
+  assert.deepEqual(rows("", { move: true }).map(([, title]) => title), ["in", "re", "oc", "me", "web", "docs"]);
+  assert.deepEqual(rows("IN", { move: true })[0], ["workspace", "in", "home · 2 windows"]);
+  assert.equal(workspaceRows({ ...view, query: "in", move: true })[0].workspace, "in");
   assert.deepEqual(rows("notes", { move: true }), [["new", "notes", "new workspace"]]);
-  // Going there is fine.
-  assert.deepEqual(rows("in")[0], ["workspace", "in", "home · 2 windows"]);
-});
-
-test("moving one of home's apps' windows, home is offered", () => {
-  assert.deepEqual(rows("", { move: true, allowHome: true }).map(([, title]) => title), ["in", "re", "oc", "me", "web", "docs"]);
-  assert.deepEqual(rows("IN", { move: true, allowHome: true })[0], ["workspace", "in", "home · 2 windows"]);
-  assert.equal(workspaceRows({ ...view, query: "in", move: true, allowHome: true })[0].workspace, "in");
 });
 
 test("the page's address says how it opened: home, the dashboard, or a name prompt", () => {
-  const how = (home, scope, move = false, allowHome = false, name = "") => ({ home, scope, move, allowHome, name });
+  const how = (home, scope, move = false, name = "") => ({ home, scope, move, name });
   assert.deepEqual(opening("?mode=home"), how(true, "launch"));
   assert.deepEqual(opening("?mode=dashboard"), how(false, "tabs"));
   assert.deepEqual(opening("?mode=dashboard&scope=workspaces"), how(false, "workspaces"));
   assert.deepEqual(opening("?mode=dashboard&scope=workspaces&move=1"), how(false, "workspaces", true));
   assert.deepEqual(opening("?mode=home&scope=workspaces&move=1"), how(true, "launch"), "home's page moves nothing");
-  // A home app's window may go home; a new window's prompt starts with its name.
-  assert.deepEqual(opening("?mode=dashboard&scope=workspaces&move=1&allowHome=1"), how(false, "workspaces", true, true));
-  assert.deepEqual(opening("?mode=dashboard&scope=workspaces&allowHome=1"), how(false, "workspaces"), "only a move goes anywhere");
-  assert.deepEqual(opening(`?mode=dashboard&scope=workspaces&move=1&name=${encodeURIComponent("PR-12 & co")}`), how(false, "workspaces", true, false, "PR-12 & co"));
+  // A new window's prompt starts with its name.
+  assert.deepEqual(opening(`?mode=dashboard&scope=workspaces&move=1&name=${encodeURIComponent("PR-12 & co")}`), how(false, "workspaces", true, "PR-12 & co"));
   assert.deepEqual(opening("?mode=dashboard&name=x"), how(false, "tabs"), "only the prompt has a field to fill");
 });
 

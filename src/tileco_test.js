@@ -637,15 +637,17 @@ test("Search+Shift+W's prompt takes an existing workspace by name", async () => 
   assert.deepEqual(tileco.state.workspaces.oc.windows, [2]);
 });
 
-test("Search+Shift+W's prompt refuses home, which holds only its own apps", async () => {
+test("a new window on home named home stays there, and asks no more", async () => {
   const { chrome, tileco } = await setup([HD], [on(HD, 1, { focused: true })]);
-  await tileco.command("send-2");
-  await tileco.command("workspace-2");
-  await tileco.command("workspace-move");
-  const before = JSON.stringify(tileco.state);
-  await assert.rejects(tileco.moveTo("IN"), /home holds only its own apps/);
-  assert.equal(JSON.stringify(tileco.state), before, "nothing moved");
-  assert.ok(chrome.wins.some((w) => w.url === MOVE_PROMPT), "the prompt is still open");
+  await opens(chrome, tileco, 2, { url: "https://mail.example.com/", title: "Inbox" });
+  const [p] = prompts(chrome);
+  await tileco.moveTo("IN");
+  assert.equal(tileco.state.windows[2].ws, "in");
+  assert.equal(tileco.state.current, "in");
+  assert.equal(chrome.win(2).focused, true);
+  chrome.wins = chrome.wins.filter((w) => w !== p);
+  await tileco.event();
+  assert.deepEqual(prompts(chrome), []);
 });
 
 test("Search+W's prompt can't move a window, and Search+Shift+W needs one", async () => {
@@ -713,7 +715,7 @@ test("a home app's key opens it on home, which comes with it", async () => {
   assert.equal(tileco.state.windows[meet.id].ws, "re");
 });
 
-test("Search+Shift+W offers home to a home app's window, and moves it there", async () => {
+test("Search+Shift+W moves a home app's window home", async () => {
   const { chrome, tileco } = await setup([HD], [on(HD, 1, { focused: true }), on(HD, 2, { type: "app", url: CALENDAR })]);
   chrome.focus(2);
   await tileco.event();
@@ -722,21 +724,23 @@ test("Search+Shift+W offers home to a home app's window, and moves it there", as
   chrome.focus(2);
   await tileco.event();
   await tileco.command("workspace-move");
-  assert.deepEqual(prompts(chrome).map((w) => w.url), [`${MOVE_PROMPT}&allowHome=1`], "home is listed");
+  assert.deepEqual(prompts(chrome).map((w) => w.url), [MOVE_PROMPT]);
   await tileco.moveTo("in");
   assert.equal(tileco.state.windows[2].ws, "in");
   assert.equal(tileco.state.current, "in", "and shown");
   assert.equal(chrome.win(2).focused, true);
 });
 
-test("Search+Shift+W refuses home to any other window, by its tab's site", async () => {
+test("Search+Shift+W moves any other window home too", async () => {
   const { chrome, tileco } = await setup([HD], [on(HD, 1, { focused: true, url: "https://example.com/" })]);
   await tileco.command("send-2");
   await tileco.command("workspace-2");
   await tileco.command("workspace-move");
-  assert.deepEqual(prompts(chrome).map((w) => w.url), [MOVE_PROMPT], "home isn't listed");
-  await assert.rejects(tileco.moveTo("in"), /home holds only its own apps/);
-  assert.equal(tileco.state.windows[1].ws, "re");
+  assert.deepEqual(prompts(chrome).map((w) => w.url), [MOVE_PROMPT]);
+  await tileco.moveTo("in");
+  assert.equal(tileco.state.windows[1].ws, "in");
+  assert.equal(tileco.state.current, "in", "and shown");
+  assert.equal(chrome.win(1).focused, true);
 });
 
 test("a new window on home asks for a workspace, starting with its short name", async () => {

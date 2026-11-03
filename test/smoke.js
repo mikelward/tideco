@@ -495,6 +495,9 @@ test("a new window's prompt starts with its name selected, and Esc leaves at onc
   assert.deepEqual(await page.locator("#query").evaluate((q) => [q.selectionStart, q.selectionEnd]), [0, 7], "selected");
   assert.deepEqual(await page.locator('#results li[aria-selected="true"] .title').allInnerTexts(), ["Café&co"]);
   assert.equal(await page.locator('#results li[aria-selected="true"] .kind').innerText(), "new workspace");
+  // Untouched, it filters nothing: every workspace follows it.
+  await page.waitForFunction(() => document.querySelectorAll("#results li").length >= 5);
+  assert.deepEqual((await page.locator("#results .title").allInnerTexts()).slice(0, 5), ["Café&co", "in", "re", "oc", "me"]);
   // Typing replaces it; with it gone, home is listed.
   await page.locator("#query").press("Backspace");
   await page.waitForFunction(() => document.querySelectorAll("#results li").length >= 4);

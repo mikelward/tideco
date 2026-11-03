@@ -154,7 +154,10 @@ export function opening(search) {
 // "refused" row. Home is offered as any other, to go to or move a window to.
 // Each row is {kind, title, detail, workspace}, `workspace` the name Enter
 // shows; a refused row has none.
-export function workspaceRows({ bar = [], counts = {}, made = bar, current = null, query = "" }) {
+// `suggested` says the text is still a new window's short name, which the
+// prompt started with: it isn't a filter, so every workspace follows it in
+// bar order, the one it names first.
+export function workspaceRows({ bar = [], counts = {}, made = bar, current = null, query = "", suggested = false }) {
   const home = bar[0] ?? null;
   const typed = query.trim();
   const out = [];
@@ -164,9 +167,10 @@ export function workspaceRows({ bar = [], counts = {}, made = bar, current = nul
     if (checked.error) out.push({ kind: "refused", title: typed, detail: checked.error });
     else if (known === null) out.push({ kind: "new", title: checked.name, detail: "new workspace", workspace: checked.name });
   }
+  const all = suggested || typed === "";
   const scored = [];
   bar.forEach((name, i) => {
-    const score = typed === "" ? 0 : fuzzyScore(typed, name);
+    const score = all ? 0 : fuzzyScore(typed, name);
     if (score !== null) scored.push({ name, score, exact: typed !== "" && sameName(name, typed), i });
   });
   scored.sort((a, b) => b.exact - a.exact || b.score - a.score || a.i - b.i);

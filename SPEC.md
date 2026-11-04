@@ -1,5 +1,5 @@
 ---
-last_modified: 2026-11-01
+last_modified: 2026-11-04
 ---
 
 # tileco: design spec (milestone 1)
@@ -566,6 +566,32 @@ the four keys, or one listed twice, is refused, naming the setting.
 - An app key for one of them opens its window on home, and home shows with
   it, since you asked for it and it takes focus *(a guess)*.
 
+**Each workspace's settings** are a shared setting beside those,
+`workspaceSettings`, keyed by workspace name, as tide and tilemo key
+theirs:
+
+```json
+{ "in": { "askForName": true, "pinnedApps": ["app-calendar", "app-chat"] } }
+```
+
+- Names are matched ignoring case, as everywhere. A name that can't be
+  one, one listed twice, a field that isn't `askForName` or `pinnedApps`,
+  an `askForName` that isn't true or false, or a `pinnedApps` that
+  `homeApps` would refuse is refused, naming the setting.
+- **Unset** (`null`, the default) it's home asking and nothing pinned,
+  whatever home is named. **Set**, a workspace it leaves out, or a field
+  it leaves out, is off: `{}` turns home's asking off too.
+- **`askForName`**: a new window on that workspace asks for a workspace
+  (the name prompt, below). Home's apps still join home and never ask.
+- **`pinnedApps`**, app keys as `homeApps` names them, matched to windows
+  by site the same way: on tide and tilemo, a pinned app's window on that
+  workspace can't be closed by the desktop's close keys. tileco keeps the
+  list but can't act on it. Its close is Chrome's own (`Ctrl+Shift+W`,
+  §7.1), and tileco has no close of its own to refuse. Chrome's
+  `Ctrl+W`, `Ctrl+Shift+W` and a window's close button never reach an
+  extension, and `windows.onRemoved` fires only once the window has gone,
+  so no extension can keep one open.
+
 **The name prompt** is tide's (tide §6.5), on the dashboard (§8.1), since
 an extension page is the only place tileco can take typing:
 
@@ -585,11 +611,12 @@ an extension page is the only place tileco can take typing:
   not, so an app closed there can be put back. This prompt keeps to
   Workspaces: no other chip, and Tab stays. With no window to move, as on
   an empty workspace, the key does nothing.
-- **A new window on home** that isn't one of home's apps opens it too,
+- **A new window on a workspace that asks** (`askForName`, above; home
+  alone by default) that isn't one of home's apps opens it too,
   once the window is focused, with the field starting as the window's
   short name, selected, so typing replaces it. Until you type, it filters
   nothing: every workspace follows it, in bar order. Enter moves the window
-  there; Esc leaves it on home, since tileco can't close a window politely
+  there; Esc leaves it where it is, since tileco can't close a window politely
   *(differs from tide, whose Esc closes it)*.
   - It's `Search+Shift+W`'s prompt for that window, on the window's
     display.
@@ -603,7 +630,8 @@ an extension page is the only place tileco can take typing:
     website; without tab search (§14.1) Chrome hides the page, and no app
     window asks. Nor do the windows open when tileco starts, or those a
     restart brings back (§14.2), which aren't new.
-  - A window that left home before it was focused doesn't ask.
+  - A window that left for a workspace that doesn't ask before it was
+    focused doesn't ask.
   - **The short name** is the first word of its active tab's title, as
     tide's short name without `namePatterns` *(a guess, to confirm)*.
     Punctuation clinging to the word's end goes (`.` `,` `:` `;` `!` `?`
@@ -620,8 +648,9 @@ an extension page is the only place tileco can take typing:
   guess)*. A new window's prompt asked for while any dashboard is open
   waits its turn, in order, and opens once that one closes. It opens
   where you are, without bringing home back, the field naming the window
-  *(a guess)*. One whose window closed or left home meanwhile goes
-  unasked.
+  *(a guess)*. One whose window closed or left for a workspace that
+  doesn't ask meanwhile goes unasked, as does one whose workspace stopped
+  asking.
 
 **`Search+Home`** shows home, and **`Search+End`** the last workspace
 other than home you showed, as tide's `Super+Home` and `Super+End`: from
@@ -756,7 +785,8 @@ supported combo. Shift with `.` and `,` reads as `>` and `<` for grow and
 shrink. `Search+Space` opens the dashboard, tileco's own launcher, as it
 opens a launcher on other desktops, so swap-with-master moves from Return
 to `Search+Shift+M`, M for master. Close falls back to Chrome's own window
-close.
+close, which no extension can refuse, so a workspace's pinned apps (§6.1)
+close as any window does.
 
 ### 7.2 Conflicts to settle in M2
 
@@ -1249,6 +1279,13 @@ Crostini runs kitty, the shell config and the terminal tools, so `conf` and
     (§9.1), or "App 3, off" for a key with none, which follows a name
     changed under Apps. A box ticked adds its key at the end of the list,
     so an imported order stays.
+  - Below them, each standing workspace has its own box, "New windows
+    ask for a workspace", and a box for each app key under "Pinned apps",
+    as home's apps have, saving `workspaceSettings` (§6.1). While it's
+    unset the boxes show its default, home asking; the first box changed
+    writes that default out with the change, so home keeps asking. A
+    standing workspace added or renamed gets its own boxes; settings kept
+    under a name taken out stay, for the JSON to show.
 
 ### 13.1 Start at login
 

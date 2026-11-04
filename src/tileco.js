@@ -4,7 +4,7 @@
 // promise-returning calls are used.
 
 import { appOfUrl, DEFAULT_APPS, homeAppOf } from "./apps.js";
-import { DEFAULT_SETTINGS, load as loadSettings } from "./settings.js";
+import { DEFAULT_SETTINGS, load as loadSettings, workspaceSetting } from "./settings.js";
 import { overlay } from "./dim.js";
 import { toggle as toggleKeepAwake } from "./keepawake.js";
 import { matchWindows, windowUrls } from "./restart.js";
@@ -29,7 +29,8 @@ function managed(w, appPopups, refused) {
   const url = w.tabs?.[0]?.url ?? "";
   return w.type === "popup" && TILED_POPUP_ORIGINS.some((o) => url.startsWith(o));
 }
-// The windows a new one on home asks a workspace for (§6.1): tab windows
+// The windows a new one on a workspace that asks for a name asks a
+// workspace for (§6.1): tab windows
 // and installed web apps' own. Popups and dialogs never ask, nor do the app
 // popups tileco opens itself.
 const ASKING = ["normal", "app"];
@@ -213,29 +214,35 @@ export class Tileco {
     return homeAppOf(w, this.apps, this.settings.homeApps) !== null;
   }
 
+  // Whether a new window on workspace `n` asks for a workspace, by its
+  // askForName (§6.1): home alone, unless workspaceSettings says otherwise.
+  asksOn(n) {
+    return workspaceSetting(this.settings, n).askForName;
+  }
+
   // A new window joins the workspace showing where it opened, or home if
   // it's one of home's apps, there or not, as a send (§6.1). One that lands
-  // on home otherwise, and may `ask`, is marked to ask for a workspace the
-  // first time it's focused.
+  // otherwise on a workspace that asks for a name, and may `ask`, is marked
+  // to ask for a workspace the first time it's focused.
   join(s, id, display, { homeApp = false, ask = false } = {}) {
     if (id in s.windows) return s;
     const joined = ws.addWindow(s, id, display, { to: homeApp ? ws.home(s) : null });
-    if (ask && !homeApp && joined.windows[id].ws === ws.home(joined)) joined.windows[id].ask = true;
+    if (ask && !homeApp && this.asksOn(joined.windows[id].ws)) joined.windows[id].ask = true;
     return joined;
   }
 
   // The windows waiting for a name prompt, in the order they asked (§6.1):
-  // those still on home, then the focused window if it's marked to ask and
-  // still there. The mark goes at its first focus, so each window asks once,
-  // and a prompt closed or answered isn't asked again.
+  // those still on a workspace that asks, then the focused window if it's
+  // marked to ask and still on one. The mark goes at its first focus, so
+  // each window asks once, and a prompt closed or answered isn't asked
+  // again.
   asking(s, before, wins) {
-    const h = ws.home(s);
-    const waiting = (before?.asking ?? []).filter((id) => s.windows[id]?.ws === h);
+    const waiting = (before?.asking ?? []).filter((id) => id in s.windows && this.asksOn(s.windows[id].ws));
     const f = wins.find((w) => w.focused && w.state !== "minimized");
     const info = f && s.windows[f.id];
     if (info?.ask) {
       delete info.ask;
-      if (info.ws === h && !this.homeApp(f) && !waiting.includes(f.id)) waiting.push(f.id);
+      if (this.asksOn(info.ws) && !this.homeApp(f) && !waiting.includes(f.id)) waiting.push(f.id);
     }
     return waiting;
   }
@@ -249,7 +256,7 @@ export class Tileco {
     while (s.asking?.length > 0) {
       const id = s.asking.shift();
       const w = this.all.get(id);
-      if (!this.windows.has(id) || !w || s.windows[id]?.ws !== ws.home(s) || this.homeApp(w)) continue;
+      if (!this.windows.has(id) || !w || !(id in s.windows) || !this.asksOn(s.windows[id].ws) || this.homeApp(w)) continue;
       // A new tab page's title, "New Tab", names nothing.
       const tab = w.tabs?.find((t) => t.active);
       const name = /^https?:/.test(tab?.url ?? "") ? ws.shortName(tab.title) : "";
@@ -773,8 +780,8 @@ export class Tileco {
   }
 
   // The browser key: always a new browser window on this workspace, as
-  // tide's and KDE's keys launch one (§9.1). On home it asks for a
-  // workspace, as any new window there does (§6.1).
+  // tide's and KDE's keys launch one (§9.1). On a workspace that asks for
+  // a name, home by default, it asks, as any new window there does (§6.1).
   async browser(display) {
     return (await this.open({}, display, { ask: true })).id;
   }

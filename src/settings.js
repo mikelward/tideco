@@ -11,7 +11,7 @@ export const SETTINGS_KEY = "settings";
 
 // What follows you to every Chromebook, in storage.sync, and what each one
 // keeps for its own displays, in storage.local.
-export const SHARED = ["clocks", "day", "work", "apps", "dimStrength", "watched", "defaultMode", "modes", "standing", "homeApps"];
+export const SHARED = ["clocks", "day", "work", "apps", "dimStrength", "watched", "defaultMode", "modes", "standing", "homeApps", "workspaceSettings"];
 export const PER_MACHINE = ["singleRules", "ultrawideAspect", "wheelStep", "startup"];
 
 export function pick(settings, keys) {
@@ -39,6 +39,11 @@ export const DEFAULT_SETTINGS = {
   standing: DEFAULT_STANDING,
   // Home's apps (§6.1), by their app keys: their windows always join home.
   homeApps: DEFAULT_HOME_APPS,
+  // Each workspace's own settings, by name (§6.1): whether a new window
+  // there asks for a workspace, and the apps whose windows there tileco
+  // won't close. null, unset, is home asking and nothing pinned, as
+  // workspaceSetting reads it.
+  workspaceSettings: null,
   // Per machine, as they depend on its displays (§5.2).
   singleRules: [{ minAspect: 2.1, width: 0.8 }],
   ultrawideAspect: 2.1,
@@ -216,6 +221,62 @@ function checkHomeApps(commands) {
   return [...seen];
 }
 
+// Each workspace's settings (§6.1), keyed by its name: `askForName`, a new
+// window there asking for a workspace, and `pinnedApps`, app keys as
+// homeApps names them. null is unset. Names are matched ignoring case, so
+// one listed twice that way is refused.
+const WORKSPACE_FIELDS = ["askForName", "pinnedApps"];
+
+function checkWorkspaceSettings(value) {
+  if (value === null) return null;
+  if (typeof value !== "object" || Array.isArray(value)) throw new Error("must be an object, keyed by workspace name, or null");
+  const out = {};
+  for (const [raw, o] of Object.entries(value)) {
+    const { name, error } = checkName(raw);
+    if (error) throw new Error(`${JSON.stringify(raw)}: ${error}`);
+    const at = `"${name}"`;
+    if (Object.keys(out).some((n) => sameName(n, name))) throw new Error(`${at} is listed already`);
+    if (typeof o !== "object" || o === null || Array.isArray(o)) throw new Error(`${at} must be an object`);
+    const unknown = Object.keys(o).filter((k) => !WORKSPACE_FIELDS.includes(k));
+    if (unknown.length > 0) throw new Error(`${at}: ${unknown.join(", ")} isn't one of ${WORKSPACE_FIELDS.join(", ")}`);
+    const settings = {};
+    if ("askForName" in o) {
+      if (typeof o.askForName !== "boolean") throw new Error(`${at}.askForName must be true or false`);
+      settings.askForName = o.askForName;
+    }
+    if ("pinnedApps" in o) {
+      try {
+        settings.pinnedApps = checkHomeApps(o.pinnedApps);
+      } catch (e) {
+        throw new Error(`${at}.pinnedApps: ${e.message}`);
+      }
+    }
+    out[name] = settings;
+  }
+  return out;
+}
+
+// Workspace `name`'s settings, `settings` being resolve's: {askForName,
+// pinnedApps}. Unset, home asks and nothing is pinned, as before the
+// setting; set, a workspace or field it leaves out is off.
+export function workspaceSetting(settings, name) {
+  const all = settings.workspaceSettings;
+  if (all === null || all === undefined) return { askForName: sameName(name, settings.standing[0]), pinnedApps: [] };
+  const key = Object.keys(all).find((n) => sameName(n, name));
+  const o = key === undefined ? {} : all[key];
+  return { askForName: o.askForName ?? false, pinnedApps: o.pinnedApps ?? [] };
+}
+
+// The settings with workspace `name`'s `field` set to `value`, as the
+// options page changes one: the unset default is spelled out first, so
+// changing one workspace keeps home asking. Kept under the name it's listed
+// by, if it's listed.
+export function withWorkspaceSetting(settings, name, field, value) {
+  const all = settings.workspaceSettings ?? { [settings.standing[0]]: { askForName: true } };
+  const key = Object.keys(all).find((n) => sameName(n, name)) ?? name;
+  return { ...all, [key]: { ...all[key], [field]: value } };
+}
+
 export const START_MODES = ["tile", "threecol", "twocol", "monocle"];
 
 // Objects merge key by key onto what's there (§13), as tide's do.
@@ -252,7 +313,7 @@ function checkModes(value, current) {
   return modes;
 }
 
-const CHECKS = { clocks: checkClocks, day: checkHours, work: checkHours, apps: checkApps, singleRules: checkSingleRules, ultrawideAspect: (a) => checkAspect(a), dimStrength: checkStrength, watched: checkWatched, defaultMode: checkDefaultMode, modes: checkModes, wheelStep: checkWheelStep, startup: checkStartup, standing: checkStanding, homeApps: checkHomeApps };
+const CHECKS = { clocks: checkClocks, day: checkHours, work: checkHours, apps: checkApps, singleRules: checkSingleRules, ultrawideAspect: (a) => checkAspect(a), dimStrength: checkStrength, watched: checkWatched, defaultMode: checkDefaultMode, modes: checkModes, wheelStep: checkWheelStep, startup: checkStartup, standing: checkStanding, homeApps: checkHomeApps, workspaceSettings: checkWorkspaceSettings };
 
 // Settings from what's stored: `sync` then `local`, each an object or
 // undefined. Returns {settings, errors}, an error for each bad or unknown

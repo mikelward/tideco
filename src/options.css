@@ -110,6 +110,12 @@ input.label {
   width: auto;
   margin-right: 6px;
 }
+.workspace-settings {
+  margin-top: 8px;
+}
+.workspace-settings .pinned {
+  margin: 4px 0 0;
+}
 .layouts {
   margin-top: 16px;
 }

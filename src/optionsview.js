@@ -9,7 +9,7 @@ import { ITEMS, progress, SETUP_KEY, tick } from "./setup.js";
 import { EXTRAS as BASE_EXTRAS, extrasFor } from "./extras.js";
 import { DEFAULT_SITES } from "./unread.js";
 import { pattern } from "./watchers.js";
-import { DEFAULT_SETTINGS, PER_MACHINE, pick, resolve, SETTINGS_KEY, SHARED, standingProblems, START_MODES } from "./settings.js";
+import { DEFAULT_SETTINGS, PER_MACHINE, pick, resolve, SETTINGS_KEY, SHARED, standingProblems, START_MODES, withWorkspaceSetting, workspaceSetting } from "./settings.js";
 import { osName, platform, TABS, TILE, worksUntiled } from "./platform.js";
 import { SECTION_KEY, sectionToShow, SETTINGS_SECTIONS } from "./launcher.js";
 import { ACCESS as BRIDGE_ACCESS, bridgeText, STATUS_KEY as BRIDGE_KEY } from "./tabsbridge.js";
@@ -290,6 +290,54 @@ function nameHomeApps(apps) {
   for (const box of $("home-apps").querySelectorAll("input")) box.nextElementSibling.textContent = appLabel(box.dataset.command, apps);
 }
 
+// Each standing workspace's own settings (§6.1): whether a new window there
+// asks for a workspace, and its pinned apps, boxes as home's apps have.
+// Kept as stored, null while unset, until a box changes, so an unset
+// default keeps following home.
+let workspaceSettings = DEFAULT_SETTINGS.workspaceSettings;
+// What the boxes were drawn for, so a save that changes neither the
+// standing names nor the apps' names leaves them, and their focus, be.
+let drawnFor = "";
+
+function renderWorkspaceSettings(settings) {
+  workspaceSettings = settings.workspaceSettings === null ? null : structuredClone(settings.workspaceSettings);
+  const labels = APP_COMMANDS.map((c) => appLabel(c, settings.apps));
+  drawnFor = JSON.stringify([settings.standing, labels]);
+  const change = async (box, name, field, value) => {
+    const previous = workspaceSettings;
+    workspaceSettings = withWorkspaceSetting({ ...settings, workspaceSettings }, name, field, value);
+    if (!(await save())) {
+      workspaceSettings = previous;
+      box.checked = !box.checked;
+    }
+  };
+  const current = (name) => workspaceSetting({ ...settings, workspaceSettings }, name);
+  $("workspace-settings").replaceChildren(
+    ...settings.standing.map((name) => {
+      const set = Object.assign(document.createElement("fieldset"), { className: "home-apps workspace-settings" });
+      set.dataset.name = name;
+      const ask = Object.assign(document.createElement("input"), { type: "checkbox", className: "ask", checked: current(name).askForName });
+      ask.setAttribute("aria-label", `New windows on ${name} ask for a workspace`);
+      ask.addEventListener("change", () => change(ask, name, "askForName", ask.checked));
+      const askLabel = document.createElement("label");
+      askLabel.append(ask, Object.assign(document.createElement("span"), { textContent: "New windows ask for a workspace" }));
+      const pinned = Object.assign(document.createElement("p"), { className: "pinned" });
+      pinned.append(Object.assign(document.createElement("span"), { className: "muted", textContent: "Pinned apps:" }));
+      APP_COMMANDS.forEach((command, i) => {
+        const box = Object.assign(document.createElement("input"), { type: "checkbox", checked: current(name).pinnedApps.includes(command) });
+        box.dataset.command = command;
+        box.setAttribute("aria-label", `Pin ${labels[i]} on ${name}`);
+        box.addEventListener("change", () => change(box, name, "pinnedApps", withHomeApp(current(name).pinnedApps, command, box.checked)));
+        const label = document.createElement("label");
+        label.append(box, Object.assign(document.createElement("span"), { textContent: labels[i] }));
+        pinned.append(" ", label);
+      });
+      set.append(Object.assign(document.createElement("legend"), { textContent: name }), askLabel, pinned);
+      return set;
+    }),
+  );
+}
+
 // An emptied hour field is NaN, an error, not Number("")'s midnight.
 function fromForm() {
   const clocks = [...rows.rows].map((tr) => {
@@ -308,7 +356,7 @@ function fromForm() {
     return [tr.dataset.mode, { mfact: Number((num(share) / 100).toPrecision(12)), nmaster: num(count) }];
   }));
   const standing = standingFields().map((f) => f.value.trim());
-  return { clocks, ...hours, apps, dimStrength: Number((strength / 100).toPrecision(12)), watched: [...watchedSites], defaultMode, modes, standing, homeApps: [...homeApps] };
+  return { clocks, ...hours, apps, dimStrength: Number((strength / 100).toPrecision(12)), watched: [...watchedSites], defaultMode, modes, standing, homeApps: [...homeApps], workspaceSettings };
 }
 
 function toForm(settings) {
@@ -318,6 +366,7 @@ function toForm(settings) {
   standingRows.replaceChildren(...settings.standing.map(standingRow));
   markStanding();
   renderHomeApps(settings);
+  renderWorkspaceSettings(settings);
   renderWatched();
   renderPermissions();
   appRows.replaceChildren(...APP_COMMANDS.map((c) => appRow(c, settings.apps.find((a) => a.command === c))));
@@ -335,6 +384,7 @@ async function save(value = fromForm()) {
   await chrome.storage.sync.set({ [SETTINGS_KEY]: pick(settings, SHARED) });
   json.value = JSON.stringify(pick(settings, SHARED), null, 2);
   nameHomeApps(settings.apps);
+  if (JSON.stringify([settings.standing, APP_COMMANDS.map((c) => appLabel(c, settings.apps))]) !== drawnFor) renderWorkspaceSettings(settings);
   return true;
 }
 

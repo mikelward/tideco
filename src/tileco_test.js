@@ -898,6 +898,48 @@ test("chromeOS's system apps on home never ask, but an installed web app does", 
   assert.deepEqual(prompts(chrome).map((w) => w.url), [`${MOVE_PROMPT}&name=Example`]);
 });
 
+test("a workspace whose askForName is on asks for a new window there, and home's apps still go home", async () => {
+  const { chrome, tileco } = await setup([HD], [on(HD, 1, { focused: true })]);
+  chrome.syncStore.settings = { workspaceSettings: { RE: { askForName: true } } };
+  await tileco.command("send-2");
+  await tileco.command("workspace-2");
+  await opens(chrome, tileco, 2, { url: "https://example.com/", title: "Notes" });
+  assert.equal(tileco.state.windows[2].ws, "re");
+  assert.deepEqual(prompts(chrome).map((w) => w.url), [`${MOVE_PROMPT}&name=Notes`], "re asks, matched ignoring case");
+  assert.equal(tileco.state.moving, 2);
+  chrome.wins = chrome.wins.filter((w) => !w.url?.startsWith(DASHBOARD));
+  await tileco.event();
+  await opens(chrome, tileco, 3, { type: "app", url: "https://chat.google.com/" });
+  assert.equal(tileco.state.windows[3].ws, "in", "a home app goes home");
+  assert.deepEqual(prompts(chrome), [], "and never asks");
+});
+
+test("with askForName off, home included, no new window asks", async () => {
+  const { chrome, tileco } = await setup([HD], [on(HD, 1, { focused: true })]);
+  chrome.syncStore.settings = { workspaceSettings: { in: { askForName: false }, re: { pinnedApps: ["app-chat"] } } };
+  await opens(chrome, tileco, 2, { url: "https://example.com/", title: "Notes" });
+  await tileco.command("app-browser");
+  await tileco.event();
+  assert.equal(tileco.state.windows[2].ws, "in");
+  assert.deepEqual(prompts(chrome), [], "home doesn't ask");
+  await tileco.command("send-2");
+  await tileco.command("workspace-2");
+  await opens(chrome, tileco, 4, { url: "https://example.com/", title: "More" });
+  assert.deepEqual(prompts(chrome), [], "nor does a workspace whose settings leave it out");
+});
+
+test("a window waiting to ask goes unasked once its workspace stops asking", async () => {
+  const { chrome, tileco } = await setup([HD], [on(HD, 1, { focused: true })]);
+  await opens(chrome, tileco, 20, { url: "https://example.com/", title: "First" });
+  await opens(chrome, tileco, 30, { url: "https://example.com/", title: "Second" });
+  assert.deepEqual(tileco.state.asking, [30]);
+  chrome.syncStore.settings = { workspaceSettings: { in: { askForName: false } } };
+  chrome.wins = chrome.wins.filter((w) => !w.url?.startsWith(DASHBOARD));
+  await tileco.event();
+  assert.deepEqual(prompts(chrome), []);
+  assert.deepEqual(tileco.state.asking, []);
+});
+
 test("a web app still loading its first page asks, by where it's going", async () => {
   const { chrome, tileco } = await setup([HD], [on(HD, 1, { focused: true })]);
   await opens(chrome, tileco, 2, { type: "app", pendingUrl: "https://example.com/", focused: false });

@@ -585,12 +585,33 @@ theirs:
   (the name prompt, below). Home's apps still join home and never ask.
 - **`pinnedApps`**, app keys as `homeApps` names them, matched to windows
   by site the same way: on tide and tilemo, a pinned app's window on that
-  workspace can't be closed by the desktop's close keys. tileco keeps the
-  list but can't act on it. Its close is Chrome's own (`Ctrl+Shift+W`,
-  §7.1), and tileco has no close of its own to refuse. Chrome's
-  `Ctrl+W`, `Ctrl+Shift+W` and a window's close button never reach an
-  extension, and `windows.onRemoved` fires only once the window has gone,
-  so no extension can keep one open.
+  workspace can't be closed by the desktop's close keys. tileco can't
+  refuse a close. Chrome's `Ctrl+W`, `Ctrl+Shift+W` (§7.1) and a window's
+  close button never reach an extension, and `windows.onRemoved` fires
+  only once the window has gone. So tileco **reopens** it instead:
+  - The window closed was on that workspace, and tileco last saw that
+    app's site in it. `onRemoved` gives no tabs, so each sync and each
+    page load keeps every window's app, and keeps it while Chrome hides
+    the address (no tab search, §14.1). A window tileco opened for an app
+    key knows its app.
+  - It reopens a second after the close, as its app key opens it (an
+    app popup, §9.1), but unfocused, at the end of that workspace's stack
+    on the display it closed on. Focus and the workspace showing don't
+    change; on a hidden workspace it opens hidden.
+  - It doesn't reopen when the workspace still has a window of that app,
+    or when the pin came out meanwhile. Nor when the close isn't yours to
+    undo: while a restart brings windows back (§14.2), when no window but
+    tileco's own (home windows, the dashboard) is left by the time it's
+    due (the browser closing, which also ends the worker first), or when a
+    display went in that sync. A browser window with the settings in a
+    tab is a browser window.
+    tileco's own pages are never an app's.
+  - It reopens at most 3 times a minute for each app on each workspace,
+    counting only closes it reopened. A fourth in that minute stays
+    closed, and the worker's log says so, so a site that keeps closing
+    itself can't loop. An app moved to
+    another workspace and closed there doesn't reopen, unless it's pinned
+    there too.
 
 **The name prompt** is tide's (tide §6.5), on the dashboard (§8.1), since
 an extension page is the only place tileco can take typing:
@@ -786,7 +807,7 @@ shrink. `Search+Space` opens the dashboard, tileco's own launcher, as it
 opens a launcher on other desktops, so swap-with-master moves from Return
 to `Search+Shift+M`, M for master. Close falls back to Chrome's own window
 close, which no extension can refuse, so a workspace's pinned apps (§6.1)
-close as any window does.
+close as any window does, then reopen.
 
 ### 7.2 Conflicts to settle in M2
 
@@ -1281,7 +1302,8 @@ Crostini runs kitty, the shell config and the terminal tools, so `conf` and
     so an imported order stays.
   - Below them, each standing workspace has its own box, "New windows
     ask for a workspace", and a box for each app key under "Pinned apps",
-    as home's apps have, saving `workspaceSettings` (§6.1). While it's
+    as home's apps have, saving `workspaceSettings` (§6.1), with a line
+    saying a pinned app's window reopens if you close it. While it's
     unset the boxes show its default, home asking; the first box changed
     writes that default out with the change, so home keeps asking. A
     standing workspace added or renamed gets its own boxes; settings kept

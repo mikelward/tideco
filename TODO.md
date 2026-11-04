@@ -35,12 +35,11 @@ with the unplug isn't read as a drag.
 
 Guesses made on autopilot (2026-10-24), each cheap to undo.
 
-- **`workspaceSettings.pinnedApps` is kept but does nothing on a
-  Chromebook** (2026-11-04): tileco has no close of its own, and Chrome's
-  close keys and close button never reach an extension, so there's nothing
-  to refuse. Reopening a pinned app's window after it closes would be the
-  nearest thing, left out as not asked for. The options page's box reads
-  "New windows ask for a workspace".
+- **A pinned app's closed window reopens after a second, at most 3
+  times a minute** (2026-11-04), at the end of its workspace's stack, and
+  not while that workspace still has a window of the app. The delay lets
+  a browser closing end the worker first. Reversible: `REOPEN_DELAY`,
+  `REOPEN_LIMIT` and `reopen` in `src/tileco.js`.
 - **A window keeps one place in its workspace's single stack across
   displays** (2026-11-02): a part's order is the stack's order filtered by
   display, so a window handed to the first display and back keeps its

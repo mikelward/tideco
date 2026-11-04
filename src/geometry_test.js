@@ -157,6 +157,16 @@ test("a dragged edge the share doesn't move sets nothing", () => {
   assert.equal(geometry.mfactFor("tile", AREA, 2, { mfact: 0.55, nmaster: 0 }, [], 0, "right", 700), null, "no master");
 });
 
+test("a lone window's dragged edge sets its width, centered", () => {
+  const was = { x: 100, w: 800 };
+  // The center is at 500; the edge that moved sets the half-width.
+  assert.equal(geometry.singleWidthFor(AREA, was, { x: 100, w: 700 }), 0.6, "the right edge");
+  assert.equal(geometry.singleWidthFor(AREA, was, { x: 300, w: 600 }), 0.4, "the left edge");
+  assert.equal(geometry.singleWidthFor(AREA, was, { x: 100, w: 2000 }), 1.0, "no wider than the area");
+  assert.equal(geometry.singleWidthFor(AREA, was, { x: 490, w: 410 }), 0.1, "nor narrower than 10%");
+  assert.equal(geometry.singleWidthFor(AREA, was, { x: 100, w: 800 }), null, "no edge moved");
+});
+
 test("a share dragged past its bounds stops at them", () => {
   const o = { mfact: 0.55, nmaster: 1 };
   assert.equal(geometry.mfactFor("tile", AREA, 2, o, [], 0, "right", 990), 0.95);

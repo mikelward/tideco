@@ -1537,6 +1537,67 @@ test("a resize the share can't follow is put back", async () => {
   assert.deepEqual(chrome.box(1), { x: 0, y: 0, w: 1056, h: 1032 });
 });
 
+test("dragging a lone window's edge keeps its width, centered", async () => {
+  const { chrome, tileco } = await setup([UW], [on(UW, 1, { focused: true })]);
+  // The center is at x = 3640; you drag the right edge to 60% of the width.
+  chrome.win(1).width = 4672 - chrome.box(1).x;
+  await tileco.event();
+  assert.deepEqual(chrome.box(1), { x: 1920 + 688, y: 0, w: 2064, h: 1392 });
+});
+
+test("dragging a lone window's left edge narrows it about the center", async () => {
+  const { chrome, tileco } = await setup([HD], [on(HD, 1, { focused: true })]);
+  Object.assign(chrome.win(1), { left: 192, width: 1728 });
+  await tileco.event();
+  assert.deepEqual(chrome.box(1), { x: 192, y: 0, w: 1536, h: 1032 });
+});
+
+test("a lone window's width holds for its workspace whenever it's down to one", async () => {
+  const { chrome, tileco } = await setup([HD], [on(HD, 1, { focused: true })]);
+  Object.assign(chrome.win(1), { left: 192, width: 1728 });
+  await tileco.event();
+  chrome.open(on(HD, 2));
+  await tileco.event();
+  assert.deepEqual(chrome.box(1), { x: 0, y: 0, w: 1056, h: 1032 }, "a second window tiles as normal");
+  chrome.wins = chrome.wins.filter((w) => w.id !== 2);
+  await tileco.event();
+  assert.deepEqual(chrome.box(1), { x: 192, y: 0, w: 1536, h: 1032 }, "alone again, at your width");
+  await tileco.command("workspace-2");
+  chrome.open(on(HD, 9, { focused: true }));
+  await tileco.event();
+  assert.deepEqual(chrome.box(9), { x: 0, y: 0, w: 1920, h: 1032 }, "another workspace keeps the rule");
+  // The width outlives the service worker.
+  await tileco.command("workspace-1");
+  const after = new Tileco(chrome);
+  await after.event();
+  assert.deepEqual(chrome.box(1), { x: 192, y: 0, w: 1536, h: 1032 });
+});
+
+test("a lone window resized by a change in the work area keeps the rule", async () => {
+  const { chrome, tileco } = await setup([UW], [on(UW, 1, { focused: true })]);
+  chrome.displaysList = [{ ...UW, workArea: { left: 1920, top: 0, width: 3440, height: 1440 } }];
+  chrome.win(1).width = 2000;
+  await tileco.event();
+  assert.deepEqual(chrome.box(1), { x: 1920 + 344, y: 0, w: 2752, h: 1440 });
+});
+
+test("a floating window's resize leaves the lone window's width", async () => {
+  const { chrome, tileco } = await setup([UW], [on(UW, 1, { focused: true }), on(UW, 2)]);
+  await floatAt(chrome, tileco, 2, 2000, 100);
+  chrome.win(2).width = 700;
+  await tileco.event();
+  assert.deepEqual(chrome.box(1), { x: 1920 + 344, y: 0, w: 2752, h: 1392 });
+});
+
+test("a lone window back from maximized keeps the rule", async () => {
+  const { chrome, tileco } = await setup([UW], [on(UW, 1, { focused: true })]);
+  Object.assign(chrome.win(1), { state: "maximized", left: 1920, width: 3440 });
+  await tileco.event();
+  Object.assign(chrome.win(1), { state: "normal", left: 2000, width: 1500 });
+  await tileco.event();
+  assert.deepEqual(chrome.box(1), { x: 1920 + 344, y: 0, w: 2752, h: 1392 });
+});
+
 test("moving a window without resizing it leaves the share", async () => {
   const { chrome, tileco } = await setup([HD], [on(HD, 1, { focused: true }), on(HD, 2)]);
   Object.assign(chrome.win(2), { left: 900, top: 50 });

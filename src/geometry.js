@@ -132,6 +132,20 @@ export function arrange(mode, area, n, o, singleRules) {
   return f(area, n, o || {});
 }
 
+// The width fraction a lone window takes when you drag one of its edges
+// from box `was` to box `now` (§5.3), each {x, w}. It stays centered, so the
+// edge that moved sets the half-width, the right edge if both did. Null if
+// neither moved.
+export function singleWidthFor(area, was, now) {
+  if (area.w <= 0) return null;
+  const cx = area.x + area.w / 2;
+  let f;
+  if (now.x + now.w !== was.x + was.w) f = (2 * (now.x + now.w - cx)) / area.w;
+  else if (now.x !== was.x) f = (2 * (cx - now.x)) / area.w;
+  else return null;
+  return Math.round(clamp(f, 0.1, 1.0) * 1000) / 1000;
+}
+
 // The main share that puts window `i`'s `edge` ("left" or "right") at `x`,
 // for a window you resized by dragging that edge (§5.3), or null if that
 // edge doesn't move with the share: a screen edge, a lone window, monocle.

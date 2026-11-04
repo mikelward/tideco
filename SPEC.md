@@ -422,6 +422,7 @@ The rest is tide's §6.1:
 - New windows join the end of the stack.
 - A lone window is 80% wide and centered at aspect 2.1 and over, 100%
   otherwise; both numbers are per-display settings.
+  Dragging a lone window's edge sets its width for that workspace (§5.3).
 
 Geometry is a pure function from (work area, layout, settings, window
 count) to rectangles, kept free of `chrome.*` so it tests in Node (§17).
@@ -440,7 +441,7 @@ tide's Lua layout is the reference; the two share test fixtures (§15).
   make, the window takes the tile nearest its center (swapping with that
   tile's window). If the center is on another display, the window first
   moves to that display's part of its workspace (§6.1). A resize of a tiled window sets `mfact`. That's
-  Krohnkite's behavior.
+  Krohnkite's behavior. A lone window's resize sets its width, as tilemo's does.
   - **Built:** the resize. tileco keeps where it put each tiled window.
     When a tiled window's width has changed on the same display and work
     area, the edge that moved sets the workspace's `mfact`, for the
@@ -448,8 +449,15 @@ tide's Lua layout is the reference; the two share test fixtures (§15).
     between 5% and 95%, as the keys keep it. The rest retile to match.
   - Tile and two columns: the master/stack border, from either side.
     Three columns: either edge of the master, or a stack's inner edge.
-  - A screen edge, a lone window, monocle, and tile with no master have
-    no share to move, so that resize is put back.
+  - A lone window stays centered, so the edge that moved sets its width:
+    twice that edge's distance from the work area's center, between 10%
+    and 100%. The right edge wins if both moved. The width is kept on the
+    workspace's part, as `mfact` is, in place of the single-window rule.
+    It holds whenever that part is down to one tiled window; a second
+    tiles as normal. chromeOS reports a resize only once you let go, so
+    the window re-centers then, not as you drag.
+  - A screen edge, monocle, and tile with no master have no share to
+    move, so that resize is put back.
   - A width changed with the work area (the shelf hiding, say), a
     floating window, or a window back from maximized isn't read as a
     drag.

@@ -508,6 +508,14 @@ export function setMfact(state, name, displayId, mode, mfact) {
   return s;
 }
 
+// A lone window's width you set by dragging its edge (§5.3), between 10%
+// and the whole area. It holds for this part whenever one window tiles there.
+export function setSingleWidth(state, name, displayId, width) {
+  const s = clone(state);
+  settingsOf(s, name, displayId).singleWidth = Math.min(1.0, Math.max(0.1, width));
+  return s;
+}
+
 // After a browser restart (§14.2), each window in `renames` (old ID to new)
 // keeps its workspace, place in the stack, and everything else tileco knows.
 export function renameWindows(state, renames) {

@@ -667,11 +667,12 @@ export class Tileco {
     const disp = this.displays.find((d) => d.id === display);
     const mode = n === null || !disp ? null : this.modeOf(n, disp);
 
-    // The steps and numbers go by bar order, stopping at its ends (§6.1).
+    // The steps and numbers go by bar order, stopping at its ends; the steps
+    // pass over workspaces with no window (§6.1).
     let m;
     if ((m = name.match(/^workspace-([1-9])$/))) return this.showWorkspace(display, ws.nth(s, Number(m[1])));
-    if (name === "workspace-next") return this.showWorkspace(display, ws.step(s, n, 1));
-    if (name === "workspace-prev") return this.showWorkspace(display, ws.step(s, n, -1));
+    if (name === "workspace-next") return this.showWorkspace(display, ws.step(s, n, 1, { withWindows: true }));
+    if (name === "workspace-prev") return this.showWorkspace(display, ws.step(s, n, -1, { withWindows: true }));
     if (name === "workspace-home") return this.showWorkspace(display, ws.home(s));
     if (name === "workspace-last") return this.showWorkspace(display, ws.last(s, n));
     if (name === "popup") return this.dashboard(display);

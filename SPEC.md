@@ -682,6 +682,14 @@ home, and **`Search+Shift+1…9`** moves the focused window to the Nth,
 staying put, as tide's `Super+1…9` (tide §6.6). A number past the last
 workspace does nothing.
 
+**`Search+Page Up`** and **`Page Down`** show the previous and next
+workspace in bar order that has a window, as tide's `Super+PgUp` and
+`PgDn` do: an empty one, standing or made, or one whose only windows you
+minimized, is passed over. They stop at either end, where tide's and
+tilemo's wrap round, and with no workspace that way with a window they do
+nothing. **`Search+Shift+Page Up`** and **`Page Down`** send the focused
+window to the very next, empty or not.
+
 **One rule decides what's on screen.** A window is shown if and only if its
 workspace is showing on some display and you haven't minimized it.
 
@@ -774,7 +782,7 @@ Bound by tileco, unless the column says the Shortcuts app:
 | `Search+W` / `Search+Shift+W` (tide: `Super+Return` / `Super+Shift+Return`) | go to a workspace / move the window to one, by name: the name prompt (§6.1) | tileco |
 | `Search+Home` / `Search+End` | home / the last workspace other than home | tileco |
 | `Search+1…9` / `Search+Shift+1…9` | go to / move the window to the Nth workspace in bar order, home first | tileco |
-| `Search+Page Up` / `Page Down` (tide: `Super+Left` / `Right`) | previous / next workspace | tileco (Search+arrows are Home/End and Page Up/Down; §7.2) |
+| `Search+Page Up` / `Page Down` (tide: `Super+PgUp` / `PgDn`) | previous / next workspace with a window | tileco (Search+arrows are Home/End and Page Up/Down; §7.2) |
 | `Search+Shift+Page Up` / `Page Down` | send to previous / next workspace | tileco |
 | `Search+J` / `K`, with Shift | focus / move down and up the stack | tileco |
 | `Search+Space` | the dashboard: tileco's bar and launcher, full screen (§8.1) | tileco |

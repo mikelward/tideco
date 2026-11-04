@@ -157,6 +157,29 @@ test("the Nth in bar order, and the steps stop at either end", () => {
   assert.equal(ws.step(s, "web", 1), null, "no wrap after the last");
 });
 
+test("with windows, the steps pass over workspaces with none, or only ones you minimized", () => {
+  let s = ws.addWindow(ws.create(["a"]), 1, "a");
+  s = ws.send(ws.addWindow(s, 2, "a"), 2, "oc");
+  s = ws.send(ws.addWindow(s, 3, "a"), 3, "web");
+  s = ws.userMinimized(ws.send(ws.addWindow(s, 4, "a"), 4, "me"), 4);
+  // in, re, oc, me, web: windows on in, oc and web, and a minimized one on me
+  const w = { withWindows: true };
+  assert.equal(ws.step(s, "in", 1, w), "oc", "past re, standing and empty");
+  assert.equal(ws.step(s, "oc", 1, w), "web", "past me, its only window minimized");
+  assert.equal(ws.step(s, "web", 1, w), null, "no wrap after the last");
+  assert.equal(ws.step(s, "web", -1, w), "oc");
+  assert.equal(ws.step(s, "re", -1, w), "in", "from an empty one, the one before with a window");
+  assert.equal(ws.step(s, "in", -1, w), null, "no wrap before the first");
+  assert.equal(ws.step(s, "in", 1), "re", "without it, the very next, as sending a window takes");
+});
+
+test("a standing workspace named as an object's own property, not made yet, has no windows", () => {
+  let s = ws.addWindow(ws.create(["a"], ["in", "constructor", "toString", "oc"]), 1, "a");
+  s = ws.send(ws.addWindow(s, 2, "a"), 2, "oc");
+  assert.equal(ws.hasWindows(s, "constructor"), false);
+  assert.equal(ws.step(s, "in", 1, { withWindows: true }), "oc", "passed over, not thrown on");
+});
+
 test("the last workspace other than home toggles between the last two", () => {
   let s = ws.create(["a"]);
   assert.equal(ws.last(s, "in"), null, "none shown yet");

@@ -409,7 +409,8 @@ export class Tileco {
       }
       if (w.focused) s = ws.focused(s, w.id);
     }
-    if (resized) s = ws.setMfact(s, resized.n, resized.display, resized.mode, resized.mfact);
+    if (resized?.singleWidth !== undefined) s = ws.setSingleWidth(s, resized.n, resized.display, resized.singleWidth);
+    else if (resized) s = ws.setMfact(s, resized.n, resized.display, resized.mode, resized.mfact);
     delete s.spanned;
     s.asking = this.asking(s, before, wins);
     s.appPopups = [...appPopups].filter((id) => this.windows.has(id));
@@ -590,11 +591,12 @@ export class Tileco {
     return { state, renamed: new Set(renames.values()), waiting: left };
   }
 
-  // A drag on a tiled window's edge sets its workspace's main share (§5.3).
-  // Its width changed since tileco placed it, on the same display, which has
-  // the same work area: a work area that changed may have moved it, and a
-  // drag of the whole window keeps the width. Returns {n, display, mode, mfact}, or
-  // null if this wasn't such a drag or the share doesn't move that edge.
+  // A drag on a tiled window's edge sets its workspace's main share (§5.3),
+  // or a lone window's width. Its width changed since tileco placed it, on
+  // the same display, which has the same work area: a work area that changed
+  // may have moved it, and a drag of the whole window keeps the width.
+  // Returns {n, display, mode, mfact} or {n, display, singleWidth}, or null
+  // if this wasn't such a drag or the share doesn't move that edge.
   resized(before, w, display) {
     const info = before.windows[w.id];
     const p = info.placed;
@@ -602,10 +604,21 @@ export class Tileco {
     const n = ws.showing(before, display);
     const d = this.displays.find((x) => x.id === display);
     if (n === null || info.ws !== n || !d || JSON.stringify(area(d)) !== JSON.stringify(p.area)) return null;
+    const part = ws.layoutOf(before, n, display);
+    if (p.count === 1) {
+      const singleWidth = geometry.singleWidthFor(p.area, { x: p.left, w: p.width }, { x: w.left, w: w.width });
+      return singleWidth === null ? null : { n, display, singleWidth };
+    }
     const edge = w.left !== p.left ? "left" : "right";
     const x = edge === "left" ? w.left : w.left + w.width;
-    const mfact = geometry.mfactFor(p.mode, p.area, p.count, ws.layoutOf(before, n, display).modes[p.mode], this.settings.singleRules, p.index, edge, x);
+    const mfact = geometry.mfactFor(p.mode, p.area, p.count, part.modes[p.mode], this.singleRules(part), p.index, edge, x);
     return mfact === null ? null : { n, display, mode: p.mode, mfact };
+  }
+
+  // The single-window rule for a workspace's part: the width you dragged a
+  // lone window to there, or this Chromebook's rule for the display.
+  singleRules(part) {
+    return part.singleWidth === undefined ? this.settings.singleRules : [{ minAspect: 0, width: part.singleWidth }];
   }
 
   // The display of the focused window, any type: a home window or a popup
@@ -988,7 +1001,8 @@ export class Tileco {
       // Maximized and fullscreen windows are left alone (§5.1).
       const ids = ws.tiled(s, display.id).filter((id) => this.windows.get(id)?.state === "normal");
       const mode = this.modeOf(n, display);
-      const boxes = geometry.arrange(mode, area(display), ids.length, ws.layoutOf(s, n, display.id).modes[mode], this.settings.singleRules);
+      const part = ws.layoutOf(s, n, display.id);
+      const boxes = geometry.arrange(mode, area(display), ids.length, part.modes[mode], this.singleRules(part));
       await Promise.all(ids.map(async (id, i) => {
         const b = boxes[i];
         const w = await update(id, { left: b.x, top: b.y, width: b.w, height: b.h });

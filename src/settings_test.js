@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { DEFAULT_SETTINGS, load, PER_MACHINE, pick, resolve, SETTINGS_KEY, settingsChanged, SHARED, standingProblems } from "./settings.js";
+import { DEFAULT_SETTINGS, load, PER_MACHINE, pick, resolve, SETTINGS_KEY, settingsChanged, SHARED, standingProblems, withWorkspaceSetting, workspaceSetting } from "./settings.js";
 
 test("nothing stored means the defaults", () => {
   assert.deepEqual(resolve(undefined, undefined), { settings: DEFAULT_SETTINGS, errors: [] });
@@ -101,7 +101,7 @@ test("layouts are set per Chromebook, and checked", () => {
 
 test("pick keeps the shared settings apart from this Chromebook's", () => {
   const all = resolve().settings;
-  assert.deepEqual(Object.keys(pick(all, SHARED)), ["clocks", "day", "work", "apps", "dimStrength", "watched", "defaultMode", "modes", "standing", "homeApps"]);
+  assert.deepEqual(Object.keys(pick(all, SHARED)), ["clocks", "day", "work", "apps", "dimStrength", "watched", "defaultMode", "modes", "standing", "homeApps", "workspaceSettings"]);
   assert.deepEqual(Object.keys(pick(all, PER_MACHINE)), ["singleRules", "ultrawideAspect", "wheelStep", "startup"]);
 });
 
@@ -213,4 +213,46 @@ test("home's apps refuse a name that's no app key, and one listed twice", () => 
   assert.deepEqual(bad(["app-chat", "gmail"]), ['homeApps: app 2, "gmail", isn\'t one of app-calendar, app-chat, app-meet, app-music']);
   assert.deepEqual(bad(["app-chat", "app-chat"]), ["homeApps: app 2, app-chat, is listed already"]);
   assert.deepEqual(resolve({ homeApps: ["gmail"] }).settings.homeApps, DEFAULT_SETTINGS.homeApps, "it keeps its default");
+});
+
+test("unset, the workspace settings have home ask for names and pin nothing", () => {
+  assert.ok(SHARED.includes("workspaceSettings"));
+  const { settings } = resolve();
+  assert.equal(settings.workspaceSettings, null);
+  assert.deepEqual(workspaceSetting(settings, "in"), { askForName: true, pinnedApps: [] });
+  assert.deepEqual(workspaceSetting(settings, "IN"), { askForName: true, pinnedApps: [] }, "ignoring case");
+  assert.deepEqual(workspaceSetting(settings, "re"), { askForName: false, pinnedApps: [] });
+  const moved = resolve({ standing: ["mail", "in"] }).settings;
+  assert.deepEqual(workspaceSetting(moved, "mail"), { askForName: true, pinnedApps: [] }, "home, whatever it's named");
+  assert.deepEqual(workspaceSetting(moved, "in"), { askForName: false, pinnedApps: [] });
+});
+
+test("set, each workspace's settings are its own, a missing one or field off", () => {
+  const { settings, errors } = resolve({ workspaceSettings: { " In ": { askForName: true, pinnedApps: ["app-calendar", "app-chat"] }, re: { pinnedApps: [] } } });
+  assert.deepEqual(errors, []);
+  assert.deepEqual(settings.workspaceSettings, { In: { askForName: true, pinnedApps: ["app-calendar", "app-chat"] }, re: { pinnedApps: [] } }, "names trimmed");
+  assert.deepEqual(workspaceSetting(settings, "in"), { askForName: true, pinnedApps: ["app-calendar", "app-chat"] });
+  assert.deepEqual(workspaceSetting(settings, "re"), { askForName: false, pinnedApps: [] });
+  assert.deepEqual(workspaceSetting(settings, "oc"), { askForName: false, pinnedApps: [] });
+  assert.deepEqual(workspaceSetting(resolve({ workspaceSettings: {} }).settings, "in"), { askForName: false, pinnedApps: [] }, "an empty object turns home's asking off");
+  assert.deepEqual(resolve({ workspaceSettings: null }).errors, [], "null is unset");
+});
+
+test("the workspace settings refuse a bad name, a name twice, and a bad field", () => {
+  const bad = (workspaceSettings) => resolve({ workspaceSettings }).errors;
+  assert.deepEqual(bad([]), ["workspaceSettings: must be an object, keyed by workspace name, or null"]);
+  assert.deepEqual(bad({ in: true }), ['workspaceSettings: "in" must be an object']);
+  assert.deepEqual(bad({ in: {}, IN: {} }), ['workspaceSettings: "IN" is listed already']);
+  assert.deepEqual(bad({ "a@b": {} }), ['workspaceSettings: "a@b": a workspace\'s name can\'t have quotes, backslashes, @ or control characters']);
+  assert.deepEqual(bad({ in: { ask: true } }), ['workspaceSettings: "in": ask isn\'t one of askForName, pinnedApps']);
+  assert.deepEqual(bad({ in: { askForName: "yes" } }), ['workspaceSettings: "in".askForName must be true or false']);
+  assert.deepEqual(bad({ in: { pinnedApps: ["gmail"] } }), ['workspaceSettings: "in".pinnedApps: app 1, "gmail", isn\'t one of app-calendar, app-chat, app-meet, app-music']);
+  assert.equal(resolve({ workspaceSettings: [] }).settings.workspaceSettings, null, "it keeps its default");
+});
+
+test("changing one workspace's setting spells out the default first", () => {
+  const unset = resolve().settings;
+  assert.deepEqual(withWorkspaceSetting(unset, "re", "askForName", true), { in: { askForName: true }, re: { askForName: true } });
+  const set = resolve({ workspaceSettings: { In: { askForName: true } } }).settings;
+  assert.deepEqual(withWorkspaceSetting(set, "in", "pinnedApps", ["app-chat"]), { In: { askForName: true, pinnedApps: ["app-chat"] } }, "under the name it's listed by");
 });

@@ -212,15 +212,15 @@ test("the standing workspaces and home's apps are edited, saved and kept", async
   await page.waitForFunction(async () => (await chrome.storage.sync.get("settings")).settings?.standing?.length === 4);
   assert.deepEqual((await stored()).standing, ["re", "in", "code", "docs"]);
   // Home's apps: Meet in, Chat out.
-  await page.getByLabel("Google Meet").check();
-  await page.getByLabel("Google Chat").uncheck();
+  await page.locator("#home-apps").getByLabel("Google Meet").check();
+  await page.locator("#home-apps").getByLabel("Google Chat").uncheck();
   await page.waitForFunction(async () => JSON.stringify((await chrome.storage.sync.get("settings")).settings?.homeApps) === JSON.stringify(["app-calendar", "app-music", "app-meet"]));
   // A box follows its app's name as it's saved.
   const meetName = page.locator('#apps tr[data-command="app-meet"] input.name');
   await meetName.fill("Gmail");
   await meetName.dispatchEvent("change");
   await page.waitForFunction(() => [...document.querySelectorAll("#home-apps label")].some((l) => l.innerText === "Gmail"));
-  assert.equal(await page.getByLabel("Gmail", { exact: true }).isChecked(), true);
+  assert.equal(await page.locator("#home-apps").getByLabel("Gmail", { exact: true }).isChecked(), true);
 
   // Kept across a reload.
   await page.reload();
@@ -273,6 +273,39 @@ test("a standing workspace listed twice is refused, saying why, and isn't saved"
   assert.deepEqual(await names(), ["me"]);
   assert.deepEqual(await stored(), ["me"]);
   assert.deepEqual(errors, []);
+  await worker.evaluate(() => chrome.storage.sync.remove("settings"));
+  await page.close();
+});
+
+// Each standing workspace's settings (§6.1, §13): home alone asks while
+// they're unset; a box changed spells the default out, keeping home's.
+test("each standing workspace's asking and pinned apps are edited, saved and kept", async () => {
+  const { page, errors } = await open("src/options.html");
+  await page.waitForSelector("#workspace-settings fieldset");
+  const stored = async () => (await worker.evaluate(() => chrome.storage.sync.get("settings"))).settings?.workspaceSettings;
+  assert.deepEqual(await page.locator("#workspace-settings legend").allInnerTexts(), ["in", "re", "oc", "me"]);
+  const asks = () => page.locator("#workspace-settings input.ask").evaluateAll((l) => l.map((i) => i.checked));
+  assert.deepEqual(await asks(), [true, false, false, false], "home alone asks by default");
+  await page.getByLabel("New windows on re ask for a workspace").check();
+  await page.waitForFunction(async () => (await chrome.storage.sync.get("settings")).settings?.workspaceSettings?.re?.askForName === true);
+  assert.deepEqual(await stored(), { in: { askForName: true }, re: { askForName: true } });
+  await page.getByLabel("Pin Google Chat on in").check();
+  await page.getByLabel("Pin Google Calendar on in").check();
+  await page.waitForFunction(async () => (await chrome.storage.sync.get("settings")).settings?.workspaceSettings?.in?.pinnedApps?.length === 2);
+  await page.getByLabel("New windows on in ask for a workspace").uncheck();
+  await page.waitForFunction(async () => (await chrome.storage.sync.get("settings")).settings?.workspaceSettings?.in?.askForName === false);
+  assert.deepEqual(await stored(), { in: { askForName: false, pinnedApps: ["app-chat", "app-calendar"] }, re: { askForName: true } });
+  // A standing workspace added gets its own boxes.
+  await page.locator("#standing-name").fill("docs");
+  await page.locator("#standing-name").press("Enter");
+  await page.waitForSelector('#workspace-settings fieldset[data-name="docs"]');
+
+  await page.reload();
+  await page.waitForSelector("#workspace-settings fieldset");
+  assert.deepEqual(await asks(), [false, true, false, false, false]);
+  assert.deepEqual(await page.locator('#workspace-settings fieldset[data-name="in"] .pinned input:checked').evaluateAll((l) => l.map((i) => i.dataset.command)), ["app-calendar", "app-chat"]);
+  assert.deepEqual(errors, []);
+  assert.equal(await page.locator("#errors").isHidden(), true, await page.locator("#errors").innerText());
   await worker.evaluate(() => chrome.storage.sync.remove("settings"));
   await page.close();
 });

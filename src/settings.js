@@ -41,7 +41,7 @@ export const DEFAULT_SETTINGS = {
   homeApps: DEFAULT_HOME_APPS,
   // Each workspace's own settings, by name (§6.1): whether a new window
   // there asks for a workspace, and the apps whose windows there tileco
-  // won't close. null, unset, is home asking and nothing pinned, as
+  // reopens once closed. null, unset, is home asking and nothing pinned, as
   // workspaceSetting reads it.
   workspaceSettings: null,
   // Per machine, as they depend on its displays (§5.2).

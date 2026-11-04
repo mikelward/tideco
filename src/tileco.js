@@ -3,7 +3,7 @@
 // `api` is `chrome` in the extension and a fake in the tests; only its
 // promise-returning calls are used.
 
-import { appOfUrl, DEFAULT_APPS, homeAppOf } from "./apps.js";
+import { appOf, appOfUrl, DEFAULT_APPS, homeAppOf } from "./apps.js";
 import { DEFAULT_SETTINGS, load as loadSettings, workspaceSetting } from "./settings.js";
 import { overlay } from "./dim.js";
 import { toggle as toggleKeepAwake } from "./keepawake.js";
@@ -55,6 +55,13 @@ const SEEN_KEY = "seenWindow";
 export const DIM_ORIGINS = ["<all_urls>"];
 const BADGE = "#3584e4";
 const BADGE_ATTENTION = "#e5a50a";
+// A pinned app's window you close comes back (§6.1) this long after, once
+// the close is plainly not the browser going, which ends the worker first.
+const REOPEN_DELAY = 1000;
+// It comes back at most this many times on a workspace in this span, so a
+// site that keeps closing itself doesn't loop.
+export const REOPEN_LIMIT = 3;
+export const REOPEN_SPAN = 60_000;
 
 function area(display) {
   const a = display.workArea;
@@ -81,6 +88,11 @@ export class Tileco {
     this.displays = [];
     this.windows = new Map();
     this.queue = Promise.resolve();
+    // The clock and the timer, which the tests replace.
+    this.now = () => Date.now();
+    this.later = (f, ms) => setTimeout(f, ms);
+    // When each pinned app came back on each workspace, by "ws\napp".
+    this.reopens = new Map();
   }
 
   // Run one step at a time: events arrive faster than Chrome answers, and
@@ -148,8 +160,22 @@ export class Tileco {
   async rememberUrls() {
     this.tabsAllowed = await this.api.permissions.contains({ permissions: ["tabs"] });
     const all = await this.api.windows.getAll({ populate: true, windowTypes: [...MANAGED, "popup"] });
-    for (const w of all) if (w.id in this.state.windows) this.state.windows[w.id].urls = this.urlsOf(w);
+    for (const w of all) {
+      if (!(w.id in this.state.windows)) continue;
+      this.state.windows[w.id].urls = this.urlsOf(w);
+      this.rememberApp(this.state.windows[w.id], w);
+    }
     await this.save();
+  }
+
+  // Window `w`'s app, kept in its `info` for when it closes, which leaves
+  // no tabs to read (§6.1). Without its address, it stays what it was.
+  rememberApp(info, w) {
+    const tab = w.tabs?.find((t) => t.active) ?? w.tabs?.[0];
+    if (!tab?.url && !tab?.pendingUrl) return;
+    const app = appOf(w, this.apps)?.command;
+    if (app) info.app = app;
+    else delete info.app;
   }
 
   // The tab addresses kept for a restart (§14.2), only with tab search
@@ -223,10 +249,11 @@ export class Tileco {
   // A new window joins the workspace showing where it opened, or home if
   // it's one of home's apps, there or not, as a send (§6.1). One that lands
   // otherwise on a workspace that asks for a name, and may `ask`, is marked
-  // to ask for a workspace the first time it's focused.
-  join(s, id, display, { homeApp = false, ask = false } = {}) {
+  // to ask for a workspace the first time it's focused. `to` names the
+  // workspace it joins instead, as a pinned app's reopened window does.
+  join(s, id, display, { homeApp = false, ask = false, to = null } = {}) {
     if (id in s.windows) return s;
-    const joined = ws.addWindow(s, id, display, { to: homeApp ? ws.home(s) : null });
+    const joined = ws.addWindow(s, id, display, { to: homeApp ? ws.home(s) : to });
     if (ask && !homeApp && this.asksOn(joined.windows[id].ws)) joined.windows[id].ask = true;
     return joined;
   }
@@ -344,6 +371,7 @@ export class Tileco {
     // A new window asks for a workspace only once tileco knows the rest, and
     // not while a restart brings windows back (§14.2), which aren't new.
     const asks = before !== null && renamed.size === 0 && Object.keys(waiting).length === 0;
+    const closed = this.closedPinned(before, all, ids, renamed, waiting);
     for (const w of wins) {
       // Chrome restores a restarted window as it likes; tileco puts it back.
       if (renamed.has(w.id)) {
@@ -396,6 +424,7 @@ export class Tileco {
       if (!(w.id in s.windows)) continue;
       s.windows[w.id].urls = this.urlsOf(w);
       s.windows[w.id].type = w.type;
+      this.rememberApp(s.windows[w.id], w);
     }
     // A mark clears when you go to its window, or it closes.
     s.marks = (before?.marks ?? []).filter((id) => this.windows.has(id) && !this.windows.get(id).focused);
@@ -425,6 +454,75 @@ export class Tileco {
       else await this.api.windows.remove(id);
     }
     this.state = s;
+    for (const c of closed) this.reopenLater(c);
+  }
+
+  // The pinned apps' windows you closed since the last sync (§6.1): each
+  // one of its workspace's pinnedApps, by the app the last sync saw in it,
+  // closed on that workspace. None while a restart brings windows back
+  // (§14.2), when no window but tileco's own is left, as when the browser
+  // closes, or when a
+  // display went, taking its windows' places with it.
+  closedPinned(before, all, ids, renamed, waiting) {
+    if (!before || before.restoring || renamed.size > 0 || Object.keys(waiting).length > 0) return [];
+    if (!all.some((w) => !this.ours(w))) return [];
+    if ((before.present ?? []).some((d) => !ids.includes(d))) return [];
+    const out = [];
+    for (const [key, info] of Object.entries(before.windows)) {
+      const id = Number(key);
+      if (all.some((w) => w.id === id) || !info.app || !ids.includes(info.display)) continue;
+      if (workspaceSetting(this.settings, info.ws).pinnedApps.includes(info.app)) out.push({ app: info.app, n: info.ws, display: info.display });
+    }
+    return out;
+  }
+
+  // Whether window `w` holds only tileco's own pages, as a home window or
+  // the dashboard does. A browser window with the settings in one of its
+  // tabs is still a browser window.
+  ours(w) {
+    const prefix = this.api.runtime.getURL("");
+    const tabs = w.tabs ?? [];
+    return tabs.length > 0 && tabs.every((t) => (t.url || t.pendingUrl || "").startsWith(prefix));
+  }
+
+  // Reopen a pinned app's closed window shortly.
+  reopenLater(c) {
+    this.later(() => this.reopen(c).catch((e) => console.error(`tileco: couldn't reopen ${c.app} on ${c.n}:`, e)), REOPEN_DELAY);
+  }
+
+  // A pinned app's window back on workspace `n` and `display`, as its app
+  // key opens it but taking no focus, so neither focus nor the workspace
+  // showing changes. Not if, since it closed, every window but tileco's
+  // own has gone (the browser closing), a restart began, the display went,
+  // the pin came out, or the workspace has a window of that app again. Nor
+  // once it has come back REOPEN_LIMIT times there in the last
+  // REOPEN_SPAN: a site that keeps closing itself then stays closed, said
+  // in the log. Only a window reopened counts toward that.
+  reopen({ app: command, n, display }) {
+    return this.run(async () => {
+      await this.sync();
+      const s = this.state;
+      const app = this.apps.find((a) => a.command === command);
+      const d = this.displays.find((x) => x.id === display);
+      if (![...this.all.values()].some((w) => !this.ours(w)) || s.restoring || !app?.url || !d) return;
+      if (!workspaceSetting(this.settings, n).pinnedApps.includes(command)) return;
+      const there = ws.lookup(s, n);
+      if (Object.values(s.windows).some((info) => info.ws === there && info.app === command)) return;
+      const key = `${n}\n${command}`;
+      const now = this.now();
+      const times = (this.reopens.get(key) ?? []).filter((t) => now - t < REOPEN_SPAN);
+      this.reopens.set(key, times);
+      if (times.length >= REOPEN_LIMIT) {
+        console.warn(`tileco: ${command}, pinned on ${n}, closed ${times.length + 1} times in ${REOPEN_SPAN / 1000}s; not reopening it again`);
+        return;
+      }
+      times.push(now);
+      const a = d.workArea;
+      const w = await this.open({ url: app.url, type: "popup", focused: false, left: a.left, top: a.top }, display, { to: n });
+      this.state.appPopups.push(w.id);
+      this.state.windows[w.id].app = command;
+      await this.apply();
+    });
   }
 
   // A browser restart gives every window a new ID, so none of the stored
@@ -796,6 +894,8 @@ export class Tileco {
     const homeApp = this.settings.homeApps.includes(appOfUrl(app.url, this.apps)?.command);
     const w = await this.open({ url: app.url, type: "popup", focused }, display, { homeApp });
     this.state.appPopups.push(w.id);
+    const key = appOfUrl(app.url, this.apps)?.command;
+    if (key) this.state.windows[w.id].app = key;
     return homeApp && focused ? this.activate(w.id) : w.id;
   }
 

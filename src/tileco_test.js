@@ -1649,3 +1649,287 @@ test("Start at login's windows don't take the places of windows Chrome restores"
   assert.equal(after.state.windows[50].ws, "oc", "the restored window goes back to oc");
   assert.equal(after.state.windows[started].ws, "in");
 });
+
+const CHAT = "https://chat.google.com/room/1";
+// Stands in for tileco's clock and timer: `fire` runs what's due.
+function timed(tileco) {
+  const pending = [];
+  let t = 1_000_000;
+  tileco.now = () => t;
+  tileco.later = (f) => pending.push(f);
+  return {
+    pending,
+    tick: (ms) => {
+      t += ms;
+    },
+    fire: async () => {
+      for (const f of pending.splice(0)) await f();
+    },
+  };
+}
+const close = (chrome, ...ids) => {
+  chrome.wins = chrome.wins.filter((w) => !ids.includes(w.id));
+};
+const pinChat = (chrome, n = "in") => {
+  chrome.syncStore.settings = { workspaceSettings: { [n]: { pinnedApps: ["app-chat"] } } };
+};
+
+test("a pinned app's window you close reopens on its workspace, taking no focus", async () => {
+  const { chrome, tileco } = await setup([HD], [on(HD, 1, { focused: true }), on(HD, 2, { type: "app", url: CHAT })]);
+  const clock = timed(tileco);
+  pinChat(chrome);
+  await tileco.event();
+  close(chrome, 2);
+  await tileco.event();
+  assert.deepEqual(opened(chrome), [], "not at once, in case the browser is closing");
+  await clock.fire();
+  assert.deepEqual(opened(chrome), [{ url: "https://chat.google.com/", type: "popup" }], "as its app key opens it");
+  const id = chrome.created.at(-1).id;
+  assert.equal(tileco.state.windows[id].ws, "in");
+  assert.deepEqual(tileco.state.workspaces.in.windows, [1, id], "tiled at the end of the stack");
+  assert.equal(chrome.box(id).x, 1056);
+  assert.equal(chrome.win(1).focused, true, "focus stays where it was");
+  assert.equal(chrome.win(id).focused, false);
+  assert.equal(tileco.state.current, "in");
+  // The reopened window is the app's, so closing it reopens it again.
+  clock.tick(30_000);
+  close(chrome, id);
+  await tileco.event();
+  await clock.fire();
+  assert.equal(opened(chrome).length, 2);
+});
+
+test("a pinned app's window reopens on its hidden workspace without showing it", async () => {
+  const { chrome, tileco } = await setup([HD], [on(HD, 1, { focused: true }), on(HD, 2, { type: "app", url: CHAT })]);
+  const clock = timed(tileco);
+  pinChat(chrome);
+  await tileco.command("workspace-2");
+  close(chrome, 2);
+  await tileco.event();
+  await clock.fire();
+  const id = chrome.created.at(-1).id;
+  assert.equal(tileco.state.windows[id].ws, "in");
+  assert.equal(tileco.state.current, "re", "your workspace still shows");
+  assert.equal(chrome.win(id).state, "minimized", "hidden with its workspace");
+});
+
+test("only a pinned app's window reopens", async () => {
+  const { chrome, tileco } = await setup([HD], [
+    on(HD, 1, { focused: true }),
+    on(HD, 2, { type: "app", url: CALENDAR }),
+    on(HD, 3, { type: "app", url: CHAT }),
+  ]);
+  const clock = timed(tileco);
+  pinChat(chrome);
+  await tileco.event();
+  chrome.open(on(HD, 4, { focused: true }));
+  await tileco.event();
+  close(chrome, 1, 2);
+  await tileco.event();
+  await clock.fire();
+  assert.deepEqual(opened(chrome), [], "neither a tab window nor an unpinned app");
+  close(chrome, 3);
+  await tileco.event();
+  await clock.fire();
+  assert.deepEqual(opened(chrome), [{ url: "https://chat.google.com/", type: "popup" }]);
+});
+
+test("a pinned app's window closed on another workspace doesn't reopen", async () => {
+  const { chrome, tileco } = await setup([HD], [on(HD, 1, { focused: true }), on(HD, 2, { type: "app", url: CHAT }), on(HD, 3, { type: "app", url: CHAT })]);
+  const clock = timed(tileco);
+  pinChat(chrome);
+  chrome.focus(2);
+  await tileco.event();
+  await tileco.command("send-2");
+  assert.equal(tileco.state.windows[2].ws, "re");
+  close(chrome, 2);
+  await tileco.event();
+  await clock.fire();
+  assert.deepEqual(opened(chrome), [], "it was on re, where it isn't pinned");
+  close(chrome, 3);
+  await tileco.event();
+  await clock.fire();
+  assert.deepEqual(opened(chrome), [{ url: "https://chat.google.com/", type: "popup" }], "the one left on in is");
+});
+
+test("a pinned app with another window still on its workspace doesn't reopen", async () => {
+  const { chrome, tileco } = await setup([HD], [on(HD, 1, { focused: true, type: "app", url: CHAT }), on(HD, 2, { type: "app", url: CHAT })]);
+  const clock = timed(tileco);
+  pinChat(chrome);
+  await tileco.event();
+  close(chrome, 2);
+  await tileco.event();
+  await clock.fire();
+  assert.deepEqual(opened(chrome), []);
+  chrome.open(on(HD, 5, { focused: true }));
+  await tileco.event();
+  close(chrome, 1);
+  await tileco.event();
+  await clock.fire();
+  assert.equal(opened(chrome).length, 1, "the last one does");
+});
+
+test("a pinned app's window doesn't reopen as the browser closes", async () => {
+  const { chrome, tileco } = await setup([HD], [on(HD, 1, { focused: true }), on(HD, 2, { type: "app", url: CHAT }), on(HD, 3)]);
+  const clock = timed(tileco);
+  pinChat(chrome);
+  await tileco.event();
+  // Chrome closes its windows one by one.
+  close(chrome, 2);
+  await tileco.event();
+  close(chrome, 1);
+  await tileco.event();
+  close(chrome, 3);
+  await tileco.event();
+  await clock.fire();
+  assert.deepEqual(opened(chrome), [], "every window went before it was due");
+  assert.deepEqual(chrome.wins.filter((w) => w.url !== HOME), [], "only a home window is left");
+});
+
+test("a pinned app's window closing with every other window doesn't reopen", async () => {
+  const { chrome, tileco } = await setup([HD], [on(HD, 1, { focused: true }), on(HD, 2, { type: "app", url: CHAT })]);
+  const clock = timed(tileco);
+  pinChat(chrome);
+  await tileco.event();
+  close(chrome, 1, 2);
+  await tileco.event();
+  assert.equal(clock.pending.length, 0);
+  await clock.fire();
+  assert.deepEqual(opened(chrome), []);
+});
+
+test("a pinned app's windows don't reopen across a browser restart, and do after", async () => {
+  const { chrome, tileco } = await setup([HD], [on(HD, 1, { focused: true, url: "https://github.com/" }), on(HD, 2, { type: "app", url: CHAT }), on(HD, 3, { type: "app", url: CHAT })]);
+  pinChat(chrome);
+  await tileco.event();
+  // The browser restarts: Chrome brings back two windows, not the second
+  // Chat, which waits.
+  chrome.wins = [];
+  chrome.sessionStore = {};
+  chrome.open(on(HD, 11, { url: "https://github.com/", focused: true }));
+  chrome.open(on(HD, 12, { type: "app", url: CHAT }));
+  const after = new Tileco(chrome);
+  const clock = timed(after);
+  await after.event();
+  await clock.fire();
+  assert.deepEqual(opened(chrome), [], "nothing reopens while windows come back");
+  assert.equal(Object.keys(after.state.restoring ?? {}).length, 1, "one Chat still waits");
+  await after.command("focus-next");
+  await clock.fire();
+  assert.deepEqual(opened(chrome), [], "nor when the wait ends");
+  close(chrome, 12);
+  await after.event();
+  await clock.fire();
+  assert.deepEqual(opened(chrome), [{ url: "https://chat.google.com/", type: "popup" }], "a close after the restore reopens");
+});
+
+test("a pinned app's window doesn't reopen when its display goes", async () => {
+  const { chrome, tileco } = await setup([HD, UW], [on(HD, 1, { focused: true }), on(UW, 2, { type: "app", url: CHAT }), on(HD, 3, { type: "app", url: CHAT })]);
+  const clock = timed(tileco);
+  pinChat(chrome);
+  await tileco.event();
+  chrome.displaysList = [HD];
+  close(chrome, 2);
+  await tileco.event();
+  await clock.fire();
+  assert.deepEqual(opened(chrome), [], "it went with the display");
+  close(chrome, 3);
+  await tileco.event();
+  await clock.fire();
+  assert.equal(opened(chrome).length, 1, "one closed on a display that stays reopens");
+});
+
+test("a pinned app that keeps closing stops reopening after three tries", async (t) => {
+  const warn = t.mock.method(console, "warn", () => {});
+  const { chrome, tileco } = await setup([HD], [on(HD, 1, { focused: true }), on(HD, 2, { type: "app", url: CHAT })]);
+  const clock = timed(tileco);
+  pinChat(chrome);
+  await tileco.event();
+  let last = 2;
+  for (let i = 0; i < 4; i++) {
+    clock.tick(2_000);
+    close(chrome, last);
+    await tileco.event();
+    await clock.fire();
+    last = chrome.created.at(-1).id;
+  }
+  assert.equal(opened(chrome).length, 3, "three reopens, then it stays closed");
+  assert.equal(Object.values(tileco.state.windows).filter((w) => w.app === "app-chat").length, 0);
+  assert.match(warn.mock.calls.at(-1).arguments[0], /app-chat, pinned on in, closed 4 times in 60s; not reopening it again/);
+  // Long after, one you open and close comes back again.
+  clock.tick(120_000);
+  await tileco.command("app-chat");
+  close(chrome, chrome.created.at(-1).id);
+  await tileco.event();
+  await clock.fire();
+  assert.equal(opened(chrome).length, 5);
+});
+
+test("closes that reopen nothing don't use up a pinned app's reopens", async () => {
+  const { chrome, tileco } = await setup([HD], [
+    on(HD, 1, { focused: true }),
+    ...[2, 3, 4, 5].map((id) => on(HD, id, { type: "app", url: CHAT })),
+  ]);
+  const clock = timed(tileco);
+  pinChat(chrome);
+  await tileco.event();
+  for (const id of [2, 3, 4]) {
+    clock.tick(1_000);
+    close(chrome, id);
+    await tileco.event();
+    await clock.fire();
+  }
+  assert.deepEqual(opened(chrome), [], "another Chat was still there each time");
+  clock.tick(1_000);
+  close(chrome, 5);
+  await tileco.event();
+  await clock.fire();
+  assert.deepEqual(opened(chrome), [{ url: "https://chat.google.com/", type: "popup" }], "the last one reopens");
+});
+
+test("a window's app follows its page with the dim off", async () => {
+  const { chrome, tileco } = await setup([HD], [on(HD, 1, { focused: true }), on(HD, 2, { type: "app", url: CHAT }), on(HD, 3)]);
+  const clock = timed(tileco);
+  pinChat(chrome);
+  await tileco.event();
+  // Chat's window goes to another site, then a tab window to Chat.
+  chrome.win(2).url = "https://example.com/";
+  await tileco.tabLoaded(20);
+  close(chrome, 2);
+  await tileco.event();
+  await clock.fire();
+  assert.deepEqual(opened(chrome), [], "it's no longer Chat");
+  chrome.win(3).url = CHAT;
+  await tileco.tabLoaded(30);
+  close(chrome, 3);
+  await tileco.event();
+  await clock.fire();
+  assert.deepEqual(opened(chrome), [{ url: "https://chat.google.com/", type: "popup" }], "the one that became Chat reopens");
+});
+
+test("a browser window with the settings in a tab still keeps a pinned app reopening", async () => {
+  const SETTINGS = "chrome-extension://tileco/src/options.html";
+  const { chrome, tileco } = await setup([HD], [
+    on(HD, 1, { focused: true, url: "https://example.com/", moreTabs: [SETTINGS] }),
+    on(HD, 2, { type: "app", url: CHAT }),
+    on(HD, 3, { url: "https://example.com/" }),
+  ]);
+  const clock = timed(tileco);
+  pinChat(chrome);
+  await tileco.event();
+  close(chrome, 2, 3);
+  await tileco.event();
+  await clock.fire();
+  assert.deepEqual(opened(chrome), [{ url: "https://chat.google.com/", type: "popup" }], "the settings tab's window is a browser window");
+  // With no settings tab at the close, one opened before the reopen is due
+  // doesn't stop it.
+  delete chrome.win(1).moreTabs;
+  await tileco.event();
+  clock.tick(30_000);
+  close(chrome, chrome.created.at(-1).id);
+  await tileco.event();
+  chrome.win(1).moreTabs = [SETTINGS];
+  await tileco.event();
+  await clock.fire();
+  assert.equal(opened(chrome).length, 2);
+});

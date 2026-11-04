@@ -39,12 +39,18 @@ export class FakeChrome {
       w.pendingUrl
         ? { id: w.id * 10, active: true, url: "", pendingUrl: w.pendingUrl, title: w.title ?? "" }
         : { id: w.id * 10, active: true, url: w.url ?? "chrome://newtab/", title: w.title ?? "" };
+    // A window given `moreTabs`, addresses, has those tabs after its first,
+    // `id * 10 + 1` on, not active.
+    this.tabsOf = (w) => [
+      fake.tabOf(w),
+      ...(w.moreTabs ?? []).map((url, i) => ({ id: w.id * 10 + 1 + i, active: false, url, title: "" })),
+    ];
     this.windows = {
       getAll: async ({ windowTypes, populate } = {}) =>
         structuredClone(
           fake.wins
             .filter((w) => !windowTypes || windowTypes.includes(w.type))
-            .map((w) => (populate ? { ...w, tabs: [fake.tabOf(w)] } : w)),
+            .map((w) => (populate ? { ...w, tabs: fake.tabsOf(w) } : w)),
         ),
       create: async ({ url, type = "normal", focused = false, left = 100, top = 100, width = 800, height = 600 } = {}) => {
         const id = Math.max(0, ...fake.wins.map((w) => w.id)) + 1;

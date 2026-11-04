@@ -997,16 +997,20 @@ test("Search+1…9 go by bar order, and a number past the last does nothing", as
   assert.equal(tileco.state.current, "me");
 });
 
-test("the workspace steps stop at either end of the bar", async () => {
+test("the workspace steps stop at either end of the bar, passing over empty workspaces", async () => {
   const { tileco } = await setup([HD], [on(HD, 1, { focused: true }), on(HD, 2)]);
   await tileco.command("workspace-prev");
   assert.equal(tileco.state.current, "in", "no wrap before home");
   await tileco.command("send-prev");
   assert.equal(tileco.state.windows[1].ws, "in");
+  await tileco.command("workspace-next");
+  assert.equal(tileco.state.current, "in", "no other workspace has a window: it stays");
+  await tileco.command("send-4");
+  assert.equal(tileco.state.windows[1].ws, "me");
   for (let i = 0; i < 5; i++) await tileco.command("workspace-next");
-  assert.equal(tileco.state.current, "me", "no wrap after the last");
+  assert.equal(tileco.state.current, "me", "past re and oc, empty, and no wrap after the last");
   await tileco.command("workspace-prev");
-  assert.equal(tileco.state.current, "oc");
+  assert.equal(tileco.state.current, "in", "back past them");
 });
 
 test("Search+Home shows home, and Search+End the last other workspace", async () => {

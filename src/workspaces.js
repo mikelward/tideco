@@ -96,12 +96,27 @@ export function nth(state, n) {
   return barOrder(state)[n - 1] ?? null;
 }
 
+// Whether workspace `name` has a window you haven't minimized: what
+// Search+Page Up and Page Down stop at.
+export function hasWindows(state, name) {
+  // Its own: a standing name such as "constructor", not made yet, would
+  // otherwise find the object's inherited property.
+  if (!Object.hasOwn(state.workspaces, name)) return false;
+  return state.workspaces[name].windows.some((id) => Object.hasOwn(state.windows, id) && !state.windows[id].minimizedByYou);
+}
+
 // The workspace `by` places from `name` in bar order, or null past either
-// end: the steps stop there, as tide's do.
-export function step(state, name, by) {
+// end: the steps stop there. With `withWindows`, the nearest that way with a
+// window (hasWindows), so the plain steps pass over empty ones; sending a
+// window takes the very next, empty or not.
+export function step(state, name, by, { withWindows = false } = {}) {
   const bar = barOrder(state);
   const i = bar.indexOf(name);
-  return i < 0 ? null : (bar[i + by] ?? null);
+  if (i < 0) return null;
+  for (let j = i + by; j >= 0 && j < bar.length; j += by) {
+    if (!withWindows || hasWindows(state, bar[j])) return bar[j];
+  }
+  return null;
 }
 
 // The last workspace other than home you showed, other than `current`: from

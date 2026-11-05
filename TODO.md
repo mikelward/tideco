@@ -354,6 +354,31 @@ Guesses made on autopilot (2026-10-24), each cheap to undo.
 
 ## Later
 
+- **Attention from notifications, not unread counts** (SPEC.md §10.3).
+  tide and tilemo stopped marking windows whose title's unread count
+  rises: Gmail's "(3) Inbox" goes up with every message, so it marked all
+  day. They mark a window when it notifies, rings the bell or activates
+  itself. tileco still marks only on a rising count. Parked: nobody is
+  using tileco for now. What to try:
+  - **A script in the page** on the sites already allowed for Unread
+    counts, injected at `document_start` in the `MAIN` world, wrapping
+    `window.Notification` and `ServiceWorkerRegistration.prototype.showNotification`.
+    It tells the isolated content script, which tells tileco, which marks
+    that tab's window as a rising count does now: amber badge, bar mark,
+    `drawAttention`. Nothing from the notification's text leaves the page.
+  - **Check on a Chromebook first:** how often Gmail and Chat notify from
+    a push their service worker handles without the page calling either.
+    A content script can't reach a service worker, so those would mark
+    nothing. If that's most of them, this isn't worth it.
+  - **Then** drop the title counts, or keep them only for a site whose
+    page never notifies itself. Rename the Unread counts setting to say
+    what it does then.
+  - **Fallback:** keep title counts but drop Gmail from `DEFAULT_SITES`,
+    since Chat's and Calendar's counts move less.
+  - **No bell:** Linux (Crostini) windows, kitty's among them, are
+    invisible to the extension, and Secure Shell's bell only shows its own
+    notification, which tileco can't see.
+
 - **Set the PRO 2 LIGHTSPEED's DPI from Linux** (SPEC.md §19.2, fix 1).
   The mouse keeps its DPI in onboard profile memory, so a setting written
   there carries to the Chromebook. Solaar 1.1.20 refuses it: "no onboard

@@ -256,3 +256,9 @@ test("changing one workspace's setting spells out the default first", () => {
   const set = resolve({ workspaceSettings: { In: { askForName: true } } }).settings;
   assert.deepEqual(withWorkspaceSetting(set, "in", "pinnedApps", ["app-chat"]), { In: { askForName: true, pinnedApps: ["app-chat"] } }, "under the name it's listed by");
 });
+
+test("a clock can be out of the bar, and bar must be true or false", () => {
+  const { settings } = resolve({ clocks: [{ zone: "Asia/Tokyo", label: "TYO", bar: false }, { zone: "UTC", label: "UTC", bar: true }] });
+  assert.deepEqual(settings.clocks, [{ zone: "Asia/Tokyo", label: "TYO", bar: false }, { zone: "UTC", label: "UTC" }]);
+  assert.deepEqual(resolve({ clocks: [{ zone: "UTC", label: "UTC", bar: "no" }] }).errors, ["clocks: clock 1's bar must be true or false"]);
+});

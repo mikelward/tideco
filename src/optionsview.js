@@ -85,6 +85,9 @@ function clockRow(c) {
     input(c.city, { className: "city", ariaLabel: "City", placeholder: "from the zone" }),
   ];
   cells[1].setAttribute("list", "zones");
+  // In the bar, or only in the dashboard's clock panel.
+  const bar = input(undefined, { type: "checkbox", className: "bar", checked: c.bar !== false, ariaLabel: "In the bar" });
+  cells.push(bar);
   const order = orderCell(tr, rows, () => save());
   for (const c of cells) {
     const td = document.createElement("td");
@@ -341,8 +344,10 @@ function renderWorkspaceSettings(settings) {
 // An emptied hour field is NaN, an error, not Number("")'s midnight.
 function fromForm() {
   const clocks = [...rows.rows].map((tr) => {
-    const [label, zone, city] = [...tr.querySelectorAll("input")].map((i) => i.value.trim());
-    return city ? { label, zone, city } : { label, zone };
+    const [label, zone, city] = [...tr.querySelectorAll("input:not(.bar)")].map((i) => i.value.trim());
+    const clock = city ? { label, zone, city } : { label, zone };
+    if (!tr.querySelector("input.bar").checked) clock.bar = false;
+    return clock;
   });
   const hours = Object.fromEntries(Object.entries(HOURS).map(([k, ids]) => [k, ids.map((id) => ($(id).value.trim() === "" ? NaN : Number($(id).value)))]));
   const apps = [...appRows.rows].flatMap((tr) => {

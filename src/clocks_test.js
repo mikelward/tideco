@@ -8,6 +8,7 @@ import {
   dstNote,
   formatOffset,
   hoursFromLocal,
+  inBar,
   nextOffsetChange,
   offsetMinutes,
   scrub,
@@ -142,4 +143,16 @@ test("a change in the last partial minute of a search step is found", () => {
     nextOffsetChange(new Date("2026-10-24T19:00:17.250Z"), "Europe/London").toISOString(),
     "2026-10-25T01:00:00.000Z",
   );
+});
+
+// tide's clocks.json can keep a zone for the clock panel and out of the bar
+// (tide SPEC.md §7.3): every one is in the bar unless it says bar: false.
+test("the bar leaves out a clock set bar: false", () => {
+  const clocks = [
+    { zone: "Australia/Sydney", label: "SYD", bar: false },
+    { zone: "America/Los_Angeles", label: "LAX" },
+    { zone: "Europe/London", label: "LON", bar: true },
+  ];
+  assert.deepEqual(inBar(clocks).map((c) => c.label), ["LAX", "LON"]);
+  assert.deepEqual(clockRow(T, "Asia/Tokyo", inBar(clocks)).map((r) => r.label).slice(0, 2), ["LAX", "LON"]);
 });

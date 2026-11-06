@@ -62,6 +62,13 @@ export function clockRow(date, localZone, clocks = DEFAULT_CLOCKS, { dedupeLocal
   return rows;
 }
 
+// The clocks the bar shows: every one unless it says `bar: false`, as in
+// tide's clocks.json (tide SPEC.md §7.3). The dashboard's clock panel lists
+// them all.
+export function inBar(clocks) {
+  return clocks.filter((c) => c.bar !== false);
+}
+
 // The offset from UTC of `zone` at `date`, in minutes.
 export function offsetMinutes(date, zone) {
   const name = format(zone, "offset", { timeZoneName: "longOffset" })

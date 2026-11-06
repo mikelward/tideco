@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { actions, footerKeys, footerText, fuzzyScore, items, limitFor, logoTapped, nextScope, opening, rank, sectionToShow, settingsSections, SETTINGS_SECTIONS, workspaceRows } from "./launcher.js";
+import { readFileSync } from "node:fs";
+import { actions, BAR_SECTIONS, footerKeys, footerText, fuzzyScore, items, limitFor, logoTapped, nextScope, opening, rank, sectionToShow, settingsSections, SETTINGS_SECTIONS, TOP, workspaceRows } from "./launcher.js";
 
 test("a fuzzy match needs every query letter in order", () => {
   assert.equal(fuzzyScore("cal", "Google Calendar") > 0, true);
@@ -225,6 +226,8 @@ test("the options page shows its address's section, else the one Launch asked fo
   assert.equal(sectionToShow("", "mouse", ids), "mouse");
   assert.equal(sectionToShow("", undefined, ids), null);
   assert.equal(sectionToShow("#nowhere", undefined, ids), null);
+  // The bar's logo asks for the top, so an open tab scrolls back up.
+  assert.equal(sectionToShow("", TOP, ids), TOP);
 });
 
 // The Actions scope (§9.4): tileco's own actions, then its commands.
@@ -259,4 +262,16 @@ test("the Actions footer runs, and Tab goes round to Launch", () => {
     footerText(footerKeys("actions", { home: false, tabsAllowed: true })),
     "Enter to run · ↑ ↓ to choose · Tab to switch to Launch · Esc to clear or close",
   );
+});
+
+test("a right-click on each bar item opens a settings section, or the top", () => {
+  const page = readFileSync(new URL("./launcher.html", import.meta.url), "utf8");
+  const ids = SETTINGS_SECTIONS.map((s) => s.id);
+  for (const [id, section] of Object.entries(BAR_SECTIONS)) {
+    assert.match(page, new RegExp(`id="${id}"`), `${id} is on the bar`);
+    assert.ok(section === TOP || ids.includes(section), `${id} opens ${section}, which isn't a section`);
+  }
+  assert.equal(BAR_SECTIONS.workspaces, "workspaces");
+  assert.equal(BAR_SECTIONS.clocks, "clocks-section");
+  assert.equal(BAR_SECTIONS.logo, TOP);
 });

@@ -733,3 +733,31 @@ test("Launch finds a settings section and opens the settings there", async () =>
   assert.deepEqual(errors, []);
   await page.close();
 });
+
+// A right-click on the bar (§8.1) opens the settings at that item's
+// section, in place of Chrome's menu; the logo asks for the top, so an open
+// tab that's scrolled goes back up.
+test("a right-click on a bar item opens the settings at its section", async () => {
+  const { page, errors } = await open("src/launcher.html?mode=home");
+  await page.waitForSelector("#clocks li");
+  await page.evaluate(() => document.addEventListener("contextmenu", (e) => (window.prevented = e.defaultPrevented)));
+  for (const p of context.pages()) if (p.url().includes("options.html")) await p.close();
+  const opened = context.waitForEvent("page", (p) => p.url().includes("options.html"));
+  await page.locator("#clocks").click({ button: "right" });
+  assert.equal(await page.evaluate(() => window.prevented), true, "Chrome's menu shows");
+  const options = await opened;
+  await options.waitForLoadState();
+  const near = (id) => options.waitForFunction((id) => {
+    const r = document.getElementById(id).getBoundingClientRect();
+    // scrollIntoView can leave it a fraction of a pixel above the top.
+    return r.top > -1 && r.top < innerHeight / 2;
+  }, id);
+  await near("clocks-section");
+  await page.locator("#workspaces").click({ button: "right" });
+  await near("workspaces");
+  await page.locator("#logo").click({ button: "right" });
+  await options.waitForFunction(() => scrollY === 0);
+  await options.close();
+  assert.deepEqual(errors, []);
+  await page.close();
+});

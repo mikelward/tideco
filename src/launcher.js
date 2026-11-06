@@ -79,15 +79,32 @@ export const SETTINGS_SECTIONS = [
   { id: "import-section", name: "Import and export", covers: "JSON backup reset defaults" },
 ];
 
+// Asked for in place of a section, the top of the options page, so a tab
+// that's open and scrolled goes back up.
+export const TOP = "top";
+
+// The section a right-click on each item of the dashboard's bar opens, by
+// its id in launcher.html, as tide's bar opens a page (tide SPEC.md §7.1,
+// shell/lib/barsettings.mjs); TOP for the top of the page, where tileco has
+// no section to match: tide's logo, and keep awake, whose tide page is Idle.
+// The title names the workspace here, so it opens Workspaces.
+export const BAR_SECTIONS = Object.freeze({
+  logo: TOP,
+  workspaces: "workspaces",
+  title: "workspaces",
+  "keep-awake": TOP,
+  clocks: "clocks-section",
+});
+
 // Where Launch leaves the section to show, in session storage, for the
 // options page to scroll to and clear (§9.4).
 export const SECTION_KEY = "settingsSection";
 
 // The section the options page shows: its address's anchor, else the one
-// Launch asked for; either only if the page has it, by `ids`.
+// Launch asked for; either only if the page has it, by `ids`, or TOP.
 export function sectionToShow(hash, asked, ids) {
   const id = hash.replace(/^#/, "") || asked || "";
-  return ids.includes(id) ? id : null;
+  return id === TOP || ids.includes(id) ? id : null;
 }
 
 // The sections shown where tileco runs: on chromeOS (`tiling`), or off it,

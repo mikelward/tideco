@@ -990,6 +990,10 @@ tide's clock rules, in the bar of the dashboard and the home page, with the deta
   tzdata-abbreviation table instead.
 - Settings: the same `{zone, label}` list as tide's `clocks.json`, synced
   (§13).
+- **Which clocks are in the bar** is tide's setting too (tide §7.3): every
+  zone is unless its entry says `"bar": false`, and the clock panel lists
+  them all. The options page's **Bar** box on each clock sets it. Anything
+  but `true` or `false` is an error that names the clock.
 
 ## 9. Launcher and app keys
 

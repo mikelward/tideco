@@ -71,6 +71,9 @@ function checkClocks(clocks) {
     if (label.length > 4) throw new Error(`${at}'s label "${label}" is longer than 4 letters`);
     const clock = { zone: c.zone, label };
     if (typeof c.city === "string" && c.city.trim()) clock.city = c.city.trim();
+    // In the bar unless it says otherwise, as in tide's clocks.json.
+    if (c.bar !== undefined && typeof c.bar !== "boolean") throw new Error(`${at}'s bar must be true or false`);
+    if (c.bar === false) clock.bar = false;
     return clock;
   });
 }

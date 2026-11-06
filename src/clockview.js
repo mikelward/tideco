@@ -9,6 +9,7 @@ import {
   city,
   clockRow,
   dstNote,
+  inBar,
   formatOffset,
   hoursFromLocal,
   localHour,
@@ -29,7 +30,7 @@ function el(tag, className, text) {
 export function renderClocks(ol, now = new Date(), scrubbed = false, { clocks } = DEFAULT_SETTINGS) {
   ol.replaceChildren();
   ol.classList.toggle("scrubbed", scrubbed);
-  for (const c of clockRow(now, localZone(), clocks)) {
+  for (const c of clockRow(now, localZone(), inBar(clocks))) {
     const li = el("li");
     li.append(el("span", "label", c.label), c.time);
     if (c.day !== 0) li.append(el("sup", null, c.day > 0 ? `+${c.day}` : `−${-c.day}`));

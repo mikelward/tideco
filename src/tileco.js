@@ -683,7 +683,7 @@ export class Tileco {
     // The steps and numbers go by bar order, stopping at its ends; the steps
     // pass over workspaces with no window (§6.1).
     let m;
-    if ((m = name.match(/^workspace-([1-9])$/))) return this.showWorkspace(display, ws.nth(s, Number(m[1])));
+    if ((m = name.match(/^workspace-([0-9])$/))) return this.showWorkspace(display, ws.nth(s, Number(m[1])));
     if (name === "workspace-next") return this.showWorkspace(display, ws.step(s, n, 1, { withWindows: true }));
     if (name === "workspace-prev") return this.showWorkspace(display, ws.step(s, n, -1, { withWindows: true }));
     if (name === "workspace-home") return this.showWorkspace(display, ws.home(s));
@@ -702,7 +702,7 @@ export class Tileco {
     if (name === "workspace-move") return this.dashboard(display, "move", win);
 
     const sendTo = (to) => (to === null ? s : ws.send(s, win, to));
-    if ((m = name.match(/^send-([1-9])$/))) this.state = sendTo(ws.nth(s, Number(m[1])));
+    if ((m = name.match(/^send-([0-9])$/))) this.state = sendTo(ws.nth(s, Number(m[1])));
     else if (name === "send-next") this.state = sendTo(ws.step(s, n, 1));
     else if (name === "send-prev") this.state = sendTo(ws.step(s, n, -1));
     else if (name === "focus-next") return ws.neighbor(s, win, 1);

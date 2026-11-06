@@ -137,6 +137,9 @@
     "workspace-9": {
       "description": "Go to the 9th workspace in the bar (Search+9)"
     },
+    "workspace-0": {
+      "description": "Go to the last workspace in the bar (Search+0)"
+    },
     "send-1": {
       "description": "Send the window to the 1st workspace in the bar (Search+Shift+1)"
     },
@@ -163,6 +166,9 @@
     },
     "send-9": {
       "description": "Send the window to the 9th workspace in the bar (Search+Shift+9)"
+    },
+    "send-0": {
+      "description": "Send the window to the last workspace in the bar (Search+Shift+0)"
     },
     "keep-awake": {
       "description": "Toggle keep awake (Search+S)"

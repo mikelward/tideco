@@ -91,9 +91,11 @@ export function barOrder(state) {
   return [...standing, ...state.made.filter((n) => !standing.includes(n))];
 }
 
-// The `n`th workspace in bar order, from 1, or null past the last.
+// The `n`th workspace in bar order, from 1, or null past the last. 0 is
+// the last, as Search+0 is.
 export function nth(state, n) {
-  return barOrder(state)[n - 1] ?? null;
+  const order = barOrder(state);
+  return order[n === 0 ? order.length - 1 : n - 1] ?? null;
 }
 
 // Whether workspace `name` has a window you haven't minimized: what

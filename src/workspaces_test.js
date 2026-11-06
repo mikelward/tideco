@@ -151,6 +151,7 @@ test("the Nth in bar order, and the steps stop at either end", () => {
   assert.equal(ws.nth(s, 4), "me");
   assert.equal(ws.nth(s, 5), "web");
   assert.equal(ws.nth(s, 6), null, "past the last is none");
+  assert.equal(ws.nth(s, 0), "web", "0 is the last");
   assert.equal(ws.step(s, "in", 1), "re");
   assert.equal(ws.step(s, "in", -1), null, "no wrap before the first");
   assert.equal(ws.step(s, "me", 1), "web");

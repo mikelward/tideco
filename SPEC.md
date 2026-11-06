@@ -688,7 +688,8 @@ since.
 **`Search+1…9`** shows the Nth workspace in bar order, so `Search+1` is
 home, and **`Search+Shift+1…9`** moves the focused window to the Nth,
 staying put, as tide's `Super+1…9` (tide §6.6). A number past the last
-workspace does nothing.
+workspace does nothing. **`Search+0`** and **`Search+Shift+0`** do the
+same for the last workspace in bar order, as tide's `Super+0`.
 
 **`Search+Page Up`** and **`Page Down`** show the previous and next
 workspace in bar order that has a window, as tide's `Super+PgUp` and
@@ -790,6 +791,7 @@ Bound by tileco, unless the column says the Shortcuts app:
 | `Search+W` / `Search+Shift+W` (tide: `Super+Return` / `Super+Shift+Return`) | go to a workspace / move the window to one, by name: the name prompt (§6.1) | tileco |
 | `Search+Home` / `Search+End` | home / the last workspace other than home | tileco |
 | `Search+1…9` / `Search+Shift+1…9` | go to / move the window to the Nth workspace in bar order, home first | tileco |
+| `Search+0` / `Search+Shift+0` | go to / move the window to the last workspace in bar order | tileco |
 | `Search+Page Up` / `Page Down` (tide: `Super+PgUp` / `PgDn`) | previous / next workspace with a window | tileco (Search+arrows are Home/End and Page Up/Down; §7.2) |
 | `Search+Shift+Page Up` / `Page Down` | send to previous / next workspace | tileco |
 | `Search+J` / `K`, with Shift | focus / move down and up the stack | tileco |

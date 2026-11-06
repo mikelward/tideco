@@ -997,6 +997,15 @@ test("Search+1…9 go by bar order, and a number past the last does nothing", as
   assert.equal(tileco.state.current, "me");
 });
 
+test("Search+0 goes to the last workspace in the bar, and Search+Shift+0 sends the window there", async () => {
+  const { tileco } = await setup([HD], [on(HD, 1, { focused: true }), on(HD, 2)]);
+  await tileco.command("send-0");
+  assert.equal(tileco.state.windows[1].ws, "me", "with none made, the last standing one");
+  assert.equal(tileco.state.current, "in", "staying put, as Search+Shift+1…9");
+  await tileco.command("workspace-0");
+  assert.equal(tileco.state.current, "me");
+});
+
 test("the workspace steps stop at either end of the bar, passing over empty workspaces", async () => {
   const { tileco } = await setup([HD], [on(HD, 1, { focused: true }), on(HD, 2)]);
   await tileco.command("workspace-prev");

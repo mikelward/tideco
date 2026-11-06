@@ -11,7 +11,7 @@ import { DEFAULT_SITES } from "./unread.js";
 import { pattern } from "./watchers.js";
 import { DEFAULT_SETTINGS, PER_MACHINE, pick, resolve, SETTINGS_KEY, SHARED, standingProblems, START_MODES, withWorkspaceSetting, workspaceSetting } from "./settings.js";
 import { osName, platform, TABS, TILE, worksUntiled } from "./platform.js";
-import { SECTION_KEY, sectionToShow, SETTINGS_SECTIONS } from "./launcher.js";
+import { SECTION_KEY, sectionToShow, SETTINGS_SECTIONS, TOP } from "./launcher.js";
 import { ACCESS as BRIDGE_ACCESS, bridgeText, STATUS_KEY as BRIDGE_KEY } from "./tabsbridge.js";
 
 const $ = (id) => document.getElementById(id);
@@ -730,6 +730,10 @@ async function showSection() {
     const asked = (await chrome.storage.session.get(SECTION_KEY))[SECTION_KEY];
     const id = sectionToShow(location.hash, asked, SECTION_IDS);
     if (asked !== undefined) await chrome.storage.session.remove(SECTION_KEY);
+    if (id === TOP) {
+      window.scrollTo({ top: 0 });
+      return;
+    }
     const el = id && $(id);
     if (!el || el.hidden) return;
     el.scrollIntoView({ block: "start" });

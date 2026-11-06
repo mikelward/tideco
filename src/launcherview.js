@@ -10,7 +10,7 @@ import { stepMonth } from "./calendar.js";
 import { renderClocks, renderDetail, today } from "./clockview.js";
 import { addDefaultSites, DISMISSED_KEY, extrasFor, isOn } from "./extras.js";
 import { KEEP_AWAKE_KEY, isOn as keepingAwake, words as awakeWords } from "./keepawake.js";
-import { actions, footerKeys, footerText, items, limitFor, logoTapped, nextScope, opening, rank, SCOPE_ORDER, SECTION_KEY, settingsSections, workspaceRows } from "./launcher.js";
+import { actions, BAR_SECTIONS, footerKeys, footerText, items, limitFor, logoTapped, nextScope, opening, rank, SCOPE_ORDER, SECTION_KEY, settingsSections, workspaceRows } from "./launcher.js";
 import { load as loadSettings, SETTINGS_KEY } from "./settings.js";
 import { platform, TABS, TILE } from "./platform.js";
 
@@ -342,6 +342,14 @@ async function openSettings(section = null) {
   }
 }
 $("open-settings").addEventListener("click", () => openSettings());
+// A right-click on a bar item opens its settings section, in place of
+// Chrome's menu (§8.1).
+for (const [id, section] of Object.entries(BAR_SECTIONS)) {
+  $(id).addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+    openSettings(section);
+  });
+}
 
 // The dim on or off (§10.1). Without its access Chrome asks first, so the
 // dashboard stays open while it does; once allowed, the dim comes on.

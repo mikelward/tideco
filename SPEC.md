@@ -971,6 +971,12 @@ Instead:
   the space around it, the clocks as one row. The rounding is drawn, not
   hit-tested, so it leaves no dead corners. tilemo's bar shares this
   stylesheet. Neither bar has an appearance (dark mode) button.
+- **A right-click on a bar item opens its settings section,** as tide's
+  bar opens a page (tide §7.1), in place of Chrome's menu
+  (`BAR_SECTIONS` in `launcher.js`): the workspaces and the title, which
+  names the workspace here, open Workspaces, and the clocks Clocks. The
+  logo and keep awake open the top of the page, since tileco has no
+  section for them, where tide's open its first page and Idle.
 
 ### 8.2 Clocks
 

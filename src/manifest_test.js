@@ -2,7 +2,7 @@
 import { after, test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { Tileco } from "./tileco.js";
+import { Tide } from "./tide.js";
 import { FakeChrome, HD } from "./fake_chrome.js";
 import { EXTRAS } from "./extras.js";
 import { worksUntiled } from "./platform.js";
@@ -37,7 +37,7 @@ test("every icon the manifest names is a PNG of its size", () => {
   for (const [size, path] of Object.entries(all)) assert.deepEqual(pngSize(path), [Number(size), Number(size)], path);
 });
 
-// The extension shows itself as tide; tileco is only the repo's and the
+// The extension shows itself as tide; tide is only the repo's and the
 // code's name, which users never see.
 const PAGES = ["src/launcher.html", "src/options.html", "src/mouse.html"];
 const page = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
@@ -47,16 +47,16 @@ test("the name Chrome shows, in chrome://extensions, the toolbar and the shortcu
   assert.equal(manifest.action.default_title, "tide");
   const shown = [manifest.name, manifest.short_name, manifest.description, manifest.action.default_title,
     ...Object.values(manifest.commands).map((c) => c.description)];
-  for (const s of shown) assert.doesNotMatch(s ?? "", /tileco/i);
+  for (const s of shown) assert.doesNotMatch(s ?? "", /tideco/i);
 });
 
-test("no page's title or text says tileco", () => {
+test("no page's title or text says tide", () => {
   for (const path of PAGES) {
     const html = page(path);
     assert.match(/<title>([^<]*)<\/title>/.exec(html)?.[1] ?? "", /^tide\b/, `${path}'s title`);
-    // Tag names and attributes hold file names, which keep tileco; the text between them is shown.
+    // Tag names and attributes hold file names, which keep tide; the text between them is shown.
     const text = html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<[^>]*>/g, " ");
-    assert.doesNotMatch(text, /tileco/i, path);
+    assert.doesNotMatch(text, /tideco/i, path);
   }
 });
 
@@ -67,10 +67,10 @@ test("every page's tab shows tide's logo, at a size the manifest names", () => {
   }
 });
 
-test("no setup item or extra says tileco", () => {
+test("no setup item or extra says tide", () => {
   for (const item of [...EXTRAS, ...ITEMS]) {
     for (const [key, value] of Object.entries(item)) {
-      if (typeof value === "string" && key !== "id") assert.doesNotMatch(value, /tileco/i, `${item.id ?? item.title}.${key}`);
+      if (typeof value === "string" && key !== "id") assert.doesNotMatch(value, /tideco/i, `${item.id ?? item.title}.${key}`);
     }
   }
 });
@@ -153,33 +153,33 @@ test("every command in the manifest does something", async () => {
     });
     // Nine workspaces, so Search+9 has one to go to.
     chrome.syncStore.settings = { standing: ["in", "re", "oc", "me", "w5", "w6", "w7", "w8", "w9"] };
-    const tileco = new Tileco(chrome);
-    await tileco.event();
+    const tide = new Tide(chrome);
+    await tide.event();
     // Removing a master needs a second one to remove; going or sending to
     // home, or back a step, needs to start somewhere else; and going to the
     // last workspace needs one shown before.
-    if (name === "master-remove") await tileco.command("master-add");
+    if (name === "master-remove") await tide.command("master-add");
     // Search+Tab with nothing marked goes back to the last window you were in.
     if (name === "attention") {
       chrome.focus(2);
-      await tileco.event();
+      await tide.event();
       chrome.focus(1);
-      await tileco.event();
+      await tide.event();
     }
     if (name === "workspace-last") {
-      await tileco.command("workspace-2");
-      await tileco.command("workspace-1");
+      await tide.command("workspace-2");
+      await tide.command("workspace-1");
     }
     if (name.endsWith("-1") || ["workspace-prev", "send-prev", "workspace-home"].includes(name)) {
-      await tileco.command("workspace-2");
+      await tide.command("workspace-2");
       chrome.open({ id: 9, left: 0, top: 0, width: 400, height: 300 });
       chrome.focus(9);
-      await tileco.event();
+      await tide.event();
     }
-    const before = JSON.stringify([tileco.state, chrome.wins]);
+    const before = JSON.stringify([tide.state, chrome.wins]);
     chrome.updates.length = 0;
-    await tileco.command(name);
-    const after = JSON.stringify([tileco.state, chrome.wins]);
+    await tide.command(name);
+    const after = JSON.stringify([tide.state, chrome.wins]);
     const acted = before !== after || chrome.updates.some((u) => u.focused) || chrome.awake !== null;
     assert.ok(acted, `${name} changed nothing`);
   }
@@ -224,7 +224,7 @@ function workerChrome(os) {
     runtime: {
       ...events("runtime", ["onStartup", "onInstalled", "onMessage"]),
       getManifest: () => manifest,
-      getURL: (path) => `chrome-extension://tileco/${path}`,
+      getURL: (path) => `chrome-extension://tide/${path}`,
       getPlatformInfo: async () => ({ os }),
       openOptionsPage: call("runtime.openOptionsPage"),
     },
@@ -299,7 +299,7 @@ for (const os of ["linux", "mac", "win"]) {
     const opened = w.calls.filter(([name, arg]) => name === "windows.create" && /launcher\.html\?mode=dashboard/.test(arg?.url));
     assert.equal(opened.length, 1, "the dashboard opens");
     // Its launcher's asks: a workspace one is refused, a tab comes up.
-    const launcher = { url: "chrome-extension://tileco/src/launcher.html?mode=dashboard" };
+    const launcher = { url: "chrome-extension://tide/src/launcher.html?mode=dashboard" };
     let answer = "none";
     await fire(w, "runtime.onMessage", { command: "workspace-2" }, launcher, (a) => (answer = a));
     assert.equal(answer, false);
@@ -323,12 +323,12 @@ test("on chromeOS, a key still tiles", async () => {
   assert.ok(w.calls.some(([name]) => name === "windows.create"), "the dashboard opens");
 });
 
-// The bar's click shows a workspace by name (§8.1), asked by tileco's own
+// The bar's click shows a workspace by name (§8.1), asked by tide's own
 // pages alone, and only by a valid name.
-test("on chromeOS, the bar shows a workspace by name, asked by tileco's pages only", async () => {
+test("on chromeOS, the bar shows a workspace by name, asked by tide's pages only", async () => {
   const w = await startWorker("cros");
   const badges = () => w.calls.filter(([name]) => name === "action.setBadgeText").map(([, arg]) => arg.text);
-  const launcher = { url: "chrome-extension://tileco/src/launcher.html?mode=dashboard" };
+  const launcher = { url: "chrome-extension://tide/src/launcher.html?mode=dashboard" };
   const site = { url: "https://example.com/", tab: { id: 5, windowId: 6, url: "https://example.com/" } };
   let answer = "none";
   await fire(w, "runtime.onMessage", { workspace: "oc" }, site, (a) => (answer = a));
@@ -342,10 +342,10 @@ test("on chromeOS, the bar shows a workspace by name, asked by tileco's pages on
 });
 
 // Search+Shift+W's prompt moves its window by name (§6.1), asked by
-// tileco's own pages alone, and only by a valid name.
-test("on chromeOS, the name prompt's move is asked by tileco's pages only, by a valid name", async () => {
+// tide's own pages alone, and only by a valid name.
+test("on chromeOS, the name prompt's move is asked by tide's pages only, by a valid name", async () => {
   const w = await startWorker("cros");
-  const launcher = { url: "chrome-extension://tileco/src/launcher.html?mode=dashboard&scope=workspaces&move=1" };
+  const launcher = { url: "chrome-extension://tide/src/launcher.html?mode=dashboard&scope=workspaces&move=1" };
   const site = { url: "https://example.com/", tab: { id: 5, windowId: 6, url: "https://example.com/" } };
   let answer = "none";
   await fire(w, "runtime.onMessage", { moveTo: "notes" }, site, (a) => (answer = a));
@@ -355,7 +355,7 @@ test("on chromeOS, the name prompt's move is asked by tileco's pages only, by a 
     await fire(w, "runtime.onMessage", { moveTo: bad }, launcher, (a) => (answer = a));
     assert.equal(answer, undefined, `nor a name that isn't one: ${JSON.stringify(bad)}`);
   }
-  // A valid name reaches tileco, which has no prompt's window to move here.
+  // A valid name reaches tide, which has no prompt's window to move here.
   await fire(w, "runtime.onMessage", { moveTo: "notes" }, launcher, (a) => (answer = a));
   assert.equal(answer, false);
 });

@@ -15,10 +15,10 @@ let packagedManifest;
 
 // The files in the ZIP `make zip` builds, by path.
 function packaged() {
-  const dist = mkdtempSync(join(tmpdir(), "tileco-zip-"));
+  const dist = mkdtempSync(join(tmpdir(), "tide-zip-"));
   try {
     execFileSync("make", ["-s", "zip", `DIST=${dist}`], { cwd: ROOT, stdio: "pipe" });
-    const zip = join(dist, `tileco-${version}.zip`);
+    const zip = join(dist, `tide-${version}.zip`);
     packagedManifest = JSON.parse(execFileSync("unzip", ["-p", zip, "manifest.json"], { encoding: "utf8" }));
     return new Set(execFileSync("unzip", ["-Z1", zip], { encoding: "utf8" }).split("\n").filter((f) => f && !f.endsWith("/")));
   } finally {
@@ -73,13 +73,13 @@ test("every file a packaged page or module loads is in the ZIP", () => {
 // A shallow clone counts only the commits it has, so its version could be
 // lower than one already published.
 test("a shallow clone refuses to build the ZIP", () => {
-  const dir = mkdtempSync(join(tmpdir(), "tileco-shallow-"));
+  const dir = mkdtempSync(join(tmpdir(), "tide-shallow-"));
   try {
-    execFileSync("git", ["clone", "-q", "--depth", "1", `file://${ROOT}`, join(dir, "tileco")], { stdio: "pipe" });
+    execFileSync("git", ["clone", "-q", "--depth", "1", `file://${ROOT}`, join(dir, "tide")], { stdio: "pipe" });
     // The Makefile under test, not the one last committed.
-    copyFileSync(join(ROOT, "Makefile"), join(dir, "tileco", "Makefile"));
+    copyFileSync(join(ROOT, "Makefile"), join(dir, "tide", "Makefile"));
     assert.throws(
-      () => execFileSync("make", ["-s", "zip", `DIST=${join(dir, "dist")}`], { cwd: join(dir, "tileco"), stdio: "pipe" }),
+      () => execFileSync("make", ["-s", "zip", `DIST=${join(dir, "dist")}`], { cwd: join(dir, "tide"), stdio: "pipe" }),
       (e) => /history is shallow/.test(e.stderr.toString()),
     );
   } finally {

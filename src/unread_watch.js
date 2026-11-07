@@ -1,8 +1,8 @@
-// Content script on the watched origins (SPEC.md §10.3): tells tileco the page
-// title whenever it changes, so tileco can see an unread count go up. It reads
+// Content script on the watched origins (SPEC.md §10.3): tells tide the page
+// title whenever it changes, so tide can see an unread count go up. It reads
 // nothing else on the page.
 
-// tileco may inject it into a page that already has it (§10.3); one watcher
+// tide may inject it into a page that already has it (§10.3); one watcher
 // per page is enough.
 // The flag keeps its pre-rename name so a page already watched before an
 // update isn't watched twice.

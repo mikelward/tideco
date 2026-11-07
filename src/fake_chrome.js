@@ -1,4 +1,4 @@
-// A fake of the parts of `chrome` tileco uses, for tests. Windows and displays
+// A fake of the parts of `chrome` tide uses, for tests. Windows and displays
 // are plain objects the test can read and change; every call returns a
 // promise, like MV3's chrome.* APIs.
 
@@ -77,7 +77,7 @@ export class FakeChrome {
         fake.wins = fake.wins.filter((w) => w.id !== id);
       },
     };
-    this.runtime = { getURL: (path) => `chrome-extension://tileco/${path}` };
+    this.runtime = { getURL: (path) => `chrome-extension://tide/${path}` };
     // Each window has one tab, `id * 10`; `dimmed` is the set of tabs
     // showing the dim overlay.
     this.dimmed = new Set();

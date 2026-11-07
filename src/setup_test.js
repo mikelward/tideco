@@ -11,7 +11,7 @@ test("every item has an id of its own, a title, what to do, and its spec section
 });
 
 // Only settings that suit anyone; a personal setup (a keyboard layout, the
-// shelf's apps, a mouse) isn't tileco's to suggest.
+// shelf's apps, a mouse) isn't tide's to suggest.
 test("the list holds no personal settings", () => {
   for (const id of ["shelf", "layout", "capslock", "mouse"]) assert.equal(ITEMS.find((i) => i.id === id), undefined, id);
 });

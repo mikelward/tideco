@@ -105,7 +105,7 @@ test("pick keeps the shared settings apart from this Chromebook's", () => {
   assert.deepEqual(Object.keys(pick(all, PER_MACHINE)), ["singleRules", "ultrawideAspect", "wheelStep", "startup"]);
 });
 
-test("a settings change applies at once, but tileco's own state writes don't count", () => {
+test("a settings change applies at once, but tide's own state writes don't count", () => {
   assert.equal(settingsChanged({ settings: { newValue: { ultrawideAspect: 3 } } }), true);
   assert.equal(settingsChanged({ state: { newValue: {} }, view: { newValue: {} } }), false);
 });

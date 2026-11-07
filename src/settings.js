@@ -24,7 +24,7 @@ export const DEFAULT_SETTINGS = {
   work: WORK,
   apps: DEFAULT_APPS,
   dimStrength: 0.1,
-  // Sites whose unread counts tileco shows (§10.3).
+  // Sites whose unread counts tide shows (§10.3).
   watched: DEFAULT_SITES,
   // The layout a workspace starts in, by its display's aspect (§5.2), and
   // each layout's main share and main-window count, in tide's names.
@@ -40,7 +40,7 @@ export const DEFAULT_SETTINGS = {
   // Home's apps (§6.1), by their app keys: their windows always join home.
   homeApps: DEFAULT_HOME_APPS,
   // Each workspace's own settings, by name (§6.1): whether a new window
-  // there asks for a workspace, and the apps whose windows there tileco
+  // there asks for a workspace, and the apps whose windows there tide
   // reopens once closed. null, unset, is home asking and nothing pinned, as
   // workspaceSetting reads it.
   workspaceSettings: null,
@@ -346,7 +346,7 @@ export function resolve(sync, local) {
 }
 
 // Whether a storage.onChanged batch touched the settings, rather than only
-// tileco's own state.
+// tide's own state.
 export function settingsChanged(changes) {
   return SETTINGS_KEY in changes;
 }

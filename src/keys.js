@@ -1,4 +1,4 @@
-// The keys checklist (SPEC.md §3.4, §7.1): each tileco command, the key the
+// The keys checklist (SPEC.md §3.4, §7.1): each tide command, the key the
 // spec gives it, and the key Chrome has bound, if any. Chrome binds only the
 // four suggested keys at install; the rest are set by hand at
 // chrome://extensions/shortcuts, and this list says which are still to do.

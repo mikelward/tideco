@@ -1,6 +1,6 @@
-// What tileco does where it runs (SPEC.md §14.6). It tiles only on chromeOS,
+// What tide does where it runs (SPEC.md §14.6). It tiles only on chromeOS,
 // the one platform whose windows Chrome's window API can lay out as a desktop.
-// Elsewhere the desktop has its own window manager, so tileco lays out and
+// Elsewhere the desktop has its own window manager, so tide lays out and
 // moves nothing, but keeps its dashboard, launcher, app keys and keep awake
 // (untiled.js). On Linux it also hands this browser's tabs to tide's
 // switcher (tabsbridge.js).
@@ -29,7 +29,7 @@ export async function platform(api) {
     const { os } = await api.runtime.getPlatformInfo();
     return { os, role: roleOf(os) };
   } catch (e) {
-    console.error("tileco: couldn't tell which platform this is, so tiling is off:", e);
+    console.error("tide: couldn't tell which platform this is, so tiling is off:", e);
     return { os: undefined, role: INERT };
   }
 }

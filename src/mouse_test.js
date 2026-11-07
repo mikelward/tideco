@@ -17,7 +17,7 @@ test("login opens the mouse page only on a Chromebook with a wheel step", async 
   assert.deepEqual(chrome.createdTabs, []);
   chrome.store[SETTINGS_KEY] = { wheelStep: 200 };
   assert.equal(await remind(chrome), true);
-  assert.deepEqual(chrome.createdTabs, [{ url: `chrome-extension://tileco/${MOUSE_PAGE}` }]);
+  assert.deepEqual(chrome.createdTabs, [{ url: `chrome-extension://tide/${MOUSE_PAGE}` }]);
 });
 
 test("a bad wheel step opens nothing and says why", async (t) => {

@@ -1,4 +1,4 @@
-// On Linux, tileco hands this browser's tabs to tide's switcher (SPEC.md
+// On Linux, tide hands this browser's tabs to tide's switcher (SPEC.md
 // §14.6, tide's §8.3). It talks to tide's `tide-tabs` native-messaging host,
 // which Chrome starts and which relays to tide's shell, on this machine only.
 // Each message is one JSON object; Chrome does the framing.
@@ -26,7 +26,7 @@ const MAX_RETRY_S = 60;
 
 // The message for `windows`, from chrome.windows.getAll({populate: true}).
 // Only normal windows: an app window is a window of its own in tide's list
-// already. Incognito windows stay out, whatever Chrome lets tileco see.
+// already. Incognito windows stay out, whatever Chrome lets tide see.
 export function tabsMessage(windows, browser) {
   return {
     type: "tabs",
@@ -96,7 +96,7 @@ export class TabsBridge {
     try {
       await this.api.storage.session.set({ [STATUS_KEY]: this.status });
     } catch (e) {
-      console.error("tileco: couldn't save the tab list's status for the settings:", e);
+      console.error("tide: couldn't save the tab list's status for the settings:", e);
     }
   }
 
@@ -148,12 +148,12 @@ export class TabsBridge {
     if (this.gather) this.timers.clearTimeout(this.gather);
     this.gather = null;
     const state = closedState(message);
-    console.warn(`tileco: tide's tab list (${HOST}) closed: ${message}`);
+    console.warn(`tide: tide's tab list (${HOST}) closed: ${message}`);
     await this.setStatus(state, message);
     const wait = retrySeconds(this.attempt++);
     this.retry = this.timers.setTimeout(() => {
       this.retry = null;
-      this.start().catch((e) => console.error("tileco: couldn't reconnect tide's tab list:", e));
+      this.start().catch((e) => console.error("tide: couldn't reconnect tide's tab list:", e));
     }, wait * 1000);
   }
 
@@ -173,7 +173,7 @@ export class TabsBridge {
   received(port, raw) {
     const m = hostMessage(raw);
     if (m.error) {
-      console.warn(`tileco: ignoring a message from tide's tab list: ${m.error}`);
+      console.warn(`tide: ignoring a message from tide's tab list: ${m.error}`);
       return;
     }
     if (m.type === "hello") {
@@ -185,7 +185,7 @@ export class TabsBridge {
     } else if (m.type === "refresh") {
       this.changed();
     } else if (m.type === "activate") {
-      this.activate(m.tabId, m.windowId).catch((e) => console.warn(`tileco: couldn't bring up tab ${m.tabId} for tide:`, e?.message ?? e));
+      this.activate(m.tabId, m.windowId).catch((e) => console.warn(`tide: couldn't bring up tab ${m.tabId} for tide:`, e?.message ?? e));
     }
   }
 
@@ -197,13 +197,13 @@ export class TabsBridge {
   // Something about the tabs changed: send them all, once the burst is over.
   changed() {
     if (!this.port) {
-      this.start().catch((e) => console.error("tileco: couldn't connect tide's tab list:", e));
+      this.start().catch((e) => console.error("tide: couldn't connect tide's tab list:", e));
       return;
     }
     if (this.gather) return;
     this.gather = this.timers.setTimeout(() => {
       this.gather = null;
-      this.send().catch((e) => console.error("tileco: couldn't send the tabs to tide:", e));
+      this.send().catch((e) => console.error("tide: couldn't send the tabs to tide:", e));
     }, GATHER_MS);
   }
 

@@ -197,7 +197,7 @@ export function showing(state, displayId) {
   return state.present.includes(displayId) ? state.current : null;
 }
 
-// Displays came or went (§6.1, as tide's span.lua and tilemo's wm.lua). A
+// Displays came or went (§6.1, as tide for Linux's span.lua and tide for macOS's wm.lua). A
 // window whose display went goes to the first display left, in the same
 // workspace, remembering where it was; one whose display came back returns
 // there, unless you've moved it since. A window whose display isn't known
@@ -307,7 +307,7 @@ export function userMinimized(state, winId) {
   return s;
 }
 
-// Any un-minimize tileco didn't cause. On a hidden workspace this is Activate.
+// Any un-minimize tide didn't cause. On a hidden workspace this is Activate.
 export function userRestored(state, winId) {
   return activate(state, winId);
 }
@@ -431,8 +431,8 @@ export function swapMaster(state, winId) {
   });
 }
 
-// Layout settings, per display's part of a workspace that exists, as tide's
-// and tilemo's (§6.1): its layout (`null` means the display's default), its
+// Layout settings, per display's part of a workspace that exists, as tide for Linux's
+// and tide for macOS's (§6.1): its layout (`null` means the display's default), its
 // layout before monocle, and each mode's main share and count. A part not
 // set yet starts from what the workspace kept before parts had their own,
 // else from the settings; a display that goes keeps its parts for when it's
@@ -480,7 +480,7 @@ export function toggleMonocle(state, name, displayId, current, fallback) {
 
 // Every part of every workspace takes `modes`, each mode's main share and
 // count from the settings, dropping what the keys gave it (§5.2, tide's §6).
-// `modesFrom` remembers them, so tileco applies a change once rather than on
+// `modesFrom` remembers them, so tide applies a change once rather than on
 // every step, and a part made later starts with them.
 export function setModes(state, modes) {
   const s = clone(state);
@@ -519,7 +519,7 @@ export function setSingleWidth(state, name, displayId, width) {
 }
 
 // After a browser restart (§14.2), each window in `renames` (old ID to new)
-// keeps its workspace, place in the stack, and everything else tileco knows.
+// keeps its workspace, place in the stack, and everything else tide knows.
 export function renameWindows(state, renames) {
   const s = clone(state);
   for (const [from, to] of renames) {

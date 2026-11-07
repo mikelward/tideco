@@ -22,7 +22,7 @@ function fake() {
       sync: { get: async () => ({}) },
       local: { get: async () => ({}) },
     },
-    runtime: { getURL: (p) => `chrome-extension://tileco/${p}` },
+    runtime: { getURL: (p) => `chrome-extension://tide/${p}` },
     system: { display: { getInfo: async () => [{ id: "a", bounds: { left: 0, top: 0, width: 1920, height: 1080 }, workArea: { left: 0, top: 0, width: 1920, height: 1040 } }] } },
     windows: {
       getAll: async () => [{ id: 1, focused: true, left: 10, top: 10, width: 800, height: 600 }],
@@ -45,7 +45,7 @@ test("the dashboard opens full screen on your display, and its key closes it", a
   const u = new Untiled(api);
   await u.command("popup");
   assert.deepEqual(api.calls, [
-    ["create", { url: "chrome-extension://tileco/src/launcher.html?mode=dashboard", type: "popup", focused: true, left: 0, top: 0, width: 1920, height: 1080 }],
+    ["create", { url: "chrome-extension://tide/src/launcher.html?mode=dashboard", type: "popup", focused: true, left: 0, top: 0, width: 1920, height: 1080 }],
     ["update", 100, { state: "fullscreen" }],
   ]);
   assert.equal(api.session[DASHBOARD_KEY], 100);

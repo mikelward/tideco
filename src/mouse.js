@@ -1,6 +1,6 @@
 // The mouse reminder (SPEC.md §19.2). A longer wheel step needs two
 // `gesture_prop` lines in crosh, which nothing keeps across a reboot and no
-// extension can run, so with `wheelStep` set tileco opens a page with them,
+// extension can run, so with `wheelStep` set tide opens a page with them,
 // ready to copy, at each login.
 
 import { load } from "./settings.js";
@@ -26,7 +26,7 @@ export function croshLines(id, step) {
 export async function remind(chrome) {
   const { settings, errors } = await load(chrome.storage);
   // A bad wheelStep keeps the default, off; say why there's no page.
-  for (const e of errors) if (e.startsWith("wheelStep")) console.error(`tileco: no mouse reminder: ${e}`);
+  for (const e of errors) if (e.startsWith("wheelStep")) console.error(`tide: no mouse reminder: ${e}`);
   if (settings.wheelStep === null) return false;
   await chrome.tabs.create({ url: chrome.runtime.getURL(MOUSE_PAGE) });
   return true;

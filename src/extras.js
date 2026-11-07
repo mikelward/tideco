@@ -32,7 +32,7 @@ export const EXTRAS = [
 ];
 
 // The extras on a platform that tiles, or doesn't (§14.6). Unread counts and
-// the dim mark and shade windows tileco manages, so they're chromeOS's alone.
+// the dim mark and shade windows tide manages, so they're chromeOS's alone.
 export function extrasFor(tiling, extras = EXTRAS) {
   return tiling ? extras : extras.filter((e) => e.untiled).map((e) => ({ ...e, how: e.untiled }));
 }

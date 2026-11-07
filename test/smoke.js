@@ -59,12 +59,12 @@ test("the background worker starts", async () => {
 
 // The extension shows itself as tide (SPEC.md, top), rendered text included,
 // with tide's logo as each tab's icon.
-test("every page says tide, not tileco, under tide's logo", async () => {
+test("every page says tide, not tideco, under tide's logo", async () => {
   for (const [path, ready] of [["src/options.html", "#setup li"], ["src/launcher.html?mode=dashboard", "#logo"], ["src/mouse.html", "body"]]) {
     const { page, errors } = await open(path);
     await page.waitForSelector(ready);
     assert.match(await page.title(), /^tide\b/, path);
-    assert.doesNotMatch(await page.locator("body").innerText(), /tileco/i, path);
+    assert.doesNotMatch(await page.locator("body").innerText(), /tideco/i, path);
     const width = await page.evaluate(() => new Promise((resolve) => {
       const img = new Image();
       img.onload = () => resolve(img.naturalWidth);
@@ -113,7 +113,7 @@ test("off chromeOS, the settings and dashboard keep only what places no window",
   await page.waitForSelector("#keys tbody tr");
   const keys = await page.locator("#keys tbody td:first-child").allInnerTexts();
   assert.ok(!keys.some((k) => /to workspace|stack|layout|monocle/i.test(k)), keys.join(", "));
-  assert.doesNotMatch(await page.locator("body").innerText(), /tileco/i);
+  assert.doesNotMatch(await page.locator("body").innerText(), /tideco/i);
   // The worker started here, so the toolbar says the tiling keys don't work.
   const title = new RegExp(`work only on chromeOS, not ${HOST_OS}`);
   await page.waitForFunction(async (source) => new RegExp(source).test(await chrome.action.getTitle({})), title.source);

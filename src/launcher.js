@@ -1,5 +1,5 @@
 // The launcher's matching and ranking (SPEC.md §9.4), free of chrome.* so it
-// tests in Node: tabs, apps and tileco's commands, filtered by a fuzzy match
+// tests in Node: tabs, apps and tide's commands, filtered by a fuzzy match
 // and ordered by how well they match, then by how recently you used them;
 // and the workspaces, which double as the name prompt (§6.1).
 
@@ -45,7 +45,7 @@ function itemScore(query, item) {
 
 // The scopes rank() ranks: "launch" is apps, Tide Settings and its sections,
 // and, for a query, the actions and commands too; "tabs" is open tabs;
-// "actions" is tileco's actions and commands. "workspaces" has rows of its
+// "actions" is tide's actions and commands. "workspaces" has rows of its
 // own (workspaceRows).
 export const SCOPES = { launch: ["app", "setting", "action", "command"], tabs: ["tab"], actions: ["action", "command"] };
 
@@ -85,7 +85,7 @@ export const TOP = "top";
 
 // The section a right-click on each item of the dashboard's bar opens, by
 // its id in launcher.html, as tide's bar opens a page (tide SPEC.md §7.1,
-// shell/lib/barsettings.mjs); TOP for the top of the page, where tileco has
+// shell/lib/barsettings.mjs); TOP for the top of the page, where tide has
 // no section to match: tide's logo, and keep awake, whose tide page is Idle.
 // The title names the workspace here, so it opens Workspaces.
 export const BAR_SECTIONS = Object.freeze({
@@ -107,7 +107,7 @@ export function sectionToShow(hash, asked, ids) {
   return id === TOP || ids.includes(id) ? id : null;
 }
 
-// The sections shown where tileco runs: on chromeOS (`tiling`), or off it,
+// The sections shown where tide runs: on chromeOS (`tiling`), or off it,
 // where `linux` adds Linux's own.
 export function settingsSections({ tiling = true, linux = false } = {}) {
   return SETTINGS_SECTIONS.filter((s) => (tiling ? !s.linux : !s.chromeos && (!s.linux || linux)));
@@ -115,7 +115,7 @@ export function settingsSections({ tiling = true, linux = false } = {}) {
 
 // The Actions scope's own rows (§9.4), before the commands: keep awake,
 // saying whether it's on; on chromeOS the dim, on, off, or to allow; and
-// reloading tileco. chromeOS gives extensions no lock, log out or shut down.
+// reloading tide. chromeOS gives extensions no lock, log out or shut down.
 // `keepAwake` is whether it's on, `dim` null off chromeOS, else
 // {granted, on}, and `key` names a command's key.
 export function actions({ keepAwake = false, dim = null, key = () => "" } = {}) {
@@ -242,7 +242,7 @@ function host(url) {
   }
 }
 
-// The launcher's items: every tab but tileco's own pages, the app keys, Tide
+// The launcher's items: every tab but tide's own pages, the app keys, Tide
 // Settings and its `sections`, the `actions`, and the manifest's commands. A
 // tab on an app's site carries the app's name, so "calendar" finds
 // Calendar's tabs. `workspaceOf` names a window's workspace, or null. Off

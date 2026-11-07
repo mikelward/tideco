@@ -1,4 +1,4 @@
-// tileco's core: it reads Chrome's windows and displays, applies an operation
+// tide's core: it reads Chrome's windows and displays, applies an operation
 // to the workspace state, and makes the screen match (SPEC.md §5, §6).
 // `api` is `chrome` in the extension and a fake in the tests; only its
 // promise-returning calls are used.
@@ -12,15 +12,15 @@ import * as geometry from "./geometry.js";
 import { unreadCount } from "./unread.js";
 import * as ws from "./workspaces.js";
 
-// Window types tileco manages. Popups and devtools float untracked (§5.4),
-// except the app popups tileco opens itself (§9.1) and Secure Shell's.
+// Window types tide manages. Popups and devtools float untracked (§5.4),
+// except the app popups tide opens itself (§9.1) and Secure Shell's.
 const MANAGED = ["normal", "app"];
 const TILED_POPUP_ORIGINS = [
   // Secure Shell opens its terminals as popup windows (§6.4).
   "chrome-extension://iodihamcpbpeioajjeobimgagajmlibd/",
 ];
 
-// Whether tileco manages `w`. Always-on-top windows (Document
+// Whether tide manages `w`. Always-on-top windows (Document
 // picture-in-picture, always-on-top popups) refuse minimizing, so they're
 // left alone on every workspace (§5.4), as is any window that refused once.
 function managed(w, appPopups, refused) {
@@ -32,7 +32,7 @@ function managed(w, appPopups, refused) {
 // The windows a new one on a workspace that asks for a name asks a
 // workspace for (§6.1): tab windows
 // and installed web apps' own. Popups and dialogs never ask, nor do the app
-// popups tileco opens itself.
+// popups tide opens itself.
 const ASKING = ["normal", "app"];
 
 // Whether `w` may ask for a workspace by its kind. chromeOS's system apps
@@ -79,7 +79,7 @@ export function displayFor(win, displays) {
   return (hit || displays[0]).id;
 }
 
-export class Tileco {
+export class Tide {
   constructor(api) {
     this.apps = DEFAULT_APPS;
     this.api = api;
@@ -99,11 +99,11 @@ export class Tileco {
   // each step reads what the one before it did.
   run(step) {
     const done = this.queue.then(step);
-    this.queue = done.catch((e) => console.error("tileco:", e));
+    this.queue = done.catch((e) => console.error("tide:", e));
     return done;
   }
 
-  // Something changed outside tileco: a window opened, closed, moved or took
+  // Something changed outside tide: a window opened, closed, moved or took
   // focus, or a display came or went.
   event() {
     return this.run(async () => {
@@ -132,9 +132,9 @@ export class Tileco {
     });
   }
 
-  // The dim is on while tileco holds all-sites access (§10.1) and you haven't
+  // The dim is on while tide holds all-sites access (§10.1) and you haven't
   // turned it off. Turning it off comes here first, to undim every page
-  // while tileco can still reach them, then gives the access back.
+  // while tide can still reach them, then gives the access back.
   setDim(on) {
     return this.run(async () => {
       await this.sync();
@@ -368,12 +368,12 @@ export class Tileco {
     // workspace makes other windows look minimized or restored.
     // A tiled window you resized, the first if there are several.
     let resized = null;
-    // A new window asks for a workspace only once tileco knows the rest, and
+    // A new window asks for a workspace only once tide knows the rest, and
     // not while a restart brings windows back (§14.2), which aren't new.
     const asks = before !== null && renamed.size === 0 && Object.keys(waiting).length === 0;
     const closed = this.closedPinned(before, all, ids, renamed, waiting);
     for (const w of wins) {
-      // Chrome restores a restarted window as it likes; tileco puts it back.
+      // Chrome restores a restarted window as it likes; tide puts it back.
       if (renamed.has(w.id)) {
         if (w.focused) s = ws.focused(s, w.id);
         continue;
@@ -384,7 +384,7 @@ export class Tileco {
       if (!(w.id in s.windows) || !before || !(w.id in before.windows)) {
         const ask = asks && asksByKind(w) && !appPopups.has(w.id);
         s = this.join(s, w.id, displayFor(w, this.displays), { homeApp: this.homeApp(w), ask });
-        // A window already minimized when tileco first sees it stays so.
+        // A window already minimized when tide first sees it stays so.
         if (w.state === "minimized") s = ws.userMinimized(s, w.id);
         if (w.focused) s = ws.focused(s, w.id);
         continue;
@@ -396,10 +396,10 @@ export class Tileco {
       // own workspace, the others' windows are still up, and not by you.
       else if (!minimized && !shouldShow && !before.spanned) s = ws.userRestored(s, w.id);
       else if (!minimized) {
-        // A window you moved is on another display than when tileco last
+        // A window you moved is on another display than when tide last
         // looked, maximized or not. One chromeOS moved off a display that's
-        // gone wasn't moved by you, and nor is one tileco is handing back:
-        // that one is still where it was, until tileco places it, which
+        // gone wasn't moved by you, and nor is one tide is handing back:
+        // that one is still where it was, until tide places it, which
         // waits while it's maximized.
         const was = before.windows[w.id].display;
         const last = before.windows[w.id].on ?? was;
@@ -461,7 +461,7 @@ export class Tileco {
   // The pinned apps' windows you closed since the last sync (§6.1): each
   // one of its workspace's pinnedApps, by the app the last sync saw in it,
   // closed on that workspace. None while a restart brings windows back
-  // (§14.2), when no window but tileco's own is left, as when the browser
+  // (§14.2), when no window but tide's own is left, as when the browser
   // closes, or when a
   // display went, taking its windows' places with it.
   closedPinned(before, all, ids, renamed, waiting) {
@@ -477,7 +477,7 @@ export class Tileco {
     return out;
   }
 
-  // Whether window `w` holds only tileco's own pages, as a home window or
+  // Whether window `w` holds only tide's own pages, as a home window or
   // the dashboard does. A browser window with the settings in one of its
   // tabs is still a browser window.
   ours(w) {
@@ -488,12 +488,12 @@ export class Tileco {
 
   // Reopen a pinned app's closed window shortly.
   reopenLater(c) {
-    this.later(() => this.reopen(c).catch((e) => console.error(`tileco: couldn't reopen ${c.app} on ${c.n}:`, e)), REOPEN_DELAY);
+    this.later(() => this.reopen(c).catch((e) => console.error(`tide: couldn't reopen ${c.app} on ${c.n}:`, e)), REOPEN_DELAY);
   }
 
   // A pinned app's window back on workspace `n` and `display`, as its app
   // key opens it but taking no focus, so neither focus nor the workspace
-  // showing changes. Not if, since it closed, every window but tileco's
+  // showing changes. Not if, since it closed, every window but tide's
   // own has gone (the browser closing), a restart began, the display went,
   // the pin came out, or the workspace has a window of that app again. Nor
   // once it has come back REOPEN_LIMIT times there in the last
@@ -514,7 +514,7 @@ export class Tileco {
       const times = (this.reopens.get(key) ?? []).filter((t) => now - t < REOPEN_SPAN);
       this.reopens.set(key, times);
       if (times.length >= REOPEN_LIMIT) {
-        console.warn(`tileco: ${command}, pinned on ${n}, closed ${times.length + 1} times in ${REOPEN_SPAN / 1000}s; not reopening it again`);
+        console.warn(`tide: ${command}, pinned on ${n}, closed ${times.length + 1} times in ${REOPEN_SPAN / 1000}s; not reopening it again`);
         return;
       }
       times.push(now);
@@ -550,7 +550,7 @@ export class Tileco {
       );
     } else if (stored.restoring) {
       // Put the waiting windows back on their workspaces, and match only
-      // windows tileco hasn't seen.
+      // windows tide hasn't seen.
       state = structuredClone(stored);
       for (const [id, { appPopup, ...info }] of Object.entries(stored.restoring)) {
         // A waiting window keeps its workspace from going (§6.1), but one
@@ -565,7 +565,7 @@ export class Tileco {
       return none;
     }
     // Each kind of window only takes the place of its own kind, so a popup
-    // tileco doesn't manage can't take a tab window's place.
+    // tide doesn't manage can't take a tab window's place.
     const renames = new Map();
     for (const type of new Set(Object.values(waiting).map((info) => info.type))) {
       const old = Object.fromEntries(
@@ -592,7 +592,7 @@ export class Tileco {
   }
 
   // A drag on a tiled window's edge sets its workspace's main share (§5.3),
-  // or a lone window's width. Its width changed since tileco placed it, on
+  // or a lone window's width. Its width changed since tide placed it, on
   // the same display, which has the same work area: a work area that changed
   // may have moved it, and a drag of the whole window keeps the width.
   // Returns {n, display, mode, mfact} or {n, display, singleWidth}, or null
@@ -761,7 +761,7 @@ export class Tileco {
     for (const tabId of dimmed) {
       if (want.has(tabId)) continue;
       const win = this.tabWindow.get(tabId);
-      // Leave a hidden window's overlay for when it comes back; a window tileco
+      // Leave a hidden window's overlay for when it comes back; a window tide
       // stopped managing never will, so it's undimmed.
       if (this.dimOn() && win in s.windows && !shown.has(win)) continue;
       if (win !== undefined) await set(tabId, false);
@@ -877,7 +877,7 @@ export class Tileco {
           await this.app({ url }, display, false);
         } catch (e) {
           // One that can't open mustn't keep the rest from starting.
-          console.error(`tileco: couldn't start ${url} at login:`, e);
+          console.error(`tide: couldn't start ${url} at login:`, e);
         }
       }
       await this.apply();
@@ -901,7 +901,7 @@ export class Tileco {
   // A web app key: always a new window on this workspace, never one already
   // open, as tide's and KDE's keys launch the app (§9.1). Installed web apps
   // open their own windows, but there's no public way to launch one by
-  // origin, so tileco opens the site in an app-like popup and tiles it as the
+  // origin, so tide opens the site in an app-like popup and tiles it as the
   // app's. One of home's apps opens on home (§6.1), which comes with it when
   // it takes focus, since it was asked for.
   async app(app, display, focused = true) {
@@ -914,7 +914,7 @@ export class Tileco {
   }
 
   // A display with no window of the workspace showing gets a home window, so
-  // tileco's keys still have a Chrome window to work in (§6.2). It isn't
+  // tide's keys still have a Chrome window to work in (§6.2). It isn't
   // tiled or counted, and closes when a window arrives. One you close stays
   // closed until the display shows another empty part.
   async homes(focus) {
@@ -973,14 +973,14 @@ export class Tileco {
       return w;
     };
     // A window that refuses to hide (a locked full-screen one, say) can't
-    // follow a workspace, so tileco stops managing it rather than stop the
+    // follow a workspace, so tide stops managing it rather than stop the
     // switch, or read it still showing as your doing next time (§5.4).
     const refusedNow = [];
     const setState = async (id, state) => {
       try {
         await update(id, { state });
       } catch (e) {
-        console.warn(`tileco: window ${id} refused to be ${state}; leaving it alone:`, e?.message ?? e);
+        console.warn(`tide: window ${id} refused to be ${state}; leaving it alone:`, e?.message ?? e);
         refusedNow.push(id);
       }
     };
@@ -1014,7 +1014,7 @@ export class Tileco {
     }
     await this.placeFloating(update);
     // Which display each window is on now, so the next sync can tell your
-    // move from one tileco hasn't made yet.
+    // move from one tide hasn't made yet.
     for (const [key, info] of Object.entries(this.state.windows)) {
       const w = this.windows.get(Number(key));
       if (w) info.on = displayFor(w, this.displays);

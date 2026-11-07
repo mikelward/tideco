@@ -1,11 +1,11 @@
-// Keep awake (SPEC.md §11): Search+S, or the cup on tileco's bar, holds the
+// Keep awake (SPEC.md §11): Search+S, or the cup on tide's bar, holds the
 // display on with chrome.power until it's turned off. Chrome drops the
 // request when the browser restarts, and storage.session empties then too,
 // so the two agree and it's never left on across a login, as in tide.
 
 export const KEEP_AWAKE_KEY = "keepAwake";
 
-// What the bar's cup and the toolbar button say, in tide's and tilemo's words.
+// What the bar's cup and the toolbar button say, in tide for Linux's and tide for macOS's words.
 export function words(on) {
   return on ? "Keeping awake" : "Not keeping awake";
 }

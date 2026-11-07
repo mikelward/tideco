@@ -1,4 +1,4 @@
-// Window geometry for the tileco layouts (SPEC.md §5.2), kept free of any
+// Window geometry for the tide layouts (SPEC.md §5.2), kept free of any
 // chrome.* API so it tests in plain Node. A port of tide's
 // hypr/tide/geometry.lua; the tests share its fixtures.
 //

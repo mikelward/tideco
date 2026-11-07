@@ -3,7 +3,7 @@
 // chrome.scripting, so it uses nothing from this module.
 
 export function overlay(on, strength = 0.1) {
-  // The old name, kept: pages still dimmed when tileco updates hold this element.
+  // The old name, kept: pages still dimmed when tide updates hold this element.
   const ID = "tico-dim";
   const old = document.getElementById(ID);
   if (!on) {

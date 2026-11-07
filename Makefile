@@ -18,7 +18,7 @@ TESTS = \
 	src/unread_test.js \
 	src/watchers_test.js \
 	src/workspaces_test.js \
-	src/tileco_test.js \
+	src/tide_test.js \
 	src/manifest_test.js \
 	src/package_test.js
 
@@ -37,7 +37,7 @@ lint:
 smoke:
 	node --test test/smoke.js
 
-# The PNG icons from icons/tileco.svg; needs what `make smoke` needs.
+# The PNG icons from icons/tide.svg; needs what `make smoke` needs.
 icons:
 	node scripts/render-icons.js
 
@@ -66,12 +66,12 @@ unshallow-check:
 		echo "the history is shallow, so the commit count is wrong; run git fetch --unshallow" >&2; exit 1; fi
 
 zip: unshallow-check
-	rm -rf $(STAGE) $(DIST)/tileco-$(VERSION).zip
+	rm -rf $(STAGE) $(DIST)/tide-$(VERSION).zip
 	mkdir -p $(STAGE)/icons
 	cp -R manifest.json src $(STAGE)/
 	cp icons/*.png $(STAGE)/icons/
 	rm -f $(STAGE)/src/*_test.js $(STAGE)/src/fake_chrome.js
 	node -e 'const fs = require("fs"); const f = process.argv[1]; const m = JSON.parse(fs.readFileSync(f)); m.version = process.argv[2]; fs.writeFileSync(f, JSON.stringify(m, null, 2) + "\n");' $(STAGE)/manifest.json $(VERSION)
-	cd $(STAGE) && zip -qrX ../tileco-$(VERSION).zip .
+	cd $(STAGE) && zip -qrX ../tide-$(VERSION).zip .
 	rm -rf $(STAGE)
-	@echo $(DIST)/tileco-$(VERSION).zip
+	@echo $(DIST)/tide-$(VERSION).zip

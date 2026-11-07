@@ -1,4 +1,4 @@
-// tileco's full-screen page (SPEC.md §6.2, §8.1, §9.4): tide's bar on top,
+// tide's full-screen page (SPEC.md §6.2, §8.1, §9.4): tide's bar on top,
 // with a launcher under it. As the home page of an empty workspace it opens
 // on the launch scope and stays; as the dashboard, from its key or the
 // toolbar button, it opens on open tabs and closes once you choose. Search+W
@@ -103,7 +103,7 @@ async function renderCup() {
   cup.title = awakeWords(on);
 }
 cup.addEventListener("click", () =>
-  chrome.runtime.sendMessage({ command: "keep-awake" }).catch((e) => console.error("tileco: couldn't turn keep awake over:", e)),
+  chrome.runtime.sendMessage({ command: "keep-awake" }).catch((e) => console.error("tide: couldn't turn keep awake over:", e)),
 );
 
 async function refresh() {
@@ -318,7 +318,7 @@ async function allowTabs() {
   try {
     if (await chrome.permissions.request({ permissions: ["tabs"] })) await refresh();
   } catch (e) {
-    console.error("tileco: couldn't ask for tab search:", e);
+    console.error("tide: couldn't ask for tab search:", e);
   } finally {
     asking = false;
   }
@@ -334,7 +334,7 @@ async function openSettings(section = null) {
     if (section) await chrome.storage.session.set({ [SECTION_KEY]: section });
     await chrome.runtime.openOptionsPage();
   } catch (e) {
-    console.error(`tileco: couldn't open the settings${section ? ` at ${section}` : ""}:`, e);
+    console.error(`tide: couldn't open the settings${section ? ` at ${section}` : ""}:`, e);
   }
   if (home) {
     query.value = "";
@@ -355,14 +355,14 @@ for (const [id, section] of Object.entries(BAR_SECTIONS)) {
 // dashboard stays open while it does; once allowed, the dim comes on.
 async function toggleDim(on) {
   if (on || (await chrome.permissions.contains(DIM_ACCESS))) {
-    await send({ dim: !on }).catch((e) => console.error("tileco: couldn't turn the dim over:", e));
+    await send({ dim: !on }).catch((e) => console.error("tide: couldn't turn the dim over:", e));
     return;
   }
   asking = true;
   try {
     await chrome.permissions.request(DIM_ACCESS);
   } catch (e) {
-    console.error("tileco: couldn't ask for the dim's access:", e);
+    console.error("tide: couldn't ask for the dim's access:", e);
   } finally {
     asking = false;
   }
@@ -394,7 +394,7 @@ async function renderExtras() {
             await refresh();
           }
         } catch (e) {
-          console.error(`tileco: couldn't turn on ${extra.title}:`, e);
+          console.error(`tide: couldn't turn on ${extra.title}:`, e);
         } finally {
           asking = false;
         }

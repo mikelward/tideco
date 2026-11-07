@@ -1,11 +1,11 @@
-// tileco off chromeOS (SPEC.md §14.6): the dashboard and its launcher, the
+// tide off chromeOS (SPEC.md §14.6): the dashboard and its launcher, the
 // app keys and keep awake, with nothing tiled, moved or put on a workspace.
 // The window manager there places what opens.
 
 import { load as loadSettings } from "./settings.js";
 import { toggle as toggleKeepAwake } from "./keepawake.js";
 import { worksUntiled } from "./platform.js";
-import { displayFor } from "./tileco.js";
+import { displayFor } from "./tide.js";
 
 // The dashboard's window, in storage.session so a worker that slept still
 // closes it with the key that opened it.
@@ -19,7 +19,7 @@ export class Untiled {
 
   run(step) {
     const done = this.queue.then(step);
-    this.queue = done.catch((e) => console.error("tileco:", e));
+    this.queue = done.catch((e) => console.error("tide:", e));
     return done;
   }
 
@@ -28,7 +28,7 @@ export class Untiled {
   command(name) {
     return this.run(async () => {
       if (!worksUntiled(name)) {
-        console.info(`tileco: ${name} works only on chromeOS`);
+        console.info(`tide: ${name} works only on chromeOS`);
         return;
       }
       if (name === "popup") return this.dashboard();
@@ -50,7 +50,7 @@ export class Untiled {
         return;
       } catch (e) {
         // You closed it yourself: open a new one.
-        console.info(`tileco: the dashboard (window ${open}) had gone:`, e?.message ?? e);
+        console.info(`tide: the dashboard (window ${open}) had gone:`, e?.message ?? e);
       }
     }
     const displays = await this.api.system.display.getInfo();

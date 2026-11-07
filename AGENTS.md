@@ -1,14 +1,14 @@
 ---
 trigger: always_on
 alwaysApply: true
-last_modified: 2026-11-05
+last_modified: 2026-11-07
 ---
 
-# tileco
+# tideco
 
-Tiling on chromeOS: a Manifest V3 extension that brings tide's tiling, workspaces and keys
-to Chrome windows on a Chromebook. `SPEC.md` is the design, `PUBLISHING.md` the release
-steps.
+tide for Chrome: a Manifest V3 extension that brings tide for Linux's tiling, workspaces
+and keys to Chrome windows on a Chromebook. `SPEC.md` is the design, `PUBLISHING.md` the
+release steps.
 
 ## Fleet conventions
 

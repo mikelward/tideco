@@ -64,12 +64,12 @@ jobs:
       - run: make zip
       - uses: actions/upload-artifact@v4
         with:
-          name: tileco-${{ steps.version.outputs.version }}
-          path: dist/tileco-${{ steps.version.outputs.version }}.zip
+          name: tide-${{ steps.version.outputs.version }}
+          path: dist/tide-${{ steps.version.outputs.version }}.zip
       # gh creates the tag at this commit when it doesn't exist yet. A tag
       # made with this token starts no workflow, so nothing runs twice.
       - if: steps.release.outputs.publish == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.version.outputs.version }}
-        run: gh release create "v$VERSION" "dist/tileco-$VERSION.zip" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "tileco $VERSION" --generate-notes
+        run: gh release create "v$VERSION" "dist/tide-$VERSION.zip" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "tide $VERSION" --generate-notes

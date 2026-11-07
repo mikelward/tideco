@@ -1,4 +1,4 @@
-# Testing and publishing tileco
+# Testing and publishing tide for Chrome
 
 How to try a change on a Chromebook, then publish it on the Chrome Web
 Store. The store steps are from memory of how the store worked through
@@ -35,16 +35,16 @@ Chrome loads an extension from a folder, as it is. There's no build step.
 3. Click **Load unpacked** and choose the folder that holds
    `manifest.json`.
 4. Bind the keys at `chrome://extensions/shortcuts`. Chrome binds four
-   when it installs tileco; the options page's **Keys** list says which of
+   when it installs tide for Chrome; the options page's **Keys** list says which of
    the rest are still to do.
-5. Open tileco's options (right-click its toolbar icon › **Options**) and
+5. Open tide for Chrome's options (right-click its toolbar icon › **Options**) and
    work through the **Setup checklist**.
 
 To try a change: update the folder (unzip again, or `git pull`), then click
-the reload arrow on tileco's card, named tide, in `chrome://extensions`.
-Reloading resets tileco's worker, not your settings.
+the reload arrow on tide for Chrome's card in `chrome://extensions`.
+Reloading resets tide for Chrome's worker, not your settings.
 
-To see errors: on tileco's card, **Errors** lists what the worker threw, and
+To see errors: on tide for Chrome's card, **Errors** lists what the worker threw, and
 **Inspect views › service worker** opens its console. A page's own console
 is the usual DevTools (Ctrl+Shift+J) on that page.
 
@@ -56,7 +56,7 @@ Search+Space, the dim, and that Android and Linux windows are left alone.
 
 What the first upload needs:
 
-- **Icons.** Done: `icons/tileco.svg` (tide's two waves in white on the
+- **Icons.** Done: `icons/tide.svg` (tide's two waves in white on the
   accent blue), rendered to the 16, 32, 48 and 128 px PNGs the manifest
   names and the pages use as their tab icon. After changing the SVG,
   `make icons` renders them again with Playwright's Chromium, as
@@ -64,19 +64,19 @@ What the first upload needs:
 - **Name.** The manifest's `name` is `tide`, so the store lists it as tide:
   the store takes the name from the package, not the dashboard. The
   dashboard's description, screenshots and promo images are typed or
-  uploaded there, so say tide in those too. The ZIP, the repository and
-  the privacy URL keep tileco.
+  uploaded there, so say tide in those too. The repository and the
+  privacy URL say tideco.
 - **A privacy policy URL.** Done: [docs/privacy.md](docs/privacy.md),
   which GitHub Pages serves from `docs/` at
-  `https://mikelward.github.io/tileco/privacy`. Give the store that URL. It
-  says what tileco reads, keeps and sends, including that Chrome Sync copies
+  `https://mikelward.github.io/tideco/privacy`. Give the store that URL. It
+  says what tide for Chrome reads, keeps and sends, including that Chrome Sync copies
   the shared settings to your Google account when Sync is on. Update it
-  when tileco starts reading or keeping something new.
+  when tide for Chrome starts reading or keeping something new.
 - **Promo tiles.** Done: `store/promo-small.png` (440×280) and
-  `store/promo-marquee.png` (1400×560), tide's logo, two waves, as tileco's
+  `store/promo-marquee.png` (1400×560), tide's logo, two waves, as the extension's
   icon draws it, beside the name tide and what it does. The `-alt` pair,
   `store/promo-small-alt.png` and `store/promo-marquee-alt.png`, shows
-  tileco's first icon instead, the T of three columns under a bar of
+  tide for Chrome's first icon instead, the T of three columns under a bar of
   workspaces and a clock. Upload one pair under the listing's graphic
   assets. After changing an SVG in `store/`, `make promo` renders them
   again, with Inter from Google Fonts. They're the store's alone, so
@@ -98,11 +98,11 @@ What the first upload needs:
 ## 4. Package it
 
 The store takes a ZIP with `manifest.json` at its top level, which GitHub's
-**Download ZIP** isn't: that wraps everything in a `tileco-main/` folder and
+**Download ZIP** isn't: that wraps everything in a `tide-main/` folder and
 includes the tests. Build the store's from a checkout:
 
 ```sh
-make zip     # dist/tileco-<version>.zip; `unzip -l` it to see what went in
+make zip     # dist/tide-<version>.zip; `unzip -l` it to see what went in
 ```
 
 The version is automatic: the number of commits, so `46` for the 46th.
@@ -133,12 +133,12 @@ In the [developer dashboard](https://chrome.google.com/webstore/devconsole):
    > A tiling desktop environment for chromeOS. Includes a tiling window
    > manager that automatically places your windows, a launcher to run apps
    > and open websites, and a dashboard to see world times and other useful
-   > info. On Linux, it lists your browser tabs in the switcher of tide, the
-   > Linux desktop it comes from.
+   > info. On Linux, it lists your browser tabs in the switcher of tide for Linux,
+   > the Linux desktop it comes from.
 3. **Privacy:**
    - **Single purpose:** "Tiles and arranges Chrome and web app windows on
      chromeOS into workspaces, as a tiling window manager does, and on
-     Linux lists your tabs in tide's switcher." One build serves both, so
+     Linux lists your tabs in tide for Linux's switcher." One build serves both, so
      the store's copy carries `nativeMessaging` too.
    - **Permission justifications**, one each:
      - `storage`: settings, and the workspace state that survives a
@@ -157,21 +157,21 @@ In the [developer dashboard](https://chrome.google.com/webstore/devconsole):
      - Optional all-sites access: dimming inactive windows, asked for only
        when you turn it on.
      - Optional `nativeMessaging`, with optional `tabs`: on Linux only,
-       handing the tab list to tide's switcher through tide's `tide-tabs`
+       handing the tab list to tide for Linux's switcher through its `tide-tabs`
        helper on the same computer (SPEC.md §14.6). Asked for only when
        you allow it on the settings, never on chromeOS.
-   - **Remote code:** no. tileco runs only the code in its package.
-   - **Data use:** tileco sends nothing to its developer or anyone else.
-     Chrome Sync carrying the shared settings is Chrome's, not tileco's, but
+   - **Remote code:** no. tide for Chrome runs only the code in its package.
+   - **Data use:** tide for Chrome sends nothing to its developer or anyone else.
+     Chrome Sync carrying the shared settings is Chrome's, not tide for Chrome's, but
      the privacy policy says so. Then tick the certifications.
 4. **Distribution:** **Unlisted** to try a published build first (only
    people with the link can install it), or **Public**. **Private** limits
    it to listed testers.
 5. **Submit for review.** Reviews have taken from a day to a few weeks.
-   Broad host permissions slow them down. tileco asks for all-sites access
+   Broad host permissions slow them down. tide for Chrome asks for all-sites access
    only as an optional permission, which helps.
 
-tileco's item ID is `ajcfbfgjfglgofbepnkiimmmnaidfedl`, and it keeps it for
+tide for Chrome's item ID is `ajcfbfgjfglgofbepnkiimmmnaidfedl`, and it keeps it for
 every update. Its store page is
 <https://chromewebstore.google.com/detail/ajcfbfgjfglgofbepnkiimmmnaidfedl>,
 which answers "not found" until the first submission is published.

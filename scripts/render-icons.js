@@ -1,5 +1,5 @@
-// Renders icons/tileco.svg to the PNG sizes the manifest names, and
-// icons/tileco-alt.svg at 128 px, with the Chromium the smoke test uses:
+// Renders icons/tide.svg to the PNG sizes the manifest names, and
+// icons/tide-alt.svg at 128 px, with the Chromium the smoke test uses:
 // `make icons` after changing an SVG.
 
 import { readFile } from "node:fs/promises";
@@ -9,8 +9,8 @@ import { chromium } from "playwright";
 const ICONS = fileURLToPath(new URL("../icons/", import.meta.url));
 const SIZES = [16, 32, 48, 128];
 
-// tileco-alt.svg is an alternative design, kept at full size only.
-const ICON_SIZES = { tileco: SIZES, "tileco-alt": [128] };
+// tide-alt.svg is an alternative design, kept at full size only.
+const ICON_SIZES = { tide: SIZES, "tide-alt": [128] };
 
 const browser = await chromium.launch();
 try {

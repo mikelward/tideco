@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="440" height="280" viewBox="0 0 440 280">
-  <!-- The store's small promo tile: tide's logo, two waves, as tileco's
+  <!-- The store's small promo tile: tide's logo, two waves, as tide's
        icon draws it, with the name. -->
   <rect width="440" height="280" fill="#f6f5f4"/>
   <g transform="translate(40 76) scale(1)"><rect x="4" y="4" width="120" height="120" rx="26" fill="#3584e4"/><g transform="translate(12.54 8.75) scale(6.5)" fill="none" stroke="#ffffff" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M1.75 6.25q2.083-2 4.167 0t4.166 0t4.167 0"/><path d="M1.75 10.75q2.083-2 4.167 0t4.166 0t4.167 0"/></g></g>

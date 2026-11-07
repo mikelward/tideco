@@ -1,19 +1,18 @@
-# tileco
+# tideco
 
-Tiling on chromeOS: a Manifest V3 extension that brings the dwm/Krohnkite
-tiling of [tide](https://github.com/mikelward/tide) to Chrome and installed
-web app windows on a Chromebook. It adds tide's named workspaces, tide's key map on
-the Search key, an optional dim on inactive windows, and world clocks. A
+tide for Chrome: tiling on chromeOS, as a Manifest V3 extension that brings the dwm/Krohnkite
+tiling of [tide for Linux](https://github.com/mikelward/tide) to Chrome and installed
+web app windows on a Chromebook. It adds tide for Linux's named workspaces and key map
+on the Search key, an optional dim on inactive windows, and world clocks. A
 setup checklist sets the native chromeOS features (lock, launcher,
 notifications, screenshots, dark mode) to match.
 
 It tiles only on chromeOS. In Chrome or Brave elsewhere it keeps its
 dashboard and launcher but moves no window, and on Linux it lists the
-browser's tabs in tide's switcher ([SPEC.md](SPEC.md) §14.6).
+browser's tabs in tide for Linux's switcher ([SPEC.md](SPEC.md) §14.6).
 
-On the Chromebook it calls itself **tide**, with tide's wave logo, in
-`chrome://extensions`, the toolbar and its own pages; tileco is the name of
-this repository and its code.
+It's called **tide**, with tide's wave logo, in `chrome://extensions`, the
+toolbar and its own pages; tideco is the name of this repository.
 
 **Status: milestone 1, the spec.** Start with [SPEC.md](SPEC.md). It
 explains what chromeOS lets an extension do, and what it doesn't: Android

@@ -18,16 +18,16 @@ test("word starts and runs score higher", () => {
 const tabs = [
   { id: 10, windowId: 1, title: "Inbox (3) - Gmail", url: "https://mail.google.com/mail/u/0/", lastAccessed: 300 },
   { id: 20, windowId: 2, title: "Design doc", url: "https://docs.google.com/document/d/1", lastAccessed: 500 },
-  { id: 30, windowId: 3, title: "tide", url: "chrome-extension://tileco/src/launcher.html" },
+  { id: 30, windowId: 3, title: "tide", url: "chrome-extension://tide/src/launcher.html" },
 ];
 const apps = [{ name: "Google Calendar", url: "https://calendar.google.com/", command: "app-calendar", key: "Search+C" }];
 const commands = {
   "workspace-4": { description: "Go to workspace 4 (Search+4)" },
   "app-calendar": { description: "Open Google Calendar (Search+C)" },
 };
-const all = items({ tabs, apps, commands, workspaceOf: (w) => ({ 1: 2, 2: 1 })[w] ?? null, ownOrigin: "chrome-extension://tileco/" });
+const all = items({ tabs, apps, commands, workspaceOf: (w) => ({ 1: 2, 2: 1 })[w] ?? null, ownOrigin: "chrome-extension://tide/" });
 
-test("the items are tabs, apps, Tide Settings and commands, without tileco's own pages", () => {
+test("the items are tabs, apps, Tide Settings and commands, without tide's own pages", () => {
   assert.deepEqual(
     all.map((i) => [i.kind, i.title, i.detail, i.key ?? ""]),
     [
@@ -230,7 +230,7 @@ test("the options page shows its address's section, else the one Launch asked fo
   assert.equal(sectionToShow("", TOP, ids), TOP);
 });
 
-// The Actions scope (§9.4): tileco's own actions, then its commands.
+// The Actions scope (§9.4): tide's own actions, then its commands.
 test("Actions lists keep awake, the dim and reloading, saying which are on", () => {
   const rows = (opts) => actions(opts).map((a) => [a.title, a.detail]);
   assert.deepEqual(rows({ keepAwake: true, dim: { granted: true, on: false } }), [

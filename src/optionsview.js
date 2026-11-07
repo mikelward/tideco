@@ -137,7 +137,7 @@ const HOOKS = {
       await save();
     },
   },
-  // Every page is undimmed while tileco can still reach them.
+  // Every page is undimmed while tide can still reach them.
   dim: { off: () => chrome.runtime.sendMessage({ dim: false }) },
 };
 const ALL_EXTRAS = BASE_EXTRAS.map((e) => ({ ...e, ...HOOKS[e.id] }));
@@ -173,7 +173,7 @@ async function renderPermissions() {
   $("permissions").replaceChildren(...items);
 }
 
-// The sites whose unread counts tileco shows (§10.3). Settings sync, but a
+// The sites whose unread counts tide shows (§10.3). Settings sync, but a
 // site's access is allowed per Chromebook, so each shows whether it's on here.
 let watchedSites = [];
 
@@ -740,7 +740,7 @@ async function showSection() {
     el.querySelector("h2")?.setAttribute("tabindex", "-1");
     el.querySelector("h2")?.focus({ preventScroll: true });
   } catch (e) {
-    console.error("tileco: couldn't show the settings section:", e);
+    console.error("tide: couldn't show the settings section:", e);
   }
 }
 where.then(showSection);

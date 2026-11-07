@@ -28,7 +28,7 @@ export const ITEMS = [
     id: "lock",
     title: "Lock when sleeping",
     where: "chrome://os-settings/osPrivacy/lockScreen",
-    how: "Turn on \u201cLock when sleeping or lid is closed\u201d, as tide on Linux locks before sleep.",
+    how: "Turn on \u201cLock when sleeping or lid is closed\u201d, as tide for Linux locks before sleep.",
     ref: "§11",
   },
   {

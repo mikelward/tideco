@@ -1,30 +1,30 @@
 ---
-last_modified: 2026-11-04
+last_modified: 2026-11-07
 ---
 
-# tileco: design spec (milestone 1)
+# tide for Chrome: design spec (milestone 1)
 
-tileco is tiling on chromeOS, as close to [tide](https://github.com/mikelward/tide)
+tide for Chrome is tiling on chromeOS, as close to [tide for Linux](https://github.com/mikelward/tide)
 and the KDE setup in `mikelward/scripts` (`setup-kde`) as a Chromebook allows
 without turning off verified boot. It is a **Manifest V3 extension** that tiles
 Chrome and installed web app windows, owns its own workspaces, and dims the
 windows you're not in. A **checklist** sets the native chromeOS shortcuts and
-settings to the tide key map where the OS can do the job better than an
+settings to the tide for Linux key map where the OS can do the job better than an
 extension can.
 
-On the Chromebook it **calls itself tide**, under tide's wave logo: its name
-in `chrome://extensions`, the shortcuts page and the toolbar tooltip, its
-pages' titles and text, and its icon (tide's two waves in white on the
-accent blue, `#3584e4`). tileco stays the name of the repository and the
-code, and nothing that names it changes: file names, storage keys, command
-IDs and the extension's ID, so settings and key bindings carry over. Where a
-page means the desktop on Linux, it says "tide on Linux".
+It's called **tide**, under tide's wave logo: its name in
+`chrome://extensions`, the shortcuts page and the toolbar tooltip, its
+pages' titles and text, its code, and its icon (tide's two waves in white on
+the accent blue, `#3584e4`). tideco is the name of the repository. Storage
+keys, command IDs and the extension's ID never named it, so settings and key
+bindings carry over. Where a page means the desktop, it says "tide for
+Linux".
 
 It **tiles only on chromeOS** (§14.6). Loaded in Chrome or Brave anywhere
 else, it lays out and moves no window, since that desktop has its own
 window manager. Its dashboard, launcher, app keys and keep awake still
-work there. On Linux it is also how tide's switcher lists the browser's
-tabs (tide §8.3).
+work there. On Linux it is also how tide for Linux's switcher lists the browser's
+tabs (tide for Linux §8.3).
 
 This document is milestone 1: what chromeOS allows, the decisions that
 follow, and what "done" means for each later milestone. Claims about chromeOS
@@ -60,21 +60,21 @@ Contents:
 
 ## 1. Goals
 
-**Must have**, each taken from tide's §1 or `setup-kde`:
+**Must have**, each taken from tide for Linux's §1 or `setup-kde`:
 
 - dwm/Krohnkite tiling, never BSP: **tile** (master + stack), **three
   columns**, **two columns + stack**, **monocle**. Layout per workspace, on each display.
 - A lone window centered at **80%** width on an ultrawide, **100%** on 16:9
   or 16:10.
-- Named **workspaces**, as tide's (tide §6.5): a home workspace and the
+- Named **workspaces**, as tide for Linux's (tide for Linux §6.5): a home workspace and the
   standing ones always listed, others named as you make them; going to
   one or moving a window there by name, `Search+1…9` for the Nth in
   order, stepping on `Search+Page Up/Down` (§6.1, §7.2).
-- The tide **key map**, with Search as Super, for every action chromeOS lets
-  tileco or the OS bind.
+- The tide for Linux **key map**, with Search as Super, for every action chromeOS lets
+  tide for Chrome or the OS bind.
 - **Inactive windows dimmed** as the focus cue.
 - **App keys**: `Search+G` browser, `Search+T` terminal, `Search+C` Calendar,
-  `Search+M` Meet, `Search+Y` YouTube Music, and the rest of tide's letters.
+  `Search+M` Meet, `Search+Y` YouTube Music, and the rest of tide for Linux's letters.
 - **Clocks** for SF, NYC and LON beside local time.
 - Dialogs and popups **float**; nothing steals focus.
 
@@ -85,17 +85,17 @@ Contents:
 - Tiling Android or Linux windows from the extension. chromeOS doesn't expose
   them (§2.1). Linux apps get their own path (§12).
 - Developer mode, custom firmware or a Chromium OS build. Those are the
-  [off-ramp](#36-the-off-ramp-run-tide), not tileco.
+  [off-ramp](#36-the-off-ramp-run-tide-for-linux), not tide for Chrome.
 
-**Principles**, carried over from tide:
+**Principles**, carried over from tide for Linux:
 
 1. **One owner per job.** Where chromeOS already does a job (lock, launcher,
-   notifications, screenshots, theme), tileco configures it and stays out.
-   tileco owns only what the OS lacks: tiling, workspaces, the dim and clocks.
+   notifications, screenshots, theme), tide for Chrome configures it and stays out.
+   tide for Chrome owns only what the OS lacks: tiling, workspaces, the dim and clocks.
 2. **Every requirement names its mechanism** (§4), and each is checked on a
    device before it's relied on.
 3. **State survives the service worker.** MV3 kills an idle worker, so
-   nothing tileco knows lives only in memory (§14.2).
+   nothing tide for Chrome knows lives only in memory (§14.2).
 
 ## 2. What chromeOS allows
 
@@ -113,11 +113,11 @@ Contents:
   [virtualdesktops-extension](https://github.com/google/virtualdesktops-extension)
   warns that the bounds you get aren't exactly the ones you asked for.
 - Picture-in-picture windows report `type: "normal"` (a TODO in the source,
-  crbug 438514981), so tileco has to recognize them another way (§5.4).
+  crbug 438514981), so tide for Chrome has to recognize them another way (§5.4).
   Document picture-in-picture and always-on-top popups are `TYPE_FLOATING`:
   `normal` with `alwaysOnTop: true`, and `windows.update` refuses to
   minimize, maximize or full-screen them (`windows_api.cc`). Video
-  picture-in-picture isn't a browser window at all, so tileco never sees it.
+  picture-in-picture isn't a browser window at all, so tide for Chrome never sees it.
 - `chrome.system.display.getInfo` gives each display's `bounds` and
   `workArea`, which excludes the shelf. Changing the display layout is
   Kiosk-only (`extensions/common/api/system_display.webidl`).
@@ -136,9 +136,9 @@ Contents:
   `GetGlobalAcceleratorListener()` returns `nullptr` there, with the comment
   "Global extension commands are not supported on ChromeOS"
   (`chrome/browser/extensions/extension_commands_global_registry.cc`).
-- So every tileco key fires only while a Chrome or web app window is focused.
+- So every tide for Chrome key fires only while a Chrome or web app window is focused.
   It never fires over an Android app, a Linux app, the launcher or an empty
-  desk. tileco designs around that (§6.2). Chromium's tip of tree has a new
+  desk. tide for Chrome designs around that (§6.2). Chromium's tip of tree has a new
   chromeOS global-accelerator listener
   (`ui/base/accelerators/global_accelerator_listener/global_accelerator_listener_chromeos.cc`);
   if it ships for extensions, `"global": true` commands could reach past
@@ -147,14 +147,14 @@ Contents:
   shortcuts and chromeOS's system apps (`TYPE_APP`, `TYPE_APP_POPUP`) hand
   every key to the page before Chrome's accelerators
   (`BrowserView::PreHandleKeyboardEvent`, `browser_view.cc`), so a page that
-  consumes `Search+…`, like a terminal, keeps tileco's keys from firing.
+  consumes `Search+…`, like a terminal, keeps tide for Chrome's keys from firing.
   Browser windows and plain popups run extension commands first.
 - OS shortcuts win over extension ones. Search is a valid modifier for
   extension commands on chromeOS only.
 - **Only some keys can be bound**: A–Z, 0–9, Comma, Period, the arrows,
   Insert, Delete, Home, End, Page Up, Page Down, Space, Tab and the media
   keys (`ui/base/accelerators/command.cc`, `ParseImpl`). Return, Backspace,
-  `\`, `/`, `=`, `-` and `` ` `` are rejected, so five tide keys need new
+  `\`, `/`, `=`, `-` and `` ` `` are rejected, so five tide for Linux keys need new
   combos (§7.1). The shortcuts page enforces the same set
   *(unverified)*.
 - An IME extension (`chrome.input.ime`) is not a way round this. It sees
@@ -249,25 +249,25 @@ and later.
 
 chrometile proves the mechanism, but it isn't a base to build on:
 
-- **Most of tileco is what chrometile lacks**: workspaces, saved state, the
+- **Most of tide for Chrome is what chrometile lacks**: workspaces, saved state, the
   dim, clocks, attention and app keys. The workspace state machine (§6.1)
   is a different core from chrometile's one window list per display.
   chrometile is about 600 lines, 496 of them in `src/background.js`, so a
   fork would keep the idea and little of the code.
 - **Its foundations would be rewritten anyway**: state only in memory, late
   listener registration, and no notion of desks (§2.5).
-- **tileco's logic must be testable on its own** (§17) and portable to tidal
+- **tide for Chrome's logic must be testable on its own** (§17) and portable to tidal
   (§20.4). chrometile mixes layout logic with `chrome.*` calls.
-- **The license doesn't decide it.** chrometile is Apache-2.0, like tileco,
-  so borrowing a piece only needs credit, which tileco's README gives.
+- **The license doesn't decide it.** chrometile is Apache-2.0, like tide for Chrome,
+  so borrowing a piece only needs credit, which tide for Chrome's README gives.
 
 **Meanwhile, use chrometile.** It works today and is maintained: its last
 commit is 2026-10-13, and it merges outside contributions. It gives the
-Chromebook basic tiling until tileco reaches M3, when tileco replaces it. They
+Chromebook basic tiling until tide for Chrome reaches M3, when tide for Chrome replaces it. They
 can't run together, since both would move the same windows.
 
 **Send chrometile two fixes**, each a small PR. They help its users now and
-cost tileco little:
+cost tide for Chrome little:
 
 1. **`moveToDisplay`** (`src/background.js` 411–425) calls
    `this.window_ids.unshift` from a plain function, where `this` is the
@@ -288,34 +288,34 @@ Both are from reading chrometile at `af8e367`. Each PR should reproduce the
 problem first: a unit test for `moveToDisplay`, and for the listeners,
 letting the worker go idle and then pressing a key.
 
-Contributing the rest of tileco to chrometile instead would change its whole
+Contributing the rest of tide for Chrome to chrometile instead would change its whole
 design, likely more than its maintainer wants. Asking costs nothing, but
-tileco doesn't wait on the answer.
+tide for Chrome doesn't wait on the answer.
 
-### 3.2 tileco owns the workspaces; native desks stay at one
+### 3.2 tide for Chrome owns the workspaces; native desks stay at one
 
 Extensions can't see desks (§2.3), so a tiler running across desks tiles the
-windows of every desk together. That's chrometile's bug. tileco therefore keeps
+windows of every desk together. That's chrometile's bug. tide for Chrome therefore keeps
 its own named workspaces and **switches by minimizing** the windows of the
 workspace you leave and restoring those of the one you enter (§6). This is
 how chromewm did it.
 
 - **For**: the layout, order, master count and focus are exact per
-  workspace, persist across restarts, and every tide workspace key works.
+  workspace, persist across restarts, and every tide for Linux workspace key works.
 - **Against**: the switch shows the minimize animation. Android and Linux
-  windows can't be minimized by tileco, so they stay visible on every workspace.
+  windows can't be minimized by tide for Chrome, so they stay visible on every workspace.
   Overview (and Alt+Tab, *unverified*) list minimized windows from other
   workspaces too.
 - **The alternative**, native desks, has real animations and keys that work
-  over every app. But tileco would lose track of which window is where after
+  over every app. But tide for Chrome would lose track of which window is where after
   any native desk switch, and there's no key to send a window to desk N.
   It's [open question 1](#18-open-questions).
 
 ### 3.3 Search is Super
 
-The tide key map moves to Search, the key in Super's place on a Chromebook
-and the one tide taps for the launcher. Where the OS takes a Search combo,
-the native action is usually the same one tide binds (Search+L locks,
+The tide for Linux key map moves to Search, the key in Super's place on a Chromebook
+and the one tide for Linux taps for the launcher. Where the OS takes a Search combo,
+the native action is usually the same one tide for Linux binds (Search+L locks,
 tapping Search opens the launcher). The rest of the conflicts are in §7.2.
 **Alt+Shift** is the fallback modifier for anything Search can't carry,
 which is chrometile's choice too.
@@ -324,65 +324,65 @@ which is chrometile's choice too.
 
 The lock, launcher, notifications, screenshots, screen-share picker, dark
 mode, keyboard layout and idle policy are chromeOS's, and no extension can
-replace them. tileco's options page has a **setup checklist**: the Settings
-and Shortcuts-app changes that suit anyone using tileco, each one with the
+replace them. tide for Chrome's options page has a **setup checklist**: the Settings
+and Shortcuts-app changes that suit anyone using tide for Chrome, each one with the
 page to open and how to check it's done. Personal ones (a keyboard layout,
 Caps Lock, the shelf's apps, a mouse) stay out of it; they're recorded in
 §9.3, §11 and §19.2. chromeOS settings can't be
-scripted, so the list is the mechanism, and tileco checks what it can
+scripted, so the list is the mechanism, and tide for Chrome checks what it can
 (command bindings, through `chrome.commands.getAll`).
 
 ### 3.5 Web apps are installed PWAs, one per site
 
-tide runs Gmail, Calendar, Chat, Meet and YouTube Music as Chrome `--app=URL`
+tide for Linux runs Gmail, Calendar, Chat, Meet and YouTube Music as Chrome `--app=URL`
 windows. chromeOS has no command line, so they become **installed web
 apps**. Those are listed (`type: "app"`), tileable, and launchable from a
-key. Each is one site per window, which tide's attention rules
+key. Each is one site per window, which tide for Linux's attention rules
 already assume (§10.3).
 
-### 3.6 The off-ramp: run tide
+### 3.6 The off-ramp: run tide for Linux
 
-Everything tileco can't reach (Android and Linux windows, global keys, the
+Everything tide for Chrome can't reach (Android and Linux windows, global keys, the
 bar) needs the OS replaced. On a Chromebook that means
-third-party UEFI firmware (MrChromebox) and a normal distro running tide,
+third-party UEFI firmware (MrChromebox) and a normal distro running tide for Linux,
 giving up verified boot, chromeOS updates and Google's security guarantees,
 with some risk of bricking *(unverified for any specific model)*.
 [crouton](https://github.com/dnschneid/crouton) is end of life (2024-12-31)
-and broken from chromeOS 111. tileco doesn't pursue either, but the spec
+and broken from chromeOS 111. tide for Chrome doesn't pursue either, but the spec
 records the line so nobody rediscovers it.
 
 ## 4. Feature map
 
-Status: **yes** = tileco or chromeOS meets the tide or KDE behavior;
+Status: **yes** = tide for Chrome or chromeOS meets the tide for Linux or KDE behavior;
 **partial** = close, with the gap named; **no** = not reachable without the
 off-ramp.
 
-| tide / KDE | On chromeOS | Status |
+| tide for Linux / KDE | On chromeOS | Status |
 |---|---|---|
-| Tile, three-column, two columns + stack, monocle (tide §6.1) | tileco layouts over Chrome and web app windows (§5) | **partial**: not Android or Linux windows |
-| Lone window 80% on ultrawide, 100% otherwise | tileco, per display, from `workArea` aspect | **yes** |
-| Layout per workspace, on each monitor | tileco state per workspace and display (§6.1) | **yes** |
-| Named workspaces, home first; go and move by name; the Nth on Search+1…9 / Shift (tide §6.5, §6.6) | tileco workspaces by minimize (§3.2), named as tide's (§6.1) | **partial**: keys need a Chrome window focused; Android/Linux windows on every workspace; the name prompt is the dashboard's, not a window over the app |
-| One workspace spanning every monitor, each with its own part (tide §6.5) | tileco: the workspace showing shows on every display, each window in its display's part (§6.1) | **partial**, same caveats |
-| Dim inactive, 0.07 (tide §6.2; KDE 0.15) | an overlay injected into the page of each unfocused window (§10.1) | **partial**: page only, not tab strip or title bar; not over `chrome://` pages |
-| No borders, no gaps | chromeOS draws its own frames; tileco margin 0 | **partial** |
-| Maximize, fullscreen, restore (tide §6.3) | native Alt+=, fullscreen key, rebound to Search+Up/Shift+Up/Down in the Shortcuts app | **yes** |
-| Dialogs float, centered on parent (tide §6.4) | popups and dialogs untiled by type and rule (§5.4) | **yes** for Chrome; the OS places native dialogs |
+| Tile, three-column, two columns + stack, monocle (tide for Linux §6.1) | tide for Chrome layouts over Chrome and web app windows (§5) | **partial**: not Android or Linux windows |
+| Lone window 80% on ultrawide, 100% otherwise | tide for Chrome, per display, from `workArea` aspect | **yes** |
+| Layout per workspace, on each monitor | tide for Chrome state per workspace and display (§6.1) | **yes** |
+| Named workspaces, home first; go and move by name; the Nth on Search+1…9 / Shift (tide for Linux §6.5, §6.6) | tide for Chrome workspaces by minimize (§3.2), named as tide for Linux's (§6.1) | **partial**: keys need a Chrome window focused; Android/Linux windows on every workspace; the name prompt is the dashboard's, not a window over the app |
+| One workspace spanning every monitor, each with its own part (tide for Linux §6.5) | tide for Chrome: the workspace showing shows on every display, each window in its display's part (§6.1) | **partial**, same caveats |
+| Dim inactive, 0.07 (tide for Linux §6.2; KDE 0.15) | an overlay injected into the page of each unfocused window (§10.1) | **partial**: page only, not tab strip or title bar; not over `chrome://` pages |
+| No borders, no gaps | chromeOS draws its own frames; tide for Chrome margin 0 | **partial** |
+| Maximize, fullscreen, restore (tide for Linux §6.3) | native Alt+=, fullscreen key, rebound to Search+Up/Shift+Up/Down in the Shortcuts app | **yes** |
+| Dialogs float, centered on parent (tide for Linux §6.4) | popups and dialogs untiled by type and rule (§5.4) | **yes** for Chrome; the OS places native dialogs |
 | Focus follows mouse (KDE `FocusFollowsMouse`) | chromeOS's `chrome://flags/#focus-follows-cursor`, from the setup checklist (§10.2) | **partial**: a flag, off by default, which Chrome can drop |
-| Nothing steals focus (tide §14) | chromeOS activation rules; tileco never focuses unasked | **partial**: the OS decides for apps |
-| Super+Tab to the window wanting attention (tide §14.3) | tileco's attention list from title-count watchers (§10.3) | **partial**: chosen sites only |
-| Full-width bar, workspaces, urgency (tide §7) | no top bar on busy workspaces; shelf + toolbar badge + full-screen dashboard and home page with tide's bar (§6.2, §8) | **partial** |
+| Nothing steals focus (tide for Linux §14) | chromeOS activation rules; tide for Chrome never focuses unasked | **partial**: the OS decides for apps |
+| Super+Tab to the window wanting attention (tide for Linux §14.3) | tide for Chrome's attention list from title-count watchers (§10.3) | **partial**: chosen sites only |
+| Full-width bar, workspaces, urgency (tide for Linux §7) | no top bar on busy workspaces; shelf + toolbar badge + full-screen dashboard and home page with tide for Linux's bar (§6.2, §8) | **partial** |
 | Tray, network, volume, Bluetooth, battery | chromeOS status area on the shelf | **yes**, native |
-| SYD / LAX / NYC / LON clocks beside local (tide §7.3) | dashboard and home page: zones, strips, DST, scrubbing (§8.2) | **partial**: one key away, not always on screen |
-| Launcher on a Super tap (tide §8) | chromeOS launcher on a Search tap | **yes**, native, without quick actions |
-| App keys (KDE `setup-kde`, tide `hyprland.lua`) | tileco commands that open or focus web apps and profiles (§9) | **partial**: from a Chrome window only; Linux apps by shelf slot |
+| SYD / LAX / NYC / LON clocks beside local (tide for Linux §7.3) | dashboard and home page: zones, strips, DST, scrubbing (§8.2) | **partial**: one key away, not always on screen |
+| Launcher on a Super tap (tide for Linux §8) | chromeOS launcher on a Search tap | **yes**, native, without quick actions |
+| App keys (KDE `setup-kde`, tide for Linux `hyprland.lua`) | tide for Chrome commands that open or focus web apps and profiles (§9) | **partial**: from a Chrome window only; Linux apps by shelf slot |
 | Two and three Chrome profiles (`browser2`, `browser3`) | a second chromeOS account, or a Chrome profile if the build has them (§9.2) | **partial** |
-| Notifications, history, DND (tide §9) | chromeOS notification center and Do Not Disturb | **yes**, native, without auto-DND while sharing *(unverified)* |
-| Idle timeline: dim 2:30, lock 5:00, off 5:30, suspend 30:00 (tide §10) | chromeOS power settings; keep-awake toggle by `chrome.power` | **partial**: OS timings, not tide's |
+| Notifications, history, DND (tide for Linux §9) | chromeOS notification center and Do Not Disturb | **yes**, native, without auto-DND while sharing *(unverified)* |
+| Idle timeline: dim 2:30, lock 5:00, off 5:30, suspend 30:00 (tide for Linux §10) | chromeOS power settings; keep-awake toggle by `chrome.power` | **partial**: OS timings, not tide for Linux's |
 | Lock = login, short hostname | chromeOS lock screen | **partial**: no hostname |
-| Screenshots of window, screen, region (tide §13) | chromeOS screen capture | **yes**, native, saved to Downloads and copied |
-| Meet sharing of a window or screen (tide §12) | Chrome's picker on chromeOS | **partial**: no 16:9 slice of an ultrawide |
-| Automatic light and dark (tide §15) | chromeOS Auto dark mode, sunset to sunrise *(unverified)* | **partial**: sun schedule, not 07:00–19:00 |
+| Screenshots of window, screen, region (tide for Linux §13) | chromeOS screen capture | **yes**, native, saved to Downloads and copied |
+| Meet sharing of a window or screen (tide for Linux §12) | Chrome's picker on chromeOS | **partial**: no 16:9 slice of an ultrawide |
+| Automatic light and dark (tide for Linux §15) | chromeOS Auto dark mode, sunset to sunrise *(unverified)* | **partial**: sun schedule, not 07:00–19:00 |
 | US Dvorak (KDE `kxkbrc`) | chromeOS US Dvorak input | **yes** |
 | Mouse: fastest speed, adaptive accel, left-handed, wheel 3× (conf `hyprland.lua`) | Settings › Mouse, per device, five steps each (§19.2) | **partial**: coarse steps; finer only through `gesture_prop` |
 | Caps Lock as Compose | Caps Lock remaps to Search, Ctrl, Alt, Esc and others; no Compose | **no** |
@@ -394,10 +394,10 @@ off-ramp.
 
 A window tiles when **all** of these hold:
 
-- `type` is `normal` or `app`, or it's an app popup tileco opened itself
+- `type` is `normal` or `app`, or it's an app popup tide for Chrome opened itself
   (§9.1), tracked by window ID;
 - `state` is `normal`;
-- it isn't on tileco's float list;
+- it isn't on tide for Chrome's float list;
 - it doesn't match a float rule (§5.4).
 
 Maximized, fullscreen and minimized windows are left alone and don't count
@@ -405,7 +405,7 @@ toward the lone-window rule, as in tide.
 
 ### 5.2 Layouts
 
-The four tide layouts, with tide's numbers:
+The four tide for Linux layouts, with tide for Linux's numbers:
 
 - **Tile** `[]=`: master on the left at `mfact` 0.55, the stack on the right.
   Default where the work area's aspect is under 2.1.
@@ -415,7 +415,7 @@ The four tide layouts, with tide's numbers:
 - **Monocle** `[M]`: every window fills the work area. Only the focused one
   is in front, so the others sit behind it rather than being minimized.
 
-The rest is tide's §6.1:
+The rest is tide for Linux's §6.1:
 
 - `mfact` moves ±0.025 per key.
 - The master count is per workspace and per layout.
@@ -426,23 +426,23 @@ The rest is tide's §6.1:
 
 Geometry is a pure function from (work area, layout, settings, window
 count) to rectangles, kept free of `chrome.*` so it tests in Node (§17).
-tide's Lua layout is the reference; the two share test fixtures (§15).
+tide for Linux's Lua layout is the reference; the two share test fixtures (§15).
 
 ### 5.3 Applying it
 
-- tileco retiles on `onCreated`, `onRemoved`, `onFocusChanged`,
+- tide for Chrome retiles on `onCreated`, `onRemoved`, `onFocusChanged`,
   `onBoundsChanged`, `system.display.onDisplayChanged` and every layout key.
   It debounces 50 ms after the last event, since one window open fires
   several.
-- After `windows.update`, tileco reads the bounds back and stores the
+- After `windows.update`, tide for Chrome reads the bounds back and stores the
   difference per window type: the frame's offset. The next layout subtracts
   it, so tiles meet without gaps or overlaps.
-- **A drag is a request.** When `onBoundsChanged` reports a move tileco didn't
+- **A drag is a request.** When `onBoundsChanged` reports a move tide for Chrome didn't
   make, the window takes the tile nearest its center (swapping with that
   tile's window). If the center is on another display, the window first
   moves to that display's part of its workspace (§6.1). A resize of a tiled window sets `mfact`. That's
-  Krohnkite's behavior. A lone window's resize sets its width, as tilemo's does.
-  - **Built:** the resize. tileco keeps where it put each tiled window.
+  Krohnkite's behavior. A lone window's resize sets its width, as tide for macOS's does.
+  - **Built:** the resize. tide for Chrome keeps where it put each tiled window.
     When a tiled window's width has changed on the same display and work
     area, the edge that moved sets the workspace's `mfact`, for the
     layout it's in: the share that puts that edge where you left it,
@@ -469,14 +469,14 @@ tide's Lua layout is the reference; the two share test fixtures (§15).
 ### 5.4 What floats
 
 - `popup` windows: OAuth sign-ins, Chrome's "Save as" sheets, extension
-  popups, and tileco's home window (§6.2). tileco's own app popups (§9.1) are
+  popups, and tide for Chrome's home window (§6.2). tide for Chrome's own app popups (§9.1) are
   the one exception.
 - `devtools`.
 - **Always-on-top windows**: Document picture-in-picture and always-on-top
   popups, which report `normal` with `alwaysOnTop` (§2.1). They refuse
-  minimizing, so tileco doesn't track them at all: they stay where they are,
+  minimizing, so tide for Chrome doesn't track them at all: they stay where they are,
   on every workspace. Chrometile's Meet PiP URL rule covers any that don't.
-- **Except Secure Shell**: its terminals open as `popup` windows, so tileco
+- **Except Secure Shell**: its terminals open as `popup` windows, so tide for Chrome
   tiles popups whose tab is on Secure Shell's extension origin, like its own
   app popups (§6.4).
 - **Chrome Remote Desktop** and the other URL rules chrometile ships, as a
@@ -485,26 +485,26 @@ tide's Lua layout is the reference; the two share test fixtures (§15).
   persisted.
 
 Native dialogs (file chooser, print) aren't Chrome windows. The OS places
-them over their parent, which is what tide's §6.4 asks for.
+them over their parent, which is what tide for Linux's §6.4 asks for.
 
 ## 6. Workspaces
 
 ### 6.1 Model
 
-- **Workspaces have names, not numbers,** as tide's (tide §6.5) and
-  tilemo's (tilemo §6.1). A workspace exists once it has a name. They're
+- **Workspaces have names, not numbers,** as tide for Linux's (tide for Linux §6.5) and
+  tide for macOS's (tide for macOS §6.1). A workspace exists once it has a name. They're
   listed, on the dashboard's bar and its Workspaces scope (§8.1, §9.4), in
   bar order: the standing workspaces, then the rest in the order they
   were made.
 - **Standing workspaces** are a setting, a list of names on the options
-  page (§13), "in", "re", "oc" and "me" by default, as tide's
+  page (§13), "in", "re", "oc" and "me" by default, as tide for Linux's
   `workspaces.json`.
   - They're always listed, made or not. Each is made the first time you
     show it or move a window to it, and never removed, even when empty.
   - An empty list, or a name listed twice, ignoring case, is refused on
     the options page, naming it.
 - **The first is the home workspace,** "in" by default, whatever the list
-  names first. tileco makes it at start. It can't be removed or renamed.
+  names first. tide for Chrome makes it at start. It can't be removed or renamed.
   It holds the apps you keep open all day, and only theirs (below).
 - **The others are made by naming them** (the name prompt, below) and
   follow the standing ones, in the order they were made. An empty one is
@@ -513,7 +513,7 @@ them over their parent, which is what tide's §6.4 asks for.
   brought back yet (§14.2).
   - A name dropped from the standing list is an ordinary workspace from
     then on *(a guess)*.
-- **Before names**, tileco stored nine numbered workspaces. A state in
+- **Before names**, tide for Chrome stored nine numbered workspaces. A state in
   that shape is named as it loads: workspace 1 becomes home, and each
   other one holding a window or showing keeps its number as its name,
   after the standing ones, in number order *(a guess)*. The empty hidden
@@ -521,12 +521,12 @@ them over their parent, which is what tide's §6.4 asks for.
 - **A name** is one line, trimmed, at most 32 characters, with no quotes
   (`"`, `'`, `` ` ``), backslashes, `@` or control characters, as on tide. It
   reaches storage, the badge, the pages and logs, so nothing needs quoting,
-  and tide keeps `@` for a monitor's part of a workspace, with the standing
+  and tide for Linux keeps `@` for a monitor's part of a workspace, with the standing
   list shared.
   Names are compared ignoring case, and keep the case they were made
   with, so `RE` is the standing `re`.
-- **One workspace shows at a time, on every display,** as tide's spans
-  every monitor (tide §6.5) and tilemo's every display (tilemo §6.1).
+- **One workspace shows at a time, on every display,** as tide for Linux's spans
+  every monitor (tide for Linux §6.5) and tide for macOS's every display (tide for macOS §6.1).
   - Each window belongs to a display as well as a workspace: the one it
     opened on, or you moved it to. A workspace's windows on one display
     are its **part** there, tiled on that display.
@@ -536,8 +536,8 @@ them over their parent, which is what tide's §6.4 asks for.
   - A display with no window in the part showing gets a home page (§6.2).
   - The stack keys (`focus-next`, `move-next`, `swap-master`) work within
     the focused window's part.
-  - **Each part has its own layout,** `mfact` and master count, as tide's
-    and tilemo's do: the layout keys change only the part on the display
+  - **Each part has its own layout,** `mfact` and master count, as tide for Linux's
+    and tide for macOS's do: the layout keys change only the part on the display
     you're on. A part's layout left unset is its display's default. A
     display that goes away keeps its parts' settings for when it's back.
   - A workspace stored with one layout for all its displays gives that
@@ -575,7 +575,7 @@ the four keys, or one listed twice, is refused, naming the setting.
   it, since you asked for it and it takes focus *(a guess)*.
 
 **Each workspace's settings** are a shared setting beside those,
-`workspaceSettings`, keyed by workspace name, as tide and tilemo key
+`workspaceSettings`, keyed by workspace name, as tide for Linux and tide for macOS key
 theirs:
 
 ```json
@@ -592,15 +592,15 @@ theirs:
 - **`askForName`**: a new window on that workspace asks for a workspace
   (the name prompt, below). Home's apps still join home and never ask.
 - **`pinnedApps`**, app keys as `homeApps` names them, matched to windows
-  by site the same way: on tide and tilemo, a pinned app's window on that
-  workspace can't be closed by the desktop's close keys. tileco can't
+  by site the same way: on tide for Linux and tide for macOS, a pinned app's window on that
+  workspace can't be closed by the desktop's close keys. tide for Chrome can't
   refuse a close. Chrome's `Ctrl+W`, `Ctrl+Shift+W` (§7.1) and a window's
   close button never reach an extension, and `windows.onRemoved` fires
-  only once the window has gone. So tileco **reopens** it instead:
-  - The window closed was on that workspace, and tileco last saw that
+  only once the window has gone. So tide for Chrome **reopens** it instead:
+  - The window closed was on that workspace, and tide for Chrome last saw that
     app's site in it. `onRemoved` gives no tabs, so each sync and each
     page load keeps every window's app, and keeps it while Chrome hides
-    the address (no tab search, §14.1). A window tileco opened for an app
+    the address (no tab search, §14.1). A window tide for Chrome opened for an app
     key knows its app.
   - It reopens a second after the close, as its app key opens it (an
     app popup, §9.1), but unfocused, at the end of that workspace's stack
@@ -609,11 +609,11 @@ theirs:
   - It doesn't reopen when the workspace still has a window of that app,
     or when the pin came out meanwhile. Nor when the close isn't yours to
     undo: while a restart brings windows back (§14.2), when no window but
-    tileco's own (home windows, the dashboard) is left by the time it's
+    tide for Chrome's own (home windows, the dashboard) is left by the time it's
     due (the browser closing, which also ends the worker first), or when a
     display went in that sync. A browser window with the settings in a
     tab is a browser window.
-    tileco's own pages are never an app's.
+    tide for Chrome's own pages are never an app's.
   - It reopens at most 3 times a minute for each app on each workspace,
     counting only closes it reopened. A fourth in that minute stays
     closed, and the worker's log says so, so a site that keeps closing
@@ -621,8 +621,8 @@ theirs:
     another workspace and closed there doesn't reopen, unless it's pinned
     there too.
 
-**The name prompt** is tide's (tide §6.5), on the dashboard (§8.1), since
-an extension page is the only place tileco can take typing:
+**The name prompt** is tide for Linux's (tide for Linux §6.5), on the dashboard (§8.1), since
+an extension page is the only place tide for Chrome can take typing:
 
 - It's the dashboard opened on its **Workspaces** scope, with the field
   asking for a name: the typed name first, when no workspace has it yet,
@@ -630,10 +630,10 @@ an extension page is the only place tileco can take typing:
   typed in any case first. Enter on the top row makes a new name; `↓`
   picks an existing one. A typed name that can't be one (above) shows why
   in that first row, which Enter can't take.
-- **`Search+W`** (tide: `Super+Return`) opens it to go to a workspace,
+- **`Search+W`** (tide for Linux: `Super+Return`) opens it to go to a workspace,
   moving no window. Enter shows the workspace, making it if it's new; Esc
   stays put. Home is offered.
-- **`Search+Shift+W`** (tide: `Super+Shift+Return`) opens it for the
+- **`Search+Shift+W`** (tide for Linux: `Super+Shift+Return`) opens it for the
   focused window, or, from the dashboard, the window you were last in. Enter
   moves the window there, making the workspace if it's new, and shows it;
   Esc leaves it. Home is listed for every window, one of its apps' or
@@ -645,31 +645,31 @@ an extension page is the only place tileco can take typing:
   once the window is focused, with the field starting as the window's
   short name, selected, so typing replaces it. Until you type, it filters
   nothing: every workspace follows it, in bar order. Enter moves the window
-  there; Esc leaves it where it is, since tileco can't close a window politely
-  *(differs from tide, whose Esc closes it)*.
+  there; Esc leaves it where it is, since tide for Chrome can't close a window politely
+  *(differs from tide for Linux, whose Esc closes it)*.
   - It's `Search+Shift+W`'s prompt for that window, on the window's
     display.
-  - tileco never takes focus, so a window that opens unfocused asks when
+  - tide for Chrome never takes focus, so a window that opens unfocused asks when
     it's first focused. Each window asks once: a prompt you close, or
     click away from, isn't asked again.
   - Only a tab window or an installed app's own window asks. A popup, a
     dialog, an app key's window, chromeOS's system apps (Settings, Files,
-    Camera) and anything tileco doesn't manage never do. A system app
+    Camera) and anything tide for Chrome doesn't manage never do. A system app
     reports as an app too, so an app window asks only when its page is a
     website; without tab search (§14.1) Chrome hides the page, and no app
-    window asks. Nor do the windows open when tileco starts, or those a
+    window asks. Nor do the windows open when tide for Chrome starts, or those a
     restart brings back (§14.2), which aren't new.
   - A window that left for a workspace that doesn't ask before it was
     focused doesn't ask.
   - **The short name** is the first word of its active tab's title, as
-    tide's short name without `namePatterns` *(a guess, to confirm)*.
+    tide for Linux's short name without `namePatterns` *(a guess, to confirm)*.
     Punctuation clinging to the word's end goes (`.` `,` `:` `;` `!` `?`
     `|` `…` and dashes), and a word with no letter or digit is passed
     over. Characters a name can't hold go, and a word over 32 characters
     is cut, so it's always a name. A title with no word, or a page that
     isn't a website, such as the new tab page's "New Tab", starts the
     field empty. The title is the one when the prompt opens: unlike
-    tide's, it doesn't follow a title that changes after.
+    tide for Linux's, it doesn't follow a title that changes after.
   - Esc while the field still holds the name it started with closes the
     prompt at once *(a guess)*; typed text is cleared first, as elsewhere.
 - One prompt at a time. Its key again closes it, as the dashboard's does,
@@ -682,20 +682,20 @@ an extension page is the only place tileco can take typing:
   asking.
 
 **`Search+Home`** shows home, and **`Search+End`** the last workspace
-other than home you showed, as tide's `Super+Home` and `Super+End`: from
+other than home you showed, as tide for Linux's `Super+Home` and `Super+End`: from
 home the last one, from any other the one before it, skipping one removed
 since.
 **`Search+1…9`** shows the Nth workspace in bar order, so `Search+1` is
 home, and **`Search+Shift+1…9`** moves the focused window to the Nth,
-staying put, as tide's `Super+1…9` (tide §6.6). A number past the last
+staying put, as tide for Linux's `Super+1…9` (tide for Linux §6.6). A number past the last
 workspace does nothing. **`Search+0`** and **`Search+Shift+0`** do the
-same for the last workspace in bar order, as tide's `Super+0`.
+same for the last workspace in bar order, as tide for Linux's `Super+0`.
 
 **`Search+Page Up`** and **`Page Down`** show the previous and next
-workspace in bar order that has a window, as tide's `Super+PgUp` and
+workspace in bar order that has a window, as tide for Linux's `Super+PgUp` and
 `PgDn` do: an empty one, standing or made, or one whose only windows you
-minimized, is passed over. They stop at either end, where tide's and
-tilemo's wrap round, and with no workspace that way with a window they do
+minimized, is passed over. They stop at either end, where tide for Linux's and
+tide for macOS's wrap round, and with no workspace that way with a window they do
 nothing. **`Search+Shift+Page Up`** and **`Page Down`** send the focused
 window to the very next, empty or not.
 
@@ -715,27 +715,27 @@ workspace is showing on some display and you haven't minimized it.
 | Operation | State change | Focus |
 |---|---|---|
 | **Show** workspace W: `Search+W`'s prompt, the Workspaces scope, `Search+Home`, `Search+End`, `Search+1…9`, a click on the bar | Every display shows its part of W, making W if it's new. | W's window on your display (above) |
-| **Move** a window to W: `Search+Shift+W`'s prompt, which then shows W; `Search+Shift+1…9` and `Search+Shift+Page Up/Down`, which stay put | The window moves to the end of W's stack, keeping its display, a new name making W first, at the end of the list. If W is showing, the window stays; if not, it's hidden. | the prompt: that window, as tide's move; the keys: stays put, as tide's `Super+Shift+1…9` |
+| **Move** a window to W: `Search+Shift+W`'s prompt, which then shows W; `Search+Shift+1…9` and `Search+Shift+Page Up/Down`, which stay put | The window moves to the end of W's stack, keeping its display, a new name making W first, at the end of the list. If W is showing, the window stays; if not, it's hidden. | the prompt: that window, as tide for Linux's move; the keys: stays put, as tide for Linux's `Super+Shift+1…9` |
 | **Activate** a window: a tab from the launcher (§9.4), `Search+Tab` (§10.3) | If its workspace isn't showing, show it, as Show W. Clear the window's minimized-by-you flag. | that window |
-| **Moved to another display** by you: the native `Search+Alt+M`, or a drag ending with the window's center on another display, seen as an `onBoundsChanged` tileco didn't cause | The window belongs to that display from now on, at the end of its part, in the same workspace. A window chromeOS moves off a display that went, or tileco hands back, isn't one. | that window |
+| **Moved to another display** by you: the native `Search+Alt+M`, or a drag ending with the window's center on another display, seen as an `onBoundsChanged` tide for Chrome didn't cause | The window belongs to that display from now on, at the end of its part, in the same workspace. A window chromeOS moves off a display that went, or tide for Chrome hands back, isn't one. | that window |
 | **Minimize** by you | Set the flag. | chromeOS picks |
-| **Restore** by you: any un-minimize tileco didn't cause, from the shelf or Alt+Tab | Clear the window's minimized-by-you flag. If its workspace is hidden, this is Activate, so the workspace comes with it. | that window |
+| **Restore** by you: any un-minimize tide for Chrome didn't cause, from the shelf or Alt+Tab | Clear the window's minimized-by-you flag. If its workspace is hidden, this is Activate, so the workspace comes with it. | that window |
 
 ### 6.2 Empty workspaces get a home page
 
 Keys work only while a Chrome window has focus (§2.2), so an empty
 workspace, or a display with nothing in its part of the workspace showing
-(§6.1), would strand you: no window, no keys. tileco opens its **home
+(§6.1), would strand you: no window, no keys. tide for Chrome opens its **home
 page** there instead: an extension page in a `popup` window, opened on that
 display and then made full screen. It shows:
 
-- tide's bar across the top: tide's wave logo, workspaces, layout, the
+- tide for Linux's bar across the top: tide for Linux's wave logo, workspaces, layout, the
   workspace's name and the clocks (§8.1);
 - the launcher (§9.4), focused on its **Launch** scope, ready to type;
 - every zone's day, the next clock change and a month calendar (§8.2).
 
 Full screen is the point: a `popup` window otherwise carries chromeOS's
-caption bar and possibly a read-only address strip above tileco's own bar,
+caption bar and possibly a read-only address strip above tide for Chrome's own bar,
 which no extension can remove. While the page shows, the shelf is hidden.
 
 The home page takes the keys and doesn't tile. It closes when a real window
@@ -746,7 +746,7 @@ windows.
 ### 6.3 Where it can't reach
 
 - **Android and Linux windows** stay visible on every workspace and aren't
-  tiled. tileco's work area is still the display's, so they overlap tiles.
+  tiled. tide for Chrome's work area is still the display's, so they overlap tiles.
   Most people will keep them on the native snap keys.
 - **Overview** shows every window, minimized ones included *(unverified)*.
 - **Native desks**: the checklist removes all but one, so a stray
@@ -759,58 +759,58 @@ Beyond Android and Linux apps, from Chromium's and Secure Shell's source
 
 | Thing | What happens | What to do |
 |---|---|---|
-| **Secure Shell**, from its toolbar popup | A `popup` window. Tiled by tileco's Secure Shell rule (§5.4); tileco's keys work. | Fine as is. |
-| **Secure Shell**, from "New session" (Ctrl+Shift+N) | An app popup: tiled, but the terminal swallows every Ctrl, Alt and Search combo, so tileco's keys go dead while it has focus. | Open connections from the toolbar popup or as tabs, or add pass-through keybindings in Secure Shell's options. |
+| **Secure Shell**, from its toolbar popup | A `popup` window. Tiled by tide for Chrome's Secure Shell rule (§5.4); tide for Chrome's keys work. | Fine as is. |
+| **Secure Shell**, from "New session" (Ctrl+Shift+N) | An app popup: tiled, but the terminal swallows every Ctrl, Alt and Search combo, so tide for Chrome's keys go dead while it has focus. | Open connections from the toolbar popup or as tabs, or add pass-through keybindings in Secure Shell's options. |
 | **Secure Shell**, Shift-click or as a tab | A normal window or tab: tiles, keys work. | Fine. |
 | **chromeOS's system apps** (Files, Settings, Camera) | Report as `app`, so they tile like web apps, with the page-first keys of §2.2. One opening on home doesn't ask for a workspace (§6.1). | Fine; expect the odd key to be eaten. |
-| **The Terminal system app** | The same terminal as Secure Shell: it tiles, and tileco's keys go dead in it. | Use Secure Shell from its popup, or Crostini's terminal (§12). |
-| **Document picture-in-picture** (a call's pop-out) | Always on top, refuses minimizing; tileco leaves it alone on every workspace. | Fine; it floats over everything, as it should. |
-| **Video picture-in-picture** | Invisible to tileco; floats over everything. | Fine. |
+| **The Terminal system app** | The same terminal as Secure Shell: it tiles, and tide for Chrome's keys go dead in it. | Use Secure Shell from its popup, or Crostini's terminal (§12). |
+| **Document picture-in-picture** (a call's pop-out) | Always on top, refuses minimizing; tide for Chrome leaves it alone on every workspace. | Fine; it floats over everything, as it should. |
+| **Video picture-in-picture** | Invisible to tide for Chrome; floats over everything. | Fine. |
 | **Chrome Apps** (the old `chrome.app.window` kind) | Invisible to other extensions: untiled, on every workspace. | Use the web app instead. |
 | **Steam, Parallels** | VM windows, invisible like Linux apps: untiled, on every workspace, keys dead while focused. | Keep them full screen, or on native desks you don't switch. |
-| **Incognito windows** | Invisible unless tileco is allowed in Incognito: untiled, on every workspace. | Allow tileco in Incognito at `chrome://extensions`. |
-| **A second signed-in user, or Guest** | That user's windows are invisible: tileco can't manage them. | One user per session. |
-| **Full-screen video** | tileco leaves full-screen windows alone (§5.1). | Fine. |
+| **Incognito windows** | Invisible unless tide for Chrome is allowed in Incognito: untiled, on every workspace. | Allow tide for Chrome in Incognito at `chrome://extensions`. |
+| **A second signed-in user, or Guest** | That user's windows are invisible: tide for Chrome can't manage them. | One user per session. |
+| **Full-screen video** | tide for Chrome leaves full-screen windows alone (§5.1). | Fine. |
 | **Extension popups, the side panel** | Not windows; unaffected. | Fine. |
 
 A window that refuses a state change (a locked full-screen kiosk window, say)
 is logged and skipped, so it can't stop the rest of a workspace switch.
-tileco then stops managing it, like an always-on-top window, so it isn't read
+tide for Chrome then stops managing it, like an always-on-top window, so it isn't read
 as a window you restored by hand on the next event.
 
 ## 7. Keys
 
 ### 7.1 The map
 
-Bound by tileco, unless the column says the Shortcuts app:
+Bound by tide for Chrome, unless the column says the Shortcuts app:
 
 | Keys | Action | Bound by |
 |---|---|---|
 | tap Search | launcher | native |
 | `Search+L` | lock | native |
-| `Search+W` / `Search+Shift+W` (tide: `Super+Return` / `Super+Shift+Return`) | go to a workspace / move the window to one, by name: the name prompt (§6.1) | tileco |
-| `Search+Home` / `Search+End` | home / the last workspace other than home | tileco |
-| `Search+1…9` / `Search+Shift+1…9` | go to / move the window to the Nth workspace in bar order, home first | tileco |
-| `Search+0` / `Search+Shift+0` | go to / move the window to the last workspace in bar order | tileco |
-| `Search+Page Up` / `Page Down` (tide: `Super+PgUp` / `PgDn`) | previous / next workspace with a window | tileco (Search+arrows are Home/End and Page Up/Down; §7.2) |
-| `Search+Shift+Page Up` / `Page Down` | send to previous / next workspace | tileco |
-| `Search+J` / `K`, with Shift | focus / move down and up the stack | tileco |
-| `Search+Space` | the dashboard: tileco's bar and launcher, full screen (§8.1) | tileco |
-| `Search+Shift+M` (tide: `Super+Return`) | swap with master | tileco |
-| `Search+N` / `Search+H` (tide: `Super+\` / `Super+/`) | grow / shrink master | tileco |
-| `Search+I` / `Search+D` (tide: `Super+=` / `Super+-`) | add / remove a master, dwm's letters | tileco (Search+D after removing dictation's shortcut; §7.2) |
-| `Search+.` / `Search+,` | next / previous layout | tileco |
-| `Search+O` (tide: ``Super+` ``) | toggle monocle | tileco |
+| `Search+W` / `Search+Shift+W` (tide for Linux: `Super+Return` / `Super+Shift+Return`) | go to a workspace / move the window to one, by name: the name prompt (§6.1) | tide for Chrome |
+| `Search+Home` / `Search+End` | home / the last workspace other than home | tide for Chrome |
+| `Search+1…9` / `Search+Shift+1…9` | go to / move the window to the Nth workspace in bar order, home first | tide for Chrome |
+| `Search+0` / `Search+Shift+0` | go to / move the window to the last workspace in bar order | tide for Chrome |
+| `Search+Page Up` / `Page Down` (tide for Linux: `Super+PgUp` / `PgDn`) | previous / next workspace with a window | tide for Chrome (Search+arrows are Home/End and Page Up/Down; §7.2) |
+| `Search+Shift+Page Up` / `Page Down` | send to previous / next workspace | tide for Chrome |
+| `Search+J` / `K`, with Shift | focus / move down and up the stack | tide for Chrome |
+| `Search+Space` | the dashboard: tide for Chrome's bar and launcher, full screen (§8.1) | tide for Chrome |
+| `Search+Shift+M` (tide for Linux: `Super+Return`) | swap with master | tide for Chrome |
+| `Search+N` / `Search+H` (tide for Linux: `Super+\` / `Super+/`) | grow / shrink master | tide for Chrome |
+| `Search+I` / `Search+D` (tide for Linux: `Super+=` / `Super+-`) | add / remove a master, dwm's letters | tide for Chrome (Search+D after removing dictation's shortcut; §7.2) |
+| `Search+.` / `Search+,` | next / previous layout | tide for Chrome |
+| `Search+O` (tide for Linux: ``Super+` ``) | toggle monocle | tide for Chrome |
 | `Search+Up` / `Search+Shift+Up` / `Search+Down` | maximize / fullscreen / restore | Shortcuts app (Search+Up is Page Up today; §7.2) |
-| `Search+Shift+F` | toggle floating | tileco |
-| `Ctrl+Shift+W` (tide: `Super+Backspace`) | close window | native Chrome |
-| `Search+Tab` | next window wanting attention, else the last window | tileco |
+| `Search+Shift+F` | toggle floating | tide for Chrome |
+| `Ctrl+Shift+W` (tide for Linux: `Super+Backspace`) | close window | native Chrome |
+| `Search+Tab` | next window wanting attention, else the last window | tide for Chrome |
 | `Search+Shift+N` | notification center | Shortcuts app, if the action is editable *(unverified)* |
-| `Search+S` | toggle keep awake (§11), as the bar's cup does | tileco, once select to speak is removed (§7.2) |
+| `Search+S` | toggle keep awake (§11), as the bar's cup does | tide for Chrome, once select to speak is removed (§7.2) |
 | `Search+Alt+M` | move to other display | native |
-| app letters (§9) | open or focus the app | tileco |
+| app letters (§9) | open or focus the app | tide for Chrome |
 
-That's about 50 tileco commands. Four ship with suggested keys: `Search+Tab`,
+That's about 50 tide for Chrome commands. Four ship with suggested keys: `Search+Tab`,
 because the shortcuts page can't capture Tab (§19.1), so a manifest
 suggestion is the only way to bind it, and then the three used most,
 `Search+J`, `Search+K` and `Search+Space` for the dashboard. If chromeOS already owns
@@ -821,7 +821,7 @@ lists every unbound command and opens that page.
 
 The five keys the Commands API can't carry (§2.2) move to the nearest
 supported combo. Shift with `.` and `,` reads as `>` and `<` for grow and
-shrink. `Search+Space` opens the dashboard, tileco's own launcher, as it
+shrink. `Search+Space` opens the dashboard, tide for Chrome's own launcher, as it
 opens a launcher on other desktops, so swap-with-master moves from Return
 to `Search+Shift+M`, M for master. Close falls back to Chrome's own window
 close, which no extension can refuse, so a workspace's pinned apps (§6.1)
@@ -829,7 +829,7 @@ close as any window does, then reopen.
 
 ### 7.2 Conflicts to settle in M2
 
-chromeOS uses Search as its remapping key, and some tide combos land on
+chromeOS uses Search as its remapping key, and some tide for Linux combos land on
 those remaps. Each must be checked on a device, and the answer goes in this
 table:
 
@@ -839,43 +839,43 @@ table:
 | Search+Up / Down | Page Up / Down, at the keyboard level: the Shortcuts app doesn't list them, and the shortcuts page refuses them the same way | Search+Page Up / Page Down for the workspace steps |
 | Search+1…= | F1–F12 when "top row as function keys" is off *(unverified on current builds)* | turn the setting off; else Alt+Shift+1…9 |
 | Search+Shift+G | Snap Group | unbind in the Shortcuts app, freeing it for the third profile |
-| Search+Shift+D | minimize Snap Group | keep; tileco doesn't use it (remove a master is Search+D) |
+| Search+Shift+D | minimize Snap Group | keep; tide for Chrome doesn't use it (remove a master is Search+D) |
 | Search+Space | none known *(unverified)* | keep |
-| Search+Shift+Space | emoji picker | removable; tileco doesn't use it (monocle is Search+O) |
+| Search+Shift+Space | emoji picker | removable; tide for Chrome doesn't use it (monocle is Search+O) |
 | Search+C | calendar panel | remove it in the Shortcuts app (Device), freeing it for app 1 |
 | Search+M | microphone mute | remove it in the Shortcuts app (Device), freeing it for app 3 |
-| Search+X | picture-in-picture | keep; tileco doesn't use it |
+| Search+X | picture-in-picture | keep; tide for Chrome doesn't use it |
 | Search+F | Quick Insert | remove it in the Shortcuts app, freeing it for the second profile (§9.1) |
-| Search+V | clipboard history | keep; tileco doesn't use it |
-| Search+Backspace | Delete, locked | keep; tileco doesn't use it |
+| Search+V | clipboard history | keep; tide for Chrome doesn't use it |
+| Search+Backspace | Delete, locked | keep; tide for Chrome doesn't use it |
 | Search+Z, Search+Alt+F | layout menu, float | keep; they don't clash |
-| Search+Alt+M | move the window to another display | keep; tileco follows the move (§6.1) |
-| Search+/ and Search+= on Dvorak (Search+[ and ] on QWERTY) | the desk to the left and right | keep; with one desk (§6.3) they do nothing, and tileco doesn't use them |
-| Search+Shift+A | assign the window to all desks | keep; tileco doesn't use it |
+| Search+Alt+M | move the window to another display | keep; tide for Chrome follows the move (§6.1) |
+| Search+/ and Search+= on Dvorak (Search+[ and ] on QWERTY) | the desk to the left and right | keep; with one desk (§6.3) they do nothing, and tide for Chrome doesn't use them |
+| Search+Shift+A | assign the window to all desks | keep; tide for Chrome doesn't use it |
 | Search+D | dictation | remove it in the Shortcuts app, under Accessibility, to use Search+D |
-| Search+S | select to speak | remove it in the Shortcuts app, under Accessibility, for keep awake, as tide's and tilemo's `Super+S` *(untried: it may be locked)* |
-| Search+I | none | free; tileco's add-a-master key |
+| Search+S | select to speak | remove it in the Shortcuts app, under Accessibility, for keep awake, as tide for Linux's and tide for macOS's `Super+S` *(untried: it may be locked)* |
+| Search+I | none | free; tide for Chrome's add-a-master key |
 
 The Shortcuts app's settings are in Settings › Keyboard and inputs ›
 View keyboard shortcuts; Calendar and microphone mute (under Device), the emoji picker and
 Quick Insert are editable there; Search+Left / Right are listed under Text but locked. A padlock marks a shortcut that can't be changed; an editable one shows a pencil on hover. chromeOS takes its own shortcuts before Chrome sees them, so a
-tileco key on one does nothing until it's removed there.
+tide for Chrome key on one does nothing until it's removed there.
 
 Whatever moves to Alt+Shift moves as a set, so the map stays learnable.
 
-### 7.3 Keys tileco can bind
+### 7.3 Keys tide for Chrome can bind
 
 Chrome binds an extension command only to a letter, a digit, Comma, Period,
 Space, Tab, an arrow, Insert, Delete, Home, End, Page Up or Page Down, with
 Search, Ctrl or Alt, and optionally Shift (`ui/base/accelerators/command.cc`).
-So tide's `\` `/` `=` `-` `` ` `` and Return can't be tileco keys at all.
+So tide for Linux's `\` `/` `=` `-` `` ` `` and Return can't be tide for Chrome keys at all.
 
 The rule for choosing (maintainer, 2026-10-24): an action used often gets
 Search and one key, no other modifier; Shift means moving the window (to a
 workspace, along the stack), or marks a rare action like floating. T stays
 reserved for the terminal.
 
-This is every Search combo, from tileco's manifest and from trying them on a
+This is every Search combo, from tide for Chrome's manifest and from trying them on a
 Chromebook. **OS, removable** means chromeOS has it and the Shortcuts app
 (§7.2) can take it off; **OS, locked** means it can't; a blank is untried.
 Search+Alt and Search+Ctrl are allowed too, and untried unless listed.
@@ -884,52 +884,52 @@ Search+Alt and Search+Ctrl are allowed too, and untried unless listed.
 |---|---|---|---|
 | A | | OS: assign to all desks | |
 | B | | | |
-| C | tileco: app 1 (Calendar); OS calendar panel, removable | tileco: app 2 (Chat) | |
-| D | tileco: remove a master; OS dictation, removable (Accessibility) | OS: minimize Snap Group (§7.2) | |
+| C | tide for Chrome: app 1 (Calendar); OS calendar panel, removable | tide for Chrome: app 2 (Chat) | |
+| D | tide for Chrome: remove a master; OS dictation, removable (Accessibility) | OS: minimize Snap Group (§7.2) | |
 | E | | | |
-| F | OS: Quick Insert, removable; tileco planned: second profile (§9.1) | tileco: toggle floating | OS: float |
-| G | tileco: browser | OS: Snap Group; tileco planned: third profile | |
-| H | tileco: shrink master; OS Explore app, removable | | |
-| I | tileco: add a master | | |
-| J | tileco: focus next | tileco: move down the stack | |
-| K | tileco: focus previous | tileco: move up the stack | |
+| F | OS: Quick Insert, removable; tide for Chrome planned: second profile (§9.1) | tide for Chrome: toggle floating | OS: float |
+| G | tide for Chrome: browser | OS: Snap Group; tide for Chrome planned: third profile | |
+| H | tide for Chrome: shrink master; OS Explore app, removable | | |
+| I | tide for Chrome: add a master | | |
+| J | tide for Chrome: focus next | tide for Chrome: move down the stack | |
+| K | tide for Chrome: focus previous | tide for Chrome: move up the stack | |
 | L | OS: lock, editable, kept | | |
-| M | tileco: app 3 (Meet); OS microphone mute, removable | tileco: swap with master | OS: move to other display |
-| N | tileco: grow master | OS: notification center *(unverified)* | |
-| O | tileco: monocle | | |
+| M | tide for Chrome: app 3 (Meet); OS microphone mute, removable | tide for Chrome: swap with master | OS: move to other display |
+| N | tide for Chrome: grow master | OS: notification center *(unverified)* | |
+| O | tide for Chrome: monocle | | |
 | P | | | |
 | Q | | | |
 | R | | | |
-| S | tileco: keep awake; OS select to speak, removable *(untried)* | | |
+| S | tide for Chrome: keep awake; OS select to speak, removable *(untried)* | | |
 | T | reserved: the terminal (§1) | | |
 | U | | | |
 | V | OS: clipboard history | | |
-| W | tileco: go to a workspace by name | tileco: move the window to a workspace by name | |
+| W | tide for Chrome: go to a workspace by name | tide for Chrome: move the window to a workspace by name | |
 | X | OS: picture-in-picture | | |
-| Y | tileco: app 4 (YouTube Music) | | |
+| Y | tide for Chrome: app 4 (YouTube Music) | | |
 | Z | OS: window layout menu | | |
-| 1–9 | tileco: go to the Nth workspace | tileco: move the window to the Nth workspace | |
+| 1–9 | tide for Chrome: go to the Nth workspace | tide for Chrome: move the window to the Nth workspace | |
 | 0 | | | |
-| Comma | tileco: previous layout | | |
-| Period | tileco: next layout | | |
-| Space | tileco: dashboard | OS: emoji picker, removable | |
-| Tab | tileco: attention | | |
+| Comma | tide for Chrome: previous layout | | |
+| Period | tide for Chrome: next layout | | |
+| Space | tide for Chrome: dashboard | OS: emoji picker, removable | |
+| Tab | tide for Chrome: attention | | |
 | Left / Right | OS, locked: Home / End | OS, locked: select to line start / end | |
 | Up / Down | OS, locked: Page Up / Page Down | OS, locked | |
-| Page Up / Down | tileco: previous / next workspace | tileco: send to previous / next workspace | |
-| Home / End | tileco: home / the last other workspace | | |
+| Page Up / Down | tide for Chrome: previous / next workspace | tide for Chrome: send to previous / next workspace | |
+| Home / End | tide for Chrome: home / the last other workspace | | |
 | Insert / Delete | | | |
 
-Search+Ctrl+S opens the Shortcuts app itself, and Search+Esc the task manager (Esc can't be a tileco key anyway). Search+S, Search+V, Search+X and Search+Z may be removable too: whether the
+Search+Ctrl+S opens the Shortcuts app itself, and Search+Esc the task manager (Esc can't be a tide for Chrome key anyway). Search+S, Search+V, Search+X and Search+Z may be removable too: whether the
 Shortcuts app shows them with a padlock is untried.
 
 ## 8. Status, bar and clocks
 
 ### 8.1 No top bar
 
-tide's bar can't be drawn: the shelf goes bottom, left or right, never top,
+tide for Linux's bar can't be drawn: the shelf goes bottom, left or right, never top,
 and an extension window has a caption and can't reserve space. A
-**bar window** (a short popup that tileco tiles around) was considered and
+**bar window** (a short popup that tide for Chrome tiles around) was considered and
 rejected: it would have a title bar, take focus when clicked, and appear in
 Alt+Tab and Overview.
 
@@ -937,16 +937,16 @@ Instead:
 
 - **The shelf** at the bottom, as chromeOS puts it, holds the status area:
   network, volume, Bluetooth, battery, notifications and the local clock.
-  That's tide's right-hand side, native.
-- **tileco's toolbar icon**, tide's waves (see the top), shows the current
+  That's tide for Linux's right-hand side, native.
+- **tide for Chrome's toolbar icon**, tide for Linux's waves (see the top), shows the current
   workspace's name as its badge, cut to its first four characters, the
   most a badge shows, amber when another workspace holds a
   window wanting attention. The icon
   is on every browser window's toolbar and pinned, and is absent in web app
   windows, which have no toolbar.
-- **tileco's dashboard**, from `Search+Space` or the toolbar icon, is the home
-  page's sibling (§6.2), full screen over the focused display: tide's bar on
-  top (tide's wave logo, workspaces in tide's style — current, occupied,
+- **tide for Chrome's dashboard**, from `Search+Space` or the toolbar icon, is the home
+  page's sibling (§6.2), full screen over the focused display: tide for Linux's bar on
+  top (tide for Linux's wave logo, workspaces in tide for Linux's style — current, occupied,
   urgent, empty — the layout symbol, keep awake's cup (§11) and the
   clocks) and the launcher (§9.4), opening on its
   **Tabs** scope for switching. It closes once you choose, on Esc, when you
@@ -956,10 +956,10 @@ Instead:
   `extension_action_api.cc` `OpenPopupInBrowser`). If chromeOS's full-screen
   bubble shows on every open, the dashboard falls back to a large centered
   window *(unverified)*.
-- **The logo** is first on the left, as on tide's bar: tide's two waves
+- **The logo** is first on the left, as on tide for Linux's bar: tide for Linux's two waves
   in the accent blue, the icon 12px from the bar's edge and 8px from the
   first workspace. A tap on the dashboard's closes it, as its key does,
-  since tide's logo closes an open launcher; on the home page, whose
+  since tide for Linux's logo closes an open launcher; on the home page, whose
   launcher is always there, it goes back to **Launch** with an empty
   query, ready to type.
 - **No dead clicks in the bar.** The logo's click target reaches the
@@ -971,18 +971,18 @@ Instead:
   item's whole target shows as a rounded rect a shade darker than the bar
   in light, lighter in dark (`--hover`), as if half pressed: a chip with
   the space around it, the clocks as one row. The rounding is drawn, not
-  hit-tested, so it leaves no dead corners. tilemo's bar shares this
+  hit-tested, so it leaves no dead corners. tide for macOS's bar shares this
   stylesheet. Neither bar has an appearance (dark mode) button.
-- **A right-click on a bar item opens its settings section,** as tide's
-  bar opens a page (tide §7.1), in place of Chrome's menu
+- **A right-click on a bar item opens its settings section,** as tide for Linux's
+  bar opens a page (tide for Linux §7.1), in place of Chrome's menu
   (`BAR_SECTIONS` in `launcher.js`): the workspaces and the title, which
   names the workspace here, open Workspaces, and the clocks Clocks. The
-  logo and keep awake open the top of the page, since tileco has no
-  section for them, where tide's open its first page and Idle.
+  logo and keep awake open the top of the page, since tide for Chrome has no
+  section for them, where tide for Linux's open its first page and Idle.
 
 ### 8.2 Clocks
 
-tide's clock rules, in the bar of the dashboard and the home page, with the detail under it:
+tide for Linux's clock rules, in the bar of the dashboard and the home page, with the detail under it:
 
 - `SF`, `NYC`, `LON` and local, 24-hour, tabular figures.
 - Labels are fixed place names, not CLDR names.
@@ -994,11 +994,11 @@ tide's clock rules, in the bar of the dashboard and the home page, with the deta
   steps by month. It opens on today's month each time the detail does.
 - Scrolling scrubs time in 15-minute steps.
 - `Intl.DateTimeFormat` with `timeZoneName: "short"` gives the abbreviation.
-  CLDR gives `GMT+1` for London in en-US, so tileco keeps tide's
+  CLDR gives `GMT+1` for London in en-US, so tide for Chrome keeps tide for Linux's
   tzdata-abbreviation table instead.
-- Settings: the same `{zone, label}` list as tide's `clocks.json`, synced
+- Settings: the same `{zone, label}` list as tide for Linux's `clocks.json`, synced
   (§13).
-- **Which clocks are in the bar** is tide's setting too (tide §7.3): every
+- **Which clocks are in the bar** is tide for Linux's setting too (tide for Linux §7.3): every
   zone is unless its entry says `"bar": false`, and the clock panel lists
   them all. The options page's **Bar** box on each clock sets it. Anything
   but `true` or `false` is an error that names the clock.
@@ -1008,7 +1008,7 @@ tide's clock rules, in the bar of the dashboard and the home page, with the deta
 ### 9.1 Web apps
 
 Each letter **opens a new window** of its app on the current workspace,
-even when one is already open, as tide's and KDE's keys launch the app
+even when one is already open, as tide for Linux's and KDE's keys launch the app
 (maintainer, 2026-10-24). Getting back to an open window is the launcher's
 Tabs scope (§9.4) or `Search+Tab` (§10.3):
 
@@ -1032,9 +1032,9 @@ Tabs scope (§9.4) or `Search+Tab` (§10.3):
   §9.2.
 - **Open**: `chrome.management.launchApp(id)` with the installed app's ID.
   Whether it opens web apps, rather than only legacy Chrome Apps, is
-  *(unverified)*. If it doesn't, tileco opens the URL with
+  *(unverified)*. If it doesn't, tide for Chrome opens the URL with
   `windows.create({url, type: "popup"})`, which is a frameless-ish app
-  window, but not the installed app. tileco records that window's ID (in
+  window, but not the installed app. tide for Chrome records that window's ID (in
   `chrome.storage`, §14.2) as the app's, so it tiles like an app window
   (§5.1). Other popups still float.
 - The app list is a setting: letter, name, URL, app ID.
@@ -1045,16 +1045,16 @@ Tabs scope (§9.4) or `Search+Tab` (§10.3):
 chromeOS has one Chrome profile per signed-in account. The choices are:
 
 - **A second chromeOS account**, switched with Ctrl+Alt+, and .
-  *(unverified)*. Its windows are invisible to tileco in the first account.
+  *(unverified)*. Its windows are invisible to tide for Chrome in the first account.
 - **Chrome profiles inside the session**: reportedly gone with Lacros in
   M128 *(secondary:
   [Chrome Unboxed](https://chromeunboxed.com/lacros-is-gone-so-google-should-bring-account-switching-to-the-chromeos-browser/))*.
 - **Linux Chrome in Crostini**, with `browser2`'s and `browser3`'s
   `--user-data-dir`s unchanged. They're real profiles, but Linux windows
-  that tileco can't tile (§12).
+  that tide for Chrome can't tile (§12).
 - **Incognito or Guest** for throwaway use.
 
-tileco binds the keys to whichever works, decided in M3.
+tide for Chrome binds the keys to whichever works, decided in M3.
 
 ### 9.3 Linux apps and the terminal
 
@@ -1069,23 +1069,23 @@ extra combo, `Search+T` and the rest map there; that's
 ### 9.4 The launcher
 
 The native launcher stays: tap Search, type, Enter. It searches apps,
-files, settings and the web. What's missing from tide §8:
+files, settings and the web. What's missing from tide for Linux §8:
 
 - **Quick actions**: screenshot, lock and so on are native keys instead.
   chromeOS gives an extension no way to lock, log out, restart or shut
-  down, so tileco's Actions scope has none of them.
-- **Launcher scripts**: tileco's commands appear in it only as the extension
+  down, so tide for Chrome's Actions scope has none of them.
+- **Launcher scripts**: tide for Chrome's commands appear in it only as the extension
   itself.
 
-tileco adds its own launcher on top, on the home page (§6.2) and the
+tide for Chrome adds its own launcher on top, on the home page (§6.2) and the
 dashboard (§8.1), for what the native one doesn't do: switching among open
-tabs and running tileco's commands.
+tabs and running tide for Chrome's commands.
 
 - **Four scopes**, in this order, switched by their chips, or Tab and
   Shift+Tab: **Launch** (the app keys' apps, each with its key, and Tide
-  Settings), **Tabs** (every open tab but tileco's own, with its
+  Settings), **Tabs** (every open tab but tide for Chrome's own, with its
   workspace), **Workspaces** (the name prompt, §6.1) and **Actions**
-  (tileco's actions, then its commands). The home page
+  (tide for Chrome's actions, then its commands). The home page
   opens on Launch, the dashboard on Tabs, and `Search+W` and
   `Search+Shift+W` open it on Workspaces. Without the `tabs` permission
   (§14.1) the dashboard opens on Launch too, and Tabs offers "Allow tab
@@ -1104,11 +1104,11 @@ tabs and running tileco's commands.
   command, not just the best eight: **Keep awake**, saying whether it's
   on; on chromeOS **Dim inactive windows**, on or off, which turns the
   dim over, or, without its access, asks Chrome for it first; and
-  **Reload tide**, which restarts the extension. Keep awake's command is
+  **Reload tide for Linux**, which restarts the extension. Keep awake's command is
   this action, so it isn't listed twice. A query in Launch finds actions
   and commands too.
 - **Workspaces** lists every workspace in bar order, the standing ones
-  even before they're made, each under tide's switcher's words: "current"
+  even before they're made, each under tide for Linux's switcher's words: "current"
   for the one showing where you are, else "not made yet", "empty", or how
   many windows; home's starts "home · ". Enter shows the one chosen, as a
   click on the bar does. Its "Go to a workspace by name" command, chosen
@@ -1127,7 +1127,7 @@ tabs and running tileco's commands.
   opens a new window (§9.1). Arrows choose,
   Esc clears, then closes the dashboard.
 - **The footer** names only the keys that work in the scope you're in, as
-  tide's switcher footer does: Enter to run on Launch and Actions, to go there on
+  tide for Linux's switcher footer does: Enter to run on Launch and Actions, to go there on
   Tabs and Workspaces, to move the window there in `Search+Shift+W`'s
   prompt, and to allow tab search on Tabs without it, where there's one row
   and so no arrows; Tab names the scope it switches to.
@@ -1146,14 +1146,14 @@ the settings sections shown there.
 
 ### 10.1 The dim
 
-- tileco injects a content script into the visible tab of every **unfocused**
+- tide for Chrome injects a content script into the visible tab of every **unfocused**
   tiled window. It adds a full-page overlay at 10% black, ignoring the
-  pointer, at the top of the stacking order. That's stronger than tide's
+  pointer, at the top of the stacking order. That's stronger than tide for Linux's
   0.07 Hyprland dim, matching the 10–15% of other desktops; the options
   page sets the strength, from 2% to 50% (§13).
 - The focused window's overlay goes the instant focus arrives.
 - No dim when the workspace has one visible window, over fullscreen video,
-  or in PiP, as in tide §6.2.
+  or in PiP, as in tide for Linux §6.2.
 - **It covers the page only.** The tab strip, toolbar and the web app title
   bar stay undimmed. `chrome://` pages, the Web Store and the PDF viewer
   can't be injected, so they never dim.
@@ -1168,81 +1168,81 @@ the settings sections shown there.
   (`features::kFocusFollowsCursor`, "sloppyfocus"). It's off by default;
   on, the window under the pointer takes focus without a click and isn't
   raised. Chromium 158's `about_flags.cc` still lists it for chromeOS, with
-  `expiry_milestone` 200 in `flag-metadata.json`. tileco can't turn a flag on,
+  `expiry_milestone` 200 in `flag-metadata.json`. tide for Chrome can't turn a flag on,
   so the setup checklist links to it (§3.4). It works on a Chromebook with
   Chrome windows. Whether it reaches Android and Linux windows is
   *(unverified)*.
-- tileco never focuses a window you didn't ask for. It focuses only on its
+- tide for Chrome never focuses a window you didn't ask for. It focuses only on its
   own keys, a workspace switch, or a close (the next window in the stack).
 - Whether a new window takes focus is chromeOS's call. Chrome windows you
-  open do; tide's "a window from another app opens dimmed and urgent" has
+  open do; tide for Linux's "a window from another app opens dimmed and urgent" has
   no equivalent.
 
 ### 10.3 Attention
 
-Chrome on chromeOS doesn't raise urgency for web notifications, and tileco
-can't see other sites' notifications. tide's §14.4 derives attention from
-notifications; tileco derives it from **page titles** instead:
+Chrome on chromeOS doesn't raise urgency for web notifications, and tide for Chrome
+can't see other sites' notifications. tide for Linux's §14.4 derives attention from
+notifications; tide for Chrome derives it from **page titles** instead:
 
 - Gmail, Chat and Calendar put an unread count in the title, like
   `Chat (3)`. A content script on the allowed sites, and only those,
-  reads the title and tells tileco when the count goes up.
-- tileco marks the window: the badge goes amber (§8.1), the workspace is
+  reads the title and tells tide for Chrome when the count goes up.
+- tide for Chrome marks the window: the badge goes amber (§8.1), the workspace is
   marked in the bar, and `windows.update({drawAttention: true})` flashes
   its shelf icon.
 - `Search+Tab` activates the most recent mark (§6.1); again goes to the next, as in
-  tide §14.3. With nothing marked, it goes to the last window you were in.
+  tide for Linux §14.3. With nothing marked, it goes to the last window you were in.
 - A mark clears when the window is focused.
 - The sites are a setting, **Unread counts**, with Gmail, Chat and
   Calendar to start with. Each needs its own access, asked for on the
-  options page, without the all-sites warning. tileco registers the title
+  options page, without the all-sites warning. tide for Chrome registers the title
   script for each allowed site at runtime
   (`scripting.registerContentScripts`). Grants are per Chromebook while
   settings sync, so a site added elsewhere waits for its access here.
 
 ## 11. The rest of the desktop
 
-All native, set from the checklist (§3.4). tileco owns none of it.
+All native, set from the checklist (§3.4). tide for Chrome owns none of it.
 
 - **Notifications**: the chromeOS notification center keeps history and has
   Do Not Disturb. Chrome web notifications show there with the site.
   Automatic DND while presenting is *(unverified)*; if chromeOS doesn't,
-  tileco doesn't either.
+  tide for Chrome doesn't either.
 - **Idle and lock**:
   - Settings › Power picks what happens when idle (sleep, display off, or
     keep on) on charger and on battery. The display-off and lock delays are
-    fixed by the OS *(unverified)*, so tide's 2:30 / 5:00 / 5:30 / 30:00
+    fixed by the OS *(unverified)*, so tide for Linux's 2:30 / 5:00 / 5:30 / 30:00
     timeline is approximated, not matched.
-  - "Lock when sleeping" on, as tide locks before sleep.
-  - **Keep awake** is tileco's: `Search+S`, a click on the cup on the
+  - "Lock when sleeping" on, as tide for Linux locks before sleep.
+  - **Keep awake** is tide for Chrome's: `Search+S`, a click on the cup on the
     bar of the dashboard and the home page, or the launcher's Toggle keep
     awake, calls `chrome.power.requestKeepAwake("display")` until you turn
-    it off, as tide's does. Meet already keeps the screen on by itself.
-    - The cup is a cup of coffee, tide's and tilemo's icon: faint while
+    it off, as tide for Linux's does. Meet already keeps the screen on by itself.
+    - The cup is a cup of coffee, tide for Linux's and tide for macOS's icon: faint while
       off, in the accent color while on. Hovering it says "Keeping awake"
-      or "Not keeping awake", tide's words, and so does the toolbar
+      or "Not keeping awake", tide for Linux's words, and so does the toolbar
       button's tooltip after each toggle.
-    - tide's OSD has no equivalent, so `Search+S` itself shows nothing
+    - tide for Linux's OSD has no equivalent, so `Search+S` itself shows nothing
       more: an extension's own notification would cost the
       `notifications` permission's install warning.
     - It lasts the browser session, in `storage.session`. A browser
       restart, a login, drops Chrome's request and empties that store
       together, so it's never left on across a login, as in tide.
-      Reloading or updating tileco does both too.
-    - tide's **presenter mode** (`Super+P`) isn't here: it's keep awake
+      Reloading or updating tide for Chrome does both too.
+    - tide for Linux's **presenter mode** (`Super+P`) isn't here: it's keep awake
       plus Do not disturb, and an extension can't reach chromeOS's Do not
-      disturb, so it would be keep awake under another name. tide's mic
+      disturb, so it would be keep awake under another name. tide for Linux's mic
       hold has no equivalent either; Meet keeps the screen on itself.
 - **Screenshots**: Ctrl+Show windows for the screen, Ctrl+Shift+Show
   windows for the capture tool's window and region modes. Shots are copied
-  to the clipboard and saved to Downloads, as tide saves to
+  to the clipboard and saved to Downloads, as tide for Linux saves to
   `~/Pictures/Screenshots`; the save folder is a setting. The Shortcuts
   app adds `Print`-style combos if the keyboard has one.
 - **Screen sharing**: Meet's picker offers a tab, a window or the whole
-  screen. tide's 16:9 slice of an ultrawide has no native equivalent;
-  sharing a window is the workaround, as tide's default on an ultrawide.
+  screen. tide for Linux's 16:9 slice of an ultrawide has no native equivalent;
+  sharing a window is the workaround, as tide for Linux's default on an ultrawide.
 - **Theme**: Personalization › Dark mode › Auto follows sunset and sunrise.
-  Chrome and web apps follow it. tide's fixed 07:00–19:00 schedule isn't
+  Chrome and web apps follow it. tide for Linux's fixed 07:00–19:00 schedule isn't
   offered *(unverified)*.
 - **Keyboard**: US Dvorak; Caps Lock remapped to Escape or Ctrl (there's
   no Compose); key repeat in Settings.
@@ -1257,11 +1257,11 @@ Crostini runs kitty, the shell config and the terminal tools, so `conf` and
 `setup` apply there like on any Debian machine.
 
 - Each Linux window is its own chromeOS window, managed by the OS and
-  invisible to tileco. They get native snap and float, not tiling.
+  invisible to tide for Chrome. They get native snap and float, not tiling.
 - **Nested tiling, as an option**: sway (or cage running kitty) inside one
   Sommelier window would tile Linux windows among themselves *(unverified:
   no report found of sway nested under Sommelier)*. The outer window is
-  still a Linux window, invisible to tileco, so it doesn't join tileco's layouts
+  still a Linux window, invisible to tide for Chrome, so it doesn't join tide for Chrome's layouts
   or workspaces. It's placed with native snap or float, or kept
   fullscreen. It's worth trying only if Linux apps become the main work.
   Baguette, the containerless Crostini that is default for new installs from
@@ -1272,18 +1272,18 @@ Crostini runs kitty, the shell config and the terminal tools, so `conf` and
 
 ## 13. Settings
 
-- One **options page**, in the style of tide's settings panel, with pages
+- One **options page**, in the style of tide for Linux's settings panel, with pages
   for layouts, workspaces, keys (with the checklist), apps, clocks, dim and
   attention.
 - Every change applies live; no reload.
-- **Shared vs per-machine**, as tide's §16.1: `chrome.storage.sync` holds
+- **Shared vs per-machine**, as tide for Linux's §16.1: `chrome.storage.sync` holds
   the shared settings (apps, clocks, keys, layouts), and
   `chrome.storage.local` holds per-machine overrides (lone-window width per
   display, ultrawide threshold). Objects merge key by key; lists replace
   whole.
 - A bad value is an error on the options page naming the setting, and the
   last good value stays.
-- Import and export as JSON, in the same shape as tide's
+- Import and export as JSON, in the same shape as tide for Linux's
   `~/.config/tide/*.json`, so one clocks list and one layouts file serve
   both.
 - **Built so far:** the clocks page (zones, labels, cities and order, and
@@ -1303,13 +1303,13 @@ Crostini runs kitty, the shell config and the terminal tools, so `conf` and
   reminder (§19.2), this Chromebook's Start at login list (below), and
   import, export and reset of the shared settings.
   `src/settings.js` checks every value, and the dashboard and home page pick
-  up a change at once through `storage.onChanged`; tileco reads its settings
+  up a change at once through `storage.onChanged`; tide for Chrome reads its settings
   on each step. The workspaces page sets the layout a workspace starts in,
   on an ultrawide and on any other display, and each layout's main share
-  and main-window count, under tide's names (`defaultMode`, `modes`). A
+  and main-window count, under tide for Linux's names (`defaultMode`, `modes`). A
   change reaches every workspace and replaces what the keys set there, as
   in tide.
-  Above those, as on tide's Workspaces page, the section lists the
+  Above those, as on tide for Linux's Workspaces page, the section lists the
   **standing workspaces** (`standing`, §6.1) and **home's apps**
   (`homeApps`), both shared:
   - The standing workspaces are a list of names, in order, the first
@@ -1339,29 +1339,29 @@ Crostini runs kitty, the shell config and the terminal tools, so `conf` and
 
 ### 13.1 Start at login
 
-tide's Settings page of the same name runs commands once a login, and
+tide for Linux's Settings page of the same name runs commands once a login, and
 starts home's apps as programs or web addresses. An extension can't run a
-program, so tileco's list is web addresses alone.
+program, so tide for Chrome's list is web addresses alone.
 
-- **Start at login on this Chromebook** lists the websites tileco opens
+- **Start at login on this Chromebook** lists the websites tide for Chrome opens
   each time you log in, in order. It's `startup` in `storage.local`, empty
-  by default, since a machine's list is its own, as tide's
+  by default, since a machine's list is its own, as tide for Linux's
   `startup.local.json` is. It isn't in the JSON export, which is the
   shared settings.
 - An address is typed and added with Enter, at the end. The arrows move
   one, and × takes it out. One that isn't an `http` or `https` address,
   or one listed already, is refused, and the page says why.
-- **At login**, chromeOS starts Chrome and tileco hears
-  `runtime.onStartup`. tileco then opens each address as an app key opens
-  its app (§9.1): an app-like `popup` window that tileco tiles as an app
+- **At login**, chromeOS starts Chrome and tide for Chrome hears
+  `runtime.onStartup`. tide for Chrome then opens each address as an app key opens
+  its app (§9.1): an app-like `popup` window that tide for Chrome tiles as an app
   window. They join the workspace showing, on the focused display, else
-  the first, in the list's order, and none takes focus, as tide's
+  the first, in the list's order, and none takes focus, as tide for Linux's
   background launches don't. One of home's apps (§6.1) joins home, as
-  tide's do.
+  tide for Linux's do.
 - They're tracked from the moment they open, so a Start at login window
   never takes the place of a window Chrome is still restoring (§14.2).
 - Chrome may restore a window on the same site as well, which then shows
-  twice, as tide's web addresses do when Chrome reopens their windows
+  twice, as tide for Linux's web addresses do when Chrome reopens their windows
   itself.
 - A window that can't open is logged and skipped, and the rest still
   open.
@@ -1389,7 +1389,7 @@ program, so tileco's list is web addresses alone.
   - Each unread-count site's own origin (§10.3). Gmail, Chat and Calendar
     are one Allow.
   - `<all_urls>`, for dimming inactive windows (§10.1).
-- On Linux only, `tabs` and `nativeMessaging` together, for tide's
+- On Linux only, `tabs` and `nativeMessaging` together, for tide for Linux's
   switcher (§14.6). They're asked for from their own Allow on the settings,
   never on chromeOS.
 
@@ -1401,15 +1401,15 @@ program, so tileco's list is web addresses alone.
 - **State goes to storage on every change**: workspaces, tile order, float
   list, attention marks. Use `chrome.storage.session` for what dies with the
   browser and `chrome.storage.local` for what survives a restart.
-- On wake, tileco reconciles stored state with `windows.getAll`: unknown
+- On wake, tide for Chrome reconciles stored state with `windows.getAll`: unknown
   windows join the current workspace; vanished ones are dropped.
-- Window IDs change across a browser restart. tileco stores each window's tab
+- Window IDs change across a browser restart. tide for Chrome stores each window's tab
   URLs with its place, refreshed as pages load, and knows a restart when none of the stored IDs
   exist; closing windows one by one never looks like that, since each sync
   forgets the closed ones. Each new window then takes the place of the old
   one it shares the most URLs with (closest fit first, each used once): its
   workspace, place in the stack and float. Chrome's restored minimized
-  states aren't read as your doing; tileco just puts the screen back. A
+  states aren't read as your doing; tide for Chrome just puts the screen back. A
   window it can't match joins the workspace showing on its display, as any
   new window does.
 - Chrome may bring the windows back over several events, so old windows
@@ -1437,7 +1437,7 @@ program, so tileco's list is web addresses alone.
     shipping on new laptops (§20). chromeOS itself is reported to continue
     for enterprise and education, with updates through 2034
     *(secondary)*.
-- **If tileco is off or crashes**, windows stay where they are and the native
+- **If tide for Chrome is off or crashes**, windows stay where they are and the native
   keys still work. Nothing it does is needed to use the machine.
 
 ### 14.4 On a managed work machine
@@ -1447,9 +1447,9 @@ any code does. None of these policy names or behaviors has been checked
 against the policy list yet *(unverified)*; M2 reads the machine's
 `chrome://policy` first.
 
-- **Installing tileco**: it comes from the Web Store (§14.5), so what matters
+- **Installing tide for Chrome**: it comes from the Web Store (§14.5), so what matters
   is whether policy blocks Web Store extensions, or allows only a list. If
-  so, the admin has to add tileco's ID.
+  so, the admin has to add tide for Chrome's ID.
 - **The dim** (§10.1) needs all-sites access, which policy can withhold from
   extensions.
 - **Linux** (§12, Appendix A) can be turned off by policy, and so can USB
@@ -1460,12 +1460,12 @@ against the policy list yet *(unverified)*; M2 reads the machine's
 
 ### 14.5 Distribution
 
-tileco ships on the **Chrome Web Store**; loading it unpacked is for
+tide for Chrome ships on the **Chrome Web Store**; loading it unpacked is for
 development only. That shapes the design *(Web Store policy, secondary)*:
 
 - **One purpose**: window management. The clocks, keep-awake and attention
   belong to it as the desktop around the tiles; the listing says so.
-  Feeding tide's switcher the tabs on Linux (§14.6) is a second job, so the
+  Feeding tide for Linux's switcher the tabs on Linux (§14.6) is a second job, so the
   listing's single purpose has to name it too, or the Linux part stays out
   of the store build. That's the maintainer's call (TODO.md).
 - **Every permission is justified in the listing** (PUBLISHING.md):
@@ -1480,9 +1480,9 @@ development only. That shapes the design *(Web Store policy, secondary)*:
 
 tidal would ship on the **Play Store** (§20.4).
 
-### 14.6 Off chromeOS: no tiling, and tide's tabs on Linux
+### 14.6 Off chromeOS: no tiling, and tide for Linux's tabs on Linux
 
-tileco asks `chrome.runtime.getPlatformInfo()` which platform it's on, at
+tide for Chrome asks `chrome.runtime.getPlatformInfo()` which platform it's on, at
 each event, since Chrome answers at once.
 
 - **chromeOS** (`cros`): everything in this spec.
@@ -1501,14 +1501,14 @@ each event, since Chrome answers at once.
   - The manifest's suggested keys stay. Each needs a default for the
     extension to install off chromeOS, and the tiling ones there do
     nothing; unbind them at `chrome://extensions/shortcuts`.
-- **Linux** (`linux`) also hands the tabs to tide's switcher (tide §8.3).
+- **Linux** (`linux`) also hands the tabs to tide for Linux's switcher (tide for Linux §8.3).
   - A separate Allow on the settings asks for `tabs` and `nativeMessaging`.
     Both may be optional: Chromium marks neither
     `kFlagCannotBeOptional` (`chrome_api_permissions.cc`,
     `extensions_api_permissions.cc`, `main` on 2026-11-01).
   - The worker connects to the native-messaging host
-    `io.github.mikelward.tide.tabs`, tide's `tide-tabs`, which relays to
-    tide's shell. `setup` writes the host's manifest for each browser. It
+    `io.github.mikelward.tide.tabs`, tide for Linux's `tide-tabs`, which relays to
+    tide for Linux's shell. `setup` writes the host's manifest for each browser. It
     allows the store's ID (PUBLISHING.md) and an unpacked checkout's, which
     Chromium makes from the checkout's path, since the manifest has no
     `key` to fix it. It sends every normal window's tabs, whole, on each
@@ -1517,7 +1517,7 @@ each event, since Chrome answers at once.
     it's active. No favicons and no incognito windows.
   - The host asks it to bring a tab up. It makes that tab active and
     focuses its window. That's all the host can ask.
-  - The settings say whether it's connected, waiting for tide's shell, or
+  - The settings say whether it's connected, waiting for tide for Linux's shell, or
     missing its host, and what to do.
   - **The worker stays up.** An open native port keeps an MV3 worker
     running from Chrome 105. On Chromium 153.0.8010.12 (Playwright 1.63)
@@ -1529,7 +1529,7 @@ each event, since Chrome answers at once.
     port open while the shell restarts, and the tabs show again in under a
     second.
   - Cost: none. No network call, and one small process per browser while
-    it runs. Without the host, or outside a tide session, the switcher just
+    it runs. Without the host, or outside a tide for Linux session, the switcher just
     lists no tabs, and the settings say why.
 - **Other platforms** (macOS, Windows): nothing more. The settings say
   tiling works only on chromeOS.
@@ -1538,10 +1538,10 @@ each event, since Chrome answers at once.
 
 | Repo | Gets |
 |---|---|
-| **tileco** (this) | The spec. The extension: worker, layout geometry, workspaces, the full-screen dashboard and home page with the launcher, options page with the checklist, attention and dim content scripts. Its tests. |
-| **tide** | Its layout fixtures (window counts → rectangles) are the reference tileco's geometry tests are checked against, copied with a note of the commit. `tide-tabs`, the native-messaging host and relay tileco's Linux tab list talks to, and the switcher's side of it (§14.6). |
-| **conf** | The shared `clocks.json` and layouts settings, if tileco imports them (§13). Crostini needs nothing new: the Debian path already covers it. |
-| **scripts** | `setup` installs `tide-tabs`'s host manifest for Chrome and Brave, naming tileco's extension ID (§14.6). `setup` detects Crostini (`/dev/.cros_milestone` or `/opt/google/cros-containers`, *(unverified on a device)*) and skips the desktop: no KDE, no tide, no display manager (A.5). |
+| **tide for Chrome** (this) | The spec. The extension: worker, layout geometry, workspaces, the full-screen dashboard and home page with the launcher, options page with the checklist, attention and dim content scripts. Its tests. |
+| **tide for Linux** | Its layout fixtures (window counts → rectangles) are the reference tide for Chrome's geometry tests are checked against, copied with a note of the commit. `tide-tabs`, the native-messaging host and relay tide for Chrome's Linux tab list talks to, and the switcher's side of it (§14.6). |
+| **conf** | The shared `clocks.json` and layouts settings, if tide for Chrome imports them (§13). Crostini needs nothing new: the Debian path already covers it. |
+| **scripts** | `setup` installs `tide-tabs`'s host manifest for Chrome and Brave, naming tide for Chrome's extension ID (§14.6). `setup` detects Crostini (`/dev/.cros_milestone` or `/opt/google/cros-containers`, *(unverified on a device)*) and skips the desktop: no KDE, no tide for Linux, no display manager (A.5). |
 
 ## 16. Milestones
 
@@ -1550,16 +1550,16 @@ each event, since Chrome answers at once.
 | **M1** | This spec | agreed; open questions answered |
 | **M2** | Device checks + layouts | every *(unverified)* claim in §2, §7.2, §9 and §11 is checked on a Chromebook, with the chromeOS version, and this spec updated. The four layouts and the lone-window rule tile Chrome and web app windows on the laptop panel and on an ultrawide. Frame offsets are measured and tiles meet. State survives the worker sleeping and a browser restart. |
 | **M3** | Workspaces + keys | named workspaces, home first and the standing ones always listed, switch and move by name and by number on one and two displays, with the home window on empty ones. Every key in §7.1 is bound or listed by the checklist. App keys open a new window of each web app and profile. |
-| **M4** | Dashboard, clocks, attention | the dashboard shows workspaces and urgency from live state, the clocks follow tide's rules across a DST fixture, and a Chat message marks its window and `Search+Tab` goes there. |
-| **M5** | Dim + settings | the optional dim works and is off without the permission. The options page edits everything live, syncs, and imports tide's JSON. |
+| **M4** | Dashboard, clocks, attention | the dashboard shows workspaces and urgency from live state, the clocks follow tide for Linux's rules across a DST fixture, and a Chat message marks its window and `Search+Tab` goes there. |
+| **M5** | Dim + settings | the optional dim works and is off without the permission. The options page edits everything live, syncs, and imports tide for Linux's JSON. |
 | **M6** | Linux | `setup` runs in Crostini; the nested-sway experiment is tried and written up, keep or drop. |
 
 ## 17. Testing
 
 - **Pure logic in plain JavaScript modules**, run by `node --test` in CI, as
-  tide does: layout geometry, workspace state transitions, settings merge
+  tide for Linux does: layout geometry, workspace state transitions, settings merge
   and validation, clock labels and DST, attention title parsing.
-- **Geometry fixtures** from tide's layout tests, so the two desktops tile
+- **Geometry fixtures** from tide for Linux's layout tests, so the two desktops tile
   the same way for the same windows.
 - **A `chrome.*` fake** for the worker: windows with IDs, types, states and
   bounds, and events, so switching, sending, reconciliation after a
@@ -1574,7 +1574,7 @@ each event, since Chrome answers at once.
     saves a setting and a checklist tick, and that the home page and
     dashboard render the bar, clocks, launcher and calendar, all with no
     page errors. Content scripts aren't covered yet.
-  - Playwright is tileco's one dependency, a pinned dev dependency for tests
+  - Playwright is tide for Chrome's one dependency, a pinned dev dependency for tests
     only; the extension still loads `src/` as it is. CI caches npm and
     Chromium, and mikelward/npm-update batches its updates weekly.
 - `make lint` checks that every script parses, the pages' own included,
@@ -1583,21 +1583,21 @@ each event, since Chrome answers at once.
 
 ## 18. Open questions
 
-1. **Workspaces: tileco's (minimize) or native desks?** §3.2 recommends tileco's,
-   for exact per-workspace tiling and tide's keys, at the cost of the
+1. **Workspaces: tide for Chrome's (minimize) or native desks?** §3.2 recommends tide for Chrome's,
+   for exact per-workspace tiling and tide for Linux's keys, at the cost of the
    minimize animation and Android/Linux windows showing everywhere.
    Native desks give OS animations and keys that work over every app, but
-   tileco can't see them, so it would tile every desk's windows on a display
+   tide for Chrome can't see them, so it would tile every desk's windows on a display
    together: per-desk tiling breaks. A hybrid that guesses each window's
    desk from focus changes would go wrong on any native desk move, with
-   nothing to correct it. So it's tileco's own workspaces, unless M2 shows the
+   nothing to correct it. So it's tide for Chrome's own workspaces, unless M2 shows the
    minimize animation can't be lived with.
 2. **Is the dim worth the all-sites permission?** §10.1 makes it optional,
    off by default.
 3. **Fork chrometile or start fresh?** §3.1 recommends fresh, using
    chrometile until M3 and sending it two fixes.
 4. **How much of the off-ramp (§3.6) should this repo document**, given the
-   tide spec already covers the desktop it would run?
+   tide for Linux spec already covers the desktop it would run?
 5. **The moved keys** (§7.1): settled on a Chromebook (maintainer,
    2026-10-24) as Search+H / N, Search+I / D and Search+O, by §7.3's rule.
    `Search+Space` for the dashboard is the one left from the first guess.
@@ -1605,17 +1605,17 @@ each event, since Chrome answers at once.
 6. **Googlebook**: the target is a work machine. Accessibility services
    and sideloading aren't ruled out; adb is unknown. That decides whether
    tidal (§20.4) could re-tile, or only place apps at launch. The same
-   machine's chromeOS policy (§14.4) decides whether tileco loads at all.
+   machine's chromeOS policy (§14.4) decides whether tide for Chrome loads at all.
 
 ## 19. Upstream patches and workarounds
 
 Where a limit is in Chromium code rather than in policy, a patch could lift
 it. Each subsection says what it would take and whether it's worth trying.
-None of tileco's milestones depends on one landing.
+None of tide for Chrome's milestones depends on one landing.
 
 ### 19.1 More keys for extension commands
 
-**The ask.** tide binds `Super+Return`, `Super+\`, `Super+/`, `Super+=`,
+**The ask.** tide for Linux binds `Super+Return`, `Super+\`, `Super+/`, `Super+=`,
 `Super+-`, ``Super+` `` and `Super+Backspace`, and no extension can
 bind any of them (§2.2). Comma and period already work, which is why §7.1
 uses them.
@@ -1695,7 +1695,7 @@ found *(the tracker was unreachable, so this is weak evidence)*.
   deletes a word.
 - **Older Chrome.** A manifest using a new token won't install on a Chrome
   that predates it, so developers would declare it per platform or not at
-  all. That matters less to tileco: a user-set binding is a pref, not a
+  all. That matters less to tide for Chrome: a user-set binding is a pref, not a
   manifest key.
 - **Shared code.** The widget and `ui::Command` have non-extension callers,
   including the autofill shortcut in
@@ -1705,12 +1705,12 @@ found *(the tracker was unreachable, so this is weak evidence)*.
 
 | Keys | Odds | Why |
 |---|---|---|
-| F1–F12 | fair | Firefox parity, layout-independent. On a Chromebook, F-keys are Search+top row, so it doesn't help tileco much. |
-| Enter, Backspace | fair | Layout-independent. Needs the Enter fix in the widget. Gives tileco `Search+Return` back. |
+| F1–F12 | fair | Firefox parity, layout-independent. On a Chromebook, F-keys are Search+top row, so it doesn't help tide for Chrome much. |
+| Enter, Backspace | fair | Layout-independent. Needs the Enter fix in the widget. Gives tide for Chrome `Search+Return` back. |
 | `\` `/` `=` `-` `` ` `` | low | Layout-dependent. Only with a positional-matching design, which would be a project in itself. |
 
-**Recommendation.** Not on tileco's critical path. If anything, file a
-Chromium issue for Enter and Backspace with tileco as the use case, and offer
+**Recommendation.** Not on tide for Chrome's critical path. If anything, file a
+Chromium issue for Enter and Backspace with tide for Chrome as the use case, and offer
 the CL if a reviewer in `ui/base/accelerators/OWNERS` is open to it. Don't
 attempt the punctuation keys. Meanwhile §7.1's combos stand, and the key
 map is open to better choices (open question 5).
@@ -1807,9 +1807,9 @@ finer steps and the exact 3× aren't offered in Settings.
    - **It's per device, and nothing re-applies it.** Whether a value
      survives a reboot, resume, replug, or a change in Settings is
      *(unverified)*. A device's ID may change between boots.
-   - **tileco's reminder.** No extension can run crosh, so with a wheel
+   - **tide for Chrome's reminder.** No extension can run crosh, so with a wheel
      step set on the options page (`wheelStep`, per Chromebook, off by
-     default), tileco opens `src/mouse.html` at each login
+     default), tide for Chrome opens `src/mouse.html` at each login
      (`runtime.onStartup`). It shows `gesture_prop devices`, a box for the
      mouse's ID (the last one used filled in), and the two lines for that
      ID and step, each with a Copy button. The options page can open it
@@ -1817,7 +1817,7 @@ finer steps and the exact 3× aren't offered in Settings.
 3. **Developer mode**, with rootfs verification off: a file in
    `/etc/gesture/` (read at startup, `gesture_property_provider.cc`)
    makes the same properties stick. It costs verified boot, and updates
-   overwrite the rootfs. That's the off-ramp (§3.6), not tileco.
+   overwrite the rootfs. That's the off-ramp (§3.6), not tide for Chrome.
 4. **Web pages only**: extensions can rescale wheel events in pages, not
    in the shell or Linux apps. That's a poor fit.
 5. **Linux apps**: exo converts chromeOS's offset to Wayland axis units
@@ -1851,9 +1851,9 @@ reboot, and record the result in M2. Don't patch.
 
 ## 20. Googlebook OS (tidal)
 
-chromeOS's successor, codenamed Aluminium, is Android-based. If tileco ever
+chromeOS's successor, codenamed Aluminium, is Android-based. If tide for Chrome ever
 follows it, the port is **tidal**. This section records what that OS
-allows, so tileco's core is built to carry over. Checked 2026-10-23. The
+allows, so tide for Chrome's core is built to carry over. Checked 2026-10-23. The
 Android sites, news sites and Google hosts were mostly unreachable from
 the sandbox, so most dates here are *(secondary)*.
 
@@ -1905,10 +1905,10 @@ isn't public yet:
 and stack, rows, monocle. It reports working on Android 17 on a Pixel, after
 two breakages. It has no workspaces and no keyboard control yet.
 
-### 20.4 What it means for tileco
+### 20.4 What it means for tide for Chrome
 
 - **tidal could tile every app**, not just Chrome's, and catch keys
-  globally. That's more than tileco can ever do on chromeOS. The price is
+  globally. That's more than tide for Chrome can ever do on chromeOS. The price is
   Shizuku: developer options, re-arming after each reboot, and hidden APIs
   that move every release.
 - **It ships on the Play Store.** That means declaring the accessibility
@@ -1920,10 +1920,10 @@ two breakages. It has no workspaces and no keyboard control yet.
 - **A managed laptop is the deciding question.** If policy disables
   developer options or adb, tidal falls back to accessibility only: global
   keys, and placing apps at launch, but no re-tiling of running windows.
-- **The shared core is cheap insurance.** tileco's geometry, workspace state
+- **The shared core is cheap insurance.** tide for Chrome's geometry, workspace state
   machine (§6.1), settings schema and key-map model are already specified
   free of `chrome.*` (§5.2, §17). tidal would reuse them unchanged behind an
-  accessibility service and a Shizuku layer. So tileco does nothing for
+  accessibility service and a Shizuku layer. So tide for Chrome does nothing for
   Googlebook now beyond keeping that line clean.
 - **Upstream is a poor bet.** AOSP has developed in private since 2025, and
   publishes source twice a year *(secondary)*. A WM Shell patch would land
@@ -1970,7 +1970,7 @@ Unmarked claims come from reading the configs and scripts.
 | `external_monitors_only`, `monitor-hotplug.sh` | Settings › Displays, and docked mode with the lid closed *(unverified)*. |
 | `left`, `right` (button swap) | Settings › Mouse › Swap primary button, per device (§19.2). |
 | `lock-screensaver`, `screensaver`, `xsecurelockrc` | The lock screen and screen saver. |
-| `devilspie`, `moveto`, `snap` | Desks and snapping, or tileco. |
+| `devilspie`, `moveto`, `snap` | Desks and snapping, or tide for Chrome. |
 | `gmail`, `google-calendar`, `google-chat`, `google-meet`, `music`, `discord`, `remote-desktop` | Installed web apps (§3.5, §9.1). |
 | `home` | The Files app. |
 
@@ -1989,7 +1989,7 @@ Unmarked claims come from reading the configs and scripts.
 
 | What | Why |
 |---|---|
-| sway, Hyprland, i3, qtile, xmonad, wingo; waybar, polybar, xmobar, dunst, swaync, fuzzel, swaylock, compton, uwsm, tide | Linux windows are guests of chromeOS's window manager. A WM can only run nested in one window (§12). |
+| sway, Hyprland, i3, qtile, xmonad, wingo; waybar, polybar, xmobar, dunst, swaync, fuzzel, swaylock, compton, uwsm, tide for Linux | Linux windows are guests of chromeOS's window manager. A WM can only run nested in one window (§12). |
 | `xinitrc`, `xsession`, `xsessionrc` | There's no X session to start. |
 | `ddcinput` | No i2c in the container, and no DDC control in chromeOS *(unverified)*. |
 | `amethyst.yml`, `setup-macos`, karabiner | macOS only. chromeOS's per-keyboard modifier remapping covers the basic swaps. |
@@ -2025,7 +2025,7 @@ these:
 - detects Crostini (`/dev/.cros_milestone` or
   `/opt/google/cros-containers`, *(unverified on a device, and for
   Baguette)*), on Debian only;
-- keeps kitty and fonts, but skips KDE, `setup-kde`, tide, the keyboard
+- keeps kitty and fonts, but skips KDE, `setup-kde`, tide for Linux, the keyboard
   config, the GPU rule and the root group, printing what to set in chromeOS
   Settings instead;
 - explains the disk-size cutoff, pointing at Settings › About chromeOS ›
@@ -2085,5 +2085,5 @@ Checked 2026-10-23:
   for Baguette; [Chromebook keyboard shortcuts](https://support.google.com/chromebook/answer/183101);
   [9to5Google on Lacros](https://9to5google.com/2024/07/12/chromeos-lacros-ending/);
   [Aluminium OS](https://en.wikipedia.org/wiki/Aluminium_OS)
-- tide's [SPEC.md](https://github.com/mikelward/tide/blob/main/SPEC.md) and
+- tide for Linux's [SPEC.md](https://github.com/mikelward/tide/blob/main/SPEC.md) and
   `mikelward/scripts`' `setup-kde` for the behavior being matched

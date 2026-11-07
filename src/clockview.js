@@ -26,7 +26,7 @@ function el(tag, className, text) {
 }
 
 // `scrubbed` marks a time you've scrolled to rather than now.
-// `settings` are tileco's (src/settings.js): its clocks and hours.
+// `settings` are tide's (src/settings.js): its clocks and hours.
 export function renderClocks(ol, now = new Date(), scrubbed = false, { clocks } = DEFAULT_SETTINGS) {
   ol.replaceChildren();
   ol.classList.toggle("scrubbed", scrubbed);

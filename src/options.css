@@ -41,6 +41,16 @@ h2 {
   margin: 0 0 4px;
   font-size: 16px;
 }
+#search {
+  margin: 12px 0 0;
+}
+#no-match {
+  margin: 8px 0 0;
+}
+/* A section the search left out; the platform's own hiding is `hidden`. */
+section[data-unmatched] {
+  display: none;
+}
 .muted {
   margin: 0 0 12px;
   color: var(--muted);

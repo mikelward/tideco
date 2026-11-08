@@ -35,6 +35,14 @@ with the unplug isn't read as a drag.
 
 Guesses made on autopilot (2026-10-24), each cheap to undo.
 
+- **The settings search uses Launch's words for each section**
+  (2026-11-08): the options page's search finds a section by its heading
+  and by `SETTINGS_SECTIONS`'s name and `covers`, so the page and Launch
+  find the same sections, rather than a second keyword table. "world
+  clocks" joined Clocks' words. The field isn't focused when the page
+  opens, since it opens on install for Extras. A section Launch or the
+  bar opens clears the search, so it shows. Reversible:
+  `src/optionssearch.js`, `filterSections` in `src/optionsview.js`.
 - **A pinned app's closed window reopens after a second, at most 3
   times a minute** (2026-11-04), at the end of its workspace's stack, and
   not while that workspace still has a window of the app. The delay lets

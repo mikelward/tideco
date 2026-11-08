@@ -12,6 +12,7 @@ import { pattern } from "./watchers.js";
 import { DEFAULT_SETTINGS, PER_MACHINE, pick, resolve, SETTINGS_KEY, SHARED, standingProblems, START_MODES, withWorkspaceSetting, workspaceSetting } from "./settings.js";
 import { osName, platform, TABS, TILE, worksUntiled } from "./platform.js";
 import { SECTION_KEY, sectionToShow, SETTINGS_SECTIONS, TOP } from "./launcher.js";
+import { searchSections } from "./optionssearch.js";
 import { ACCESS as BRIDGE_ACCESS, bridgeText, STATUS_KEY as BRIDGE_KEY } from "./tabsbridge.js";
 
 const $ = (id) => document.getElementById(id);
@@ -705,6 +706,27 @@ $("bridge-toggle").addEventListener("click", async () => {
   renderBridge();
 });
 
+// The search field keeps the sections a query finds (§13). It marks the rest
+// with data-unmatched, leaving `hidden` to the platform, so clearing it shows
+// just what the platform shows.
+const search = $("search");
+function filterSections() {
+  const sections = [...document.querySelectorAll("main > section")];
+  const { unmatched, none } = searchSections(
+    sections.map((el) => ({ id: el.id, heading: el.querySelector("h2")?.textContent ?? "", shown: !el.hidden })),
+    search.value,
+  );
+  for (const el of sections) el.toggleAttribute("data-unmatched", unmatched.includes(el.id));
+  $("no-match").hidden = !none;
+}
+search.addEventListener("input", filterSections);
+search.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape" || search.value === "") return;
+  e.preventDefault();
+  search.value = "";
+  filterSections();
+});
+
 where.then((p) => {
   if (p.role === TILE) return;
   for (const el of document.querySelectorAll("[data-chromeos]")) el.hidden = true;
@@ -736,6 +758,11 @@ async function showSection() {
     }
     const el = id && $(id);
     if (!el || el.hidden) return;
+    // A section the search left out comes back with every other.
+    if (el.hasAttribute("data-unmatched")) {
+      search.value = "";
+      filterSections();
+    }
     el.scrollIntoView({ block: "start" });
     el.querySelector("h2")?.setAttribute("tabindex", "-1");
     el.querySelector("h2")?.focus({ preventScroll: true });
@@ -743,7 +770,7 @@ async function showSection() {
     console.error("tide: couldn't show the settings section:", e);
   }
 }
-where.then(showSection);
+where.then(filterSections).then(showSection);
 window.addEventListener("hashchange", showSection);
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === "session" && changes[SECTION_KEY]?.newValue) {

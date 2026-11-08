@@ -50,6 +50,16 @@ async function open(path) {
   return { page, errors };
 }
 
+// The settings show one page at a time (§13): this turns to page `id` by
+// its sidebar button, as a click would.
+async function turnTo(page, id) {
+  await page.locator(`#sidebar [data-page="${id}"]`).click();
+  await page.waitForSelector(`section.page.current#${id}`);
+}
+
+// The sidebar as it reads: each group's heading, then its pages.
+const sidebarText = (page) => page.locator("#sidebar > :not([hidden])").evaluateAll((l) => l.map((e) => e.textContent));
+
 test("the background worker starts", async () => {
   assert.match(worker.url(), /^chrome-extension:\/\/[a-p]{32}\//);
   // It answers once its module has loaded and its listeners are in place.
@@ -57,10 +67,32 @@ test("the background worker starts", async () => {
   assert.equal(await worker.evaluate(() => chrome.commands.onCommand.hasListeners()), true);
 });
 
+// A new install opens the settings on Extras (§13, §14.1), as this
+// Chromium's did when the extension loaded.
+test("a new install opens the settings on Extras", async () => {
+  // Its tab may open blank and then load the page, at any time.
+  const page = await new Promise((resolve) => {
+    const watch = (p) =>
+      p.waitForURL(/options\.html/, { timeout: 0 }).then(
+        () => {
+          context.off("page", watch);
+          resolve(p);
+        },
+        // A page closed without loading it isn't the one: wait for the rest.
+        (e) => console.debug("not the settings:", e.message),
+      );
+    context.pages().forEach(watch);
+    context.on("page", watch);
+  });
+  await page.waitForSelector("section.page.current#extras");
+  assert.equal(await page.locator('#sidebar [aria-current="page"]').innerText(), "Extras");
+  await page.close();
+});
+
 // The extension shows itself as tide (SPEC.md, top), rendered text included,
 // with tide's logo as each tab's icon.
 test("every page says tide, not tideco, under tide's logo", async () => {
-  for (const [path, ready] of [["src/options.html", "#setup li"], ["src/launcher.html?mode=dashboard", "#logo"], ["src/mouse.html", "body"]]) {
+  for (const [path, ready] of [["src/options.html", "#sidebar button"], ["src/launcher.html?mode=dashboard", "#logo"], ["src/mouse.html", "body"]]) {
     const { page, errors } = await open(path);
     await page.waitForSelector(ready);
     assert.match(await page.title(), /^tide\b/, path);
@@ -87,8 +119,9 @@ const ON_LINUX = process.platform === "linux";
 // Linux's own page, wherever the test runs.
 test("on Linux, the settings offer tide's tab list", async () => {
   const { page, errors } = await open("src/options.html?os=linux");
-  await page.waitForSelector("#linux:not([hidden])");
-  assert.equal(await page.locator("h2:visible").first().innerText(), "Tabs in tide's switcher");
+  await page.waitForSelector('#sidebar [data-page="linux"]');
+  await turnTo(page, "linux");
+  assert.equal(await page.locator("h2:visible").innerText(), "Tabs in tide's switcher");
   assert.match(await page.locator("#untiled").innerText(), /only on chromeOS, so on Linux/);
   await page.waitForFunction(() => document.getElementById("bridge-state").innerText === "Off");
   assert.equal(await page.locator("#bridge-toggle").innerText(), "Allow");
@@ -97,29 +130,27 @@ test("on Linux, the settings offer tide's tab list", async () => {
   await page.close();
 });
 
-// The search field (SPEC.md §13) keeps the sections a query finds, never
-// shows one the platform hides, and Esc puts back just what it shows.
-test("the settings search keeps the sections it finds", async () => {
+// The search field (SPEC.md §13) keeps the pages a query finds in the
+// sidebar, never lists one the platform hides, and Esc puts back just what
+// it lists.
+test("the settings search keeps the pages it finds", async () => {
   const { page, errors } = await open("src/options.html?os=linux");
-  await page.waitForSelector("#linux:not([hidden])");
-  const shown = await page.locator("h2:visible").allInnerTexts();
-  assert.equal(await page.evaluate(() => document.activeElement.id), "", "the field waits to be clicked");
+  await page.waitForSelector('#sidebar [data-page="linux"]');
+  const pages = () => page.locator("#sidebar button:not([hidden])").allInnerTexts();
+  const shown = await pages();
   const search = page.locator("#search");
   assert.equal(await search.getAttribute("placeholder"), "Search settings");
   await search.fill("time zone");
-  assert.deepEqual(await page.locator("h2:visible").allInnerTexts(), ["Clocks"]);
+  assert.deepEqual(await pages(), ["Clocks"]);
   assert.equal(await page.locator("#no-match").isVisible(), false);
-  // Dim is chromeOS's, so off it nothing is found.
+  // Appearance is chromeOS's, so off it nothing is found.
   await search.fill("inactive windows");
-  assert.deepEqual(await page.locator("h2:visible").allInnerTexts(), []);
+  assert.deepEqual(await pages(), []);
   assert.equal(await page.locator("#no-match").innerText(), "No settings match");
   await search.press("Escape");
   assert.equal(await search.inputValue(), "");
-  assert.deepEqual(await page.locator("h2:visible").allInnerTexts(), shown);
+  assert.deepEqual(await pages(), shown);
   assert.equal(await page.locator("#no-match").isVisible(), false);
-  await search.fill("keys");
-  await search.fill("");
-  assert.deepEqual(await page.locator("h2:visible").allInnerTexts(), shown);
   assert.deepEqual(errors, []);
   await page.close();
 });
@@ -127,16 +158,20 @@ test("the settings search keeps the sections it finds", async () => {
 test("off chromeOS, the settings and dashboard keep only what places no window", async () => {
   const { page, errors } = await open("src/options.html?real-platform");
   await page.waitForSelector("#untiled:not([hidden])");
-  const headings = await page.locator("h2:visible").allInnerTexts();
-  assert.deepEqual(headings, [...(ON_LINUX ? ["Tabs in tide's switcher"] : []), "Extras", "Clocks", "Keys", "Apps", "Import and export"]);
+  await page.waitForSelector("#sidebar button");
+  assert.deepEqual(await sidebarText(page), ["Hardware", "Keyboard", "Windows", "Apps", "General", "Clocks", "Extras", ...(ON_LINUX ? ["Tabs in tide's switcher"] : []), "Import and export"]);
+  // The first page shows.
+  assert.equal(await page.locator("h2:visible").innerText(), "Keyboard");
   assert.match(await page.locator("#untiled").innerText(), new RegExp(`only on chromeOS, so on ${HOST_OS}`));
-  assert.equal(await page.locator("#linux").isVisible(), ON_LINUX);
   if (ON_LINUX) {
+    await turnTo(page, "linux");
     await page.waitForFunction(() => document.getElementById("bridge-state").innerText === "Off");
     assert.equal(await page.locator("#bridge-toggle").innerText(), "Allow");
   }
+  await turnTo(page, "extras");
   await page.waitForSelector("#permissions li");
   assert.equal(await page.locator("#permissions li").count(), 1, "tab search alone");
+  await turnTo(page, "keys-section");
   await page.waitForSelector("#keys tbody tr");
   const keys = await page.locator("#keys tbody td:first-child").allInnerTexts();
   assert.ok(!keys.some((k) => /to workspace|stack|layout|monocle/i.test(k)), keys.join(", "));
@@ -161,29 +196,50 @@ test("off chromeOS, the settings and dashboard keep only what places no window",
   await dash.page.close();
 });
 
-test("the options page renders every section and saves changes", async () => {
+test("the options page renders every page and saves changes", async () => {
   const { page, errors } = await open("src/options.html");
-  await page.waitForSelector("#setup li");
-  const headings = await page.locator("h2").allInnerTexts();
-  for (const h of ["Extras", "Clocks", "Setup checklist", "Keys", "Apps", "Start at login on this Chromebook", "Unread counts", "Dim", "Workspaces", "Layouts on this Chromebook", "Mouse on this Chromebook", "Import and export"]) {
-    assert.ok(headings.includes(h), `no ${h} section in ${headings}`);
-  }
+  await page.waitForSelector("#sidebar button");
+  // As tide for Linux's sidebar, with Chrome's own pages (§13).
+  assert.deepEqual(await sidebarText(page), [
+    "Hardware", "Mouse", "Keyboard",
+    "Windows", "Layouts", "Workspaces", "Apps",
+    "General", "Appearance", "Notifications", "Clocks", "Start at login", "Extras", "Setup checklist", "Import and export",
+  ]);
+  // One page shows at a time, the first to start with, under its title.
+  assert.deepEqual(await page.locator("h2:visible").allInnerTexts(), ["Mouse"]);
+  assert.equal(await page.locator('#sidebar [aria-current="page"]').innerText(), "Mouse");
+  // Each page scrolls on its own, the sidebar staying put.
+  assert.equal(await page.evaluate(() => document.scrollingElement.scrollHeight <= innerHeight), true, "the window scrolls");
+  // Up and Down in the sidebar move a page, over the headings.
+  await page.locator('#sidebar [data-page="keys-section"]').click();
+  await page.keyboard.press("ArrowDown");
+  assert.deepEqual(await page.locator("h2:visible").allInnerTexts(), ["Layouts"]);
+  assert.equal(await page.evaluate(() => document.activeElement.dataset.page), "layouts");
+  await page.keyboard.press("ArrowUp");
+  await page.keyboard.press("ArrowUp");
+  await page.keyboard.press("ArrowUp");
+  assert.deepEqual(await page.locator("h2:visible").allInnerTexts(), ["Mouse"], "stopping at the top");
   assert.ok((await page.locator("#clocks tbody tr").count()) > 0, "no clocks");
   assert.ok((await page.locator("#keys tbody tr").count()) > 0, "no keys");
   assert.ok((await page.locator("#modes tbody tr").count()) > 0, "no layouts");
   // Nothing is allowed yet, so every extra offers to be.
+  await turnTo(page, "extras");
   await page.waitForSelector("#permissions li");
   assert.deepEqual(await page.locator("#permissions li button").allInnerTexts(), ["Allow", "Allow", "Allow"]);
+  await turnTo(page, "unread");
   assert.equal(await page.locator("#watched li").count(), 3, "Gmail, Chat and Calendar to start with");
   assert.match(await page.locator("#watched").innerText(), /not allowed yet/);
+  await turnTo(page, "dim");
   await page.locator("#dim-strength").fill("20");
   await page.locator("#dim-strength").dispatchEvent("change");
   await page.waitForFunction(async () => (await chrome.storage.sync.get("settings")).settings?.dimStrength === 0.2);
 
+  await turnTo(page, "mouse");
   await page.locator("#wheel-step").fill("200");
   await page.locator("#wheel-step").dispatchEvent("change");
   await page.waitForFunction(async () => (await chrome.storage.local.get("settings")).settings?.wheelStep === 200);
 
+  await turnTo(page, "setup-section");
   await page.locator("#setup input[type=checkbox]").first().check();
   await page.waitForFunction(async () => ((await chrome.storage.local.get("setup")).setup ?? []).length === 1);
 
@@ -195,11 +251,12 @@ test("the options page renders every section and saves changes", async () => {
 // save from another field keeps what's stored.
 test("a save from the form keeps the standing workspaces and home's apps", async () => {
   await worker.evaluate(() => chrome.storage.sync.set({ settings: { standing: ["mail", "code"], homeApps: ["app-meet"] } }));
-  const { page, errors } = await open("src/options.html");
-  await page.waitForSelector("#setup li");
+  const { page, errors } = await open("src/options.html#workspaces");
+  await page.waitForSelector("#home-apps input");
   await page.waitForFunction(() => /"app-meet"/.test(document.getElementById("json")?.value ?? ""));
   assert.deepEqual(await page.locator("#standing tbody input").evaluateAll((l) => l.map((i) => i.value)), ["mail", "code"]);
   assert.deepEqual(await page.locator("#home-apps input:checked").evaluateAll((l) => l.map((i) => i.dataset.command)), ["app-meet"]);
+  await turnTo(page, "dim");
   await page.locator("#dim-strength").fill("30");
   await page.locator("#dim-strength").dispatchEvent("change");
   await page.waitForFunction(async () => (await chrome.storage.sync.get("settings")).settings?.dimStrength === 0.3);
@@ -213,7 +270,7 @@ test("a save from the form keeps the standing workspaces and home's apps", async
 // The Workspaces section (§13): the standing list, home first, and a box
 // for each of home's apps, called by its app's name.
 test("the standing workspaces and home's apps are edited, saved and kept", async () => {
-  const { page, errors } = await open("src/options.html");
+  const { page, errors } = await open("src/options.html#workspaces");
   await page.waitForSelector("#home-apps input");
   const names = () => page.locator("#standing tbody input").evaluateAll((l) => l.map((i) => i.value));
   const homeMark = () => page.locator("#standing tbody tr").evaluateAll((l) => l.map((tr) => tr.cells[1].textContent));
@@ -243,10 +300,12 @@ test("the standing workspaces and home's apps are edited, saved and kept", async
   await page.locator("#home-apps").getByLabel("Google Chat").uncheck();
   await page.waitForFunction(async () => JSON.stringify((await chrome.storage.sync.get("settings")).settings?.homeApps) === JSON.stringify(["app-calendar", "app-music", "app-meet"]));
   // A box follows its app's name as it's saved.
+  await turnTo(page, "apps-section");
   const meetName = page.locator('#apps tr[data-command="app-meet"] input.name');
   await meetName.fill("Gmail");
   await meetName.dispatchEvent("change");
-  await page.waitForFunction(() => [...document.querySelectorAll("#home-apps label")].some((l) => l.innerText === "Gmail"));
+  await page.waitForFunction(() => [...document.querySelectorAll("#home-apps label")].some((l) => l.textContent === "Gmail"));
+  await turnTo(page, "workspaces");
   assert.equal(await page.locator("#home-apps").getByLabel("Gmail", { exact: true }).isChecked(), true);
 
   // Kept across a reload.
@@ -264,7 +323,7 @@ test("the standing workspaces and home's apps are edited, saved and kept", async
 // A name twice, ignoring case, a bad name, or no standing workspace at all
 // is refused, naming the setting, and what's stored stays.
 test("a standing workspace listed twice is refused, saying why, and isn't saved", async () => {
-  const { page, errors } = await open("src/options.html");
+  const { page, errors } = await open("src/options.html#workspaces");
   await page.waitForSelector("#home-apps input");
   const names = () => page.locator("#standing tbody input").evaluateAll((l) => l.map((i) => i.value));
   const stored = async () => (await worker.evaluate(() => chrome.storage.sync.get("settings"))).settings?.standing;
@@ -307,7 +366,7 @@ test("a standing workspace listed twice is refused, saying why, and isn't saved"
 // Each standing workspace's settings (§6.1, §13): home alone asks while
 // they're unset; a box changed spells the default out, keeping home's.
 test("each standing workspace's asking and pinned apps are edited, saved and kept", async () => {
-  const { page, errors } = await open("src/options.html");
+  const { page, errors } = await open("src/options.html#workspaces");
   await page.waitForSelector("#workspace-settings fieldset");
   const stored = async () => (await worker.evaluate(() => chrome.storage.sync.get("settings"))).settings?.workspaceSettings;
   assert.deepEqual(await page.locator("#workspace-settings legend").allInnerTexts(), ["in", "re", "oc", "me"]);
@@ -338,8 +397,8 @@ test("each standing workspace's asking and pinned apps are edited, saved and kep
 });
 
 test("Start at login keeps this Chromebook's websites, in order", async () => {
-  const { page, errors } = await open("src/options.html");
-  await page.waitForSelector("#setup li");
+  const { page, errors } = await open("src/options.html#startup-section");
+  await page.waitForSelector("#startup-form");
   const add = async (site) => {
     await page.locator("#startup-site").fill(site);
     await page.locator("#startup-form button").click();
@@ -358,13 +417,17 @@ test("Start at login keeps this Chromebook's websites, in order", async () => {
   assert.equal(await page.locator("#startup li").count(), 2);
   // A removal refused because another of this Chromebook's fields is bad
   // is put back, so fixing that field later doesn't save it unseen.
+  await turnTo(page, "mouse");
   await page.locator("#wheel-step").fill("5000");
+  await turnTo(page, "startup-section");
   await page.locator('[aria-label="Don\'t open https://mail.google.com/ at login"]').click();
   await page.waitForFunction(() => /wheelStep/.test(document.getElementById("errors").innerText));
   assert.equal(await page.locator("#startup li").count(), 2, "the list shows what's saved");
+  await turnTo(page, "mouse");
   await page.locator("#wheel-step").fill("");
   await page.locator("#wheel-step").dispatchEvent("change");
   await page.waitForFunction(() => document.getElementById("errors").hidden);
+  await turnTo(page, "startup-section");
   assert.deepEqual(await stored(), ["https://chat.google.com/", "https://mail.google.com/"]);
   await page.locator('[aria-label="Don\'t open https://mail.google.com/ at login"]').click();
   await page.waitForFunction(async () => (await chrome.storage.local.get("settings")).settings?.startup?.length === 1);
@@ -378,9 +441,10 @@ test("the settings open pages in their own window", async () => {
     window.opened = [];
     chrome.tabs.create = async (props) => window.opened.push(props);
   });
-  await page.goto(base + "src/options.html");
+  await page.goto(base + "src/options.html#setup-section");
   await page.waitForSelector("#setup li button");
   await page.locator("#setup li button").first().click();
+  await turnTo(page, "keys-section");
   await page.locator("#open-shortcuts").click();
   await page.waitForFunction(() => window.opened.length === 2);
   const here = await page.evaluate(async () => (await chrome.windows.getCurrent()).id);
@@ -397,7 +461,7 @@ test("turning off Gmail, Chat and Calendar takes them out of the list", async ()
     chrome.permissions.contains = async () => true;
     chrome.permissions.remove = async () => true;
   });
-  await page.goto(base + "src/options.html");
+  await page.goto(base + "src/options.html#extras");
   await page.waitForFunction(() => document.querySelectorAll("#permissions li button")[1]?.textContent === "Turn off");
   await page.locator("#permissions li button").nth(1).click();
   await page.waitForFunction(async () => (await chrome.storage.sync.get("settings")).settings?.watched?.length === 0);
@@ -751,10 +815,7 @@ test("Launch finds a settings section and opens the settings there", async () =>
   await page.locator("#query").press("Enter");
   const options = await opened;
   await options.waitForLoadState();
-  await options.waitForFunction(() => {
-    const r = document.getElementById("mouse").getBoundingClientRect();
-    return r.top >= 0 && r.top < innerHeight / 2;
-  });
+  await options.waitForSelector("section.page.current#mouse");
   assert.equal(await options.evaluate(async () => (await chrome.storage.session.get("settingsSection")).settingsSection), undefined, "asked once");
   await options.close();
   assert.deepEqual(errors, []);
@@ -774,20 +835,17 @@ test("a right-click on a bar item opens the settings at its section", async () =
   assert.equal(await page.evaluate(() => window.prevented), true, "Chrome's menu shows");
   const options = await opened;
   await options.waitForLoadState();
-  const near = (id) => options.waitForFunction((id) => {
-    const r = document.getElementById(id).getBoundingClientRect();
-    // scrollIntoView can leave it a fraction of a pixel above the top.
-    return r.top > -1 && r.top < innerHeight / 2;
-  }, id);
-  await near("clocks-section");
-  // A section the search left out comes back, with every other.
+  const showing = (id) => options.waitForSelector(`section.page.current#${id}`);
+  await showing("clocks-section");
+  // A page the search left out comes back, with every other.
   await options.locator("#search").fill("clocks");
   await page.locator("#workspaces").click({ button: "right" });
-  await near("workspaces");
+  await showing("workspaces");
   assert.equal(await options.locator("#search").inputValue(), "");
-  assert.equal(await options.locator("#import-section").isVisible(), true);
+  assert.equal(await options.locator('#sidebar [data-page="import-section"]').isVisible(), true);
+  // The logo asks for the first page.
   await page.locator("#logo").click({ button: "right" });
-  await options.waitForFunction(() => scrollY === 0);
+  await showing("mouse");
   await options.close();
   assert.deepEqual(errors, []);
   await page.close();

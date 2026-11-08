@@ -316,6 +316,19 @@ for (const os of ["linux", "mac", "win"]) {
   });
 }
 
+// A new install opens the settings on Extras (§13, §14.1), asked for as
+// Launch asks for a page; an update opens nothing.
+test("a new install opens the settings on Extras", async () => {
+  const w = await startWorker("cros");
+  await fire(w, "runtime.onInstalled", { reason: "update" });
+  assert.equal(w.calls.some(([name]) => name === "runtime.openOptionsPage"), false);
+  await fire(w, "runtime.onInstalled", { reason: "install" });
+  const asked = w.calls.findIndex(([name, arg]) => name === "storage.session.set" && arg?.settingsSection === "extras");
+  const opened = w.calls.findIndex(([name]) => name === "runtime.openOptionsPage");
+  assert.ok(asked >= 0, "Extras is asked for");
+  assert.ok(opened > asked, "before the page opens");
+});
+
 test("on chromeOS, a key still tiles", async () => {
   const w = await startWorker("cros");
   assert.ok(!w.calls.some(([name]) => name === "action.setTitle"), "chromeOS keeps the manifest's title");

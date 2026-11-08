@@ -15,6 +15,7 @@ import { actionTitle, platform, TABS, TILE, worksUntiled } from "./platform.js";
 import { ACCESS as BRIDGE_ACCESS, TabsBridge } from "./tabsbridge.js";
 import { Untiled } from "./untiled.js";
 import { checkName } from "./workspaces.js";
+import { SECTION_KEY } from "./launcher.js";
 
 const tide = new Tide(chrome);
 const untiled = new Untiled(chrome);
@@ -72,12 +73,17 @@ chrome.runtime.onStartup.addListener(tiling(() => {
   tide.startAtLogin().catch((e) => console.error("tide: couldn't start the login list:", e));
   remind(chrome).catch((e) => console.error("tide: couldn't open the mouse reminder:", e));
 }));
-// A new install opens the settings, whose extras each need allowing (§14.1),
-// on every platform: off chromeOS they say what tide does there.
+// A new install opens the settings on Extras, whose extras each need
+// allowing (§14.1), on every platform: off chromeOS they say what tide does
+// there. The page is asked for as Launch asks for one (§9.4).
 chrome.runtime.onInstalled.addListener(({ reason }) => {
   changed();
   watch();
-  if (reason === "install") chrome.runtime.openOptionsPage().catch((e) => console.error("tide: couldn't open the settings:", e));
+  if (reason !== "install") return;
+  chrome.storage.session
+    .set({ [SECTION_KEY]: "extras" })
+    .then(() => chrome.runtime.openOptionsPage())
+    .catch((e) => console.error("tide: couldn't open the settings on Extras:", e));
 });
 // A newly active tab needs the dim if its window has it, and so does a
 // dimmed tab that loaded a new page.

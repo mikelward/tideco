@@ -35,6 +35,22 @@ with the unplug isn't read as a drag.
 
 Guesses made on autopilot (2026-10-24), each cheap to undo.
 
+- **The settings page's sidebar names and groups Chrome's own pages**
+  (2026-11-08). tide for Linux's names where the page is the same: Keys
+  is Keyboard, Dim is Appearance, Unread counts is Notifications, and the
+  "on this Chromebook" titles lose it. Chrome's own: Apps under Windows,
+  as the app keys open windows; Extras, Tabs in tide's switcher (Linux
+  only), Setup checklist and Import and export at the end of General, as
+  tide for macOS puts its Setup checklist. The layout each workspace
+  starts in and each layout's main windows moved from Workspaces to
+  Layouts, as on tide for Linux, above this Chromebook's ultrawide and
+  widths. Their icons are tide for macOS's nearest: Apps "open", Extras
+  "more", Tabs in tide's switcher "floating", Import and export "folder".
+  What holds for every page ("Changes apply as you make them", and off
+  chromeOS what doesn't work there) sits at the sidebar's foot; errors
+  sit over the page showing. The logo, keep awake and a fresh visit open
+  the first page. Reversible: `SETTINGS_SECTIONS` in `src/launcher.js`,
+  `src/options.html`.
 - **The settings search uses Launch's words for each section**
   (2026-11-08): the options page's search finds a section by its heading
   and by `SETTINGS_SECTIONS`'s name and `covers`, so the page and Launch
@@ -42,7 +58,7 @@ Guesses made on autopilot (2026-10-24), each cheap to undo.
   clocks" joined Clocks' words. The field isn't focused when the page
   opens, since it opens on install for Extras. A section Launch or the
   bar opens clears the search, so it shows. Reversible:
-  `src/optionssearch.js`, `filterSections` in `src/optionsview.js`.
+  `src/optionssearch.js`, `filterSidebar` in `src/optionsview.js`.
 - **A pinned app's closed window reopens after a second, at most 3
   times a minute** (2026-11-04), at the end of its workspace's stack, and
   not while that workspace still has a window of the app. The delay lets

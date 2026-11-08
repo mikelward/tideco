@@ -216,8 +216,8 @@ test("each platform gets the sections its options page shows", () => {
   const ids = (where) => settingsSections(where).map((s) => s.id);
   assert.ok(ids({ tiling: true }).includes("workspaces"));
   assert.ok(!ids({ tiling: true }).includes("linux"));
-  assert.deepEqual(ids({ tiling: false, linux: true }), ["linux", "extras", "clocks-section", "keys-section", "apps-section", "import-section"]);
-  assert.deepEqual(ids({ tiling: false }), ["extras", "clocks-section", "keys-section", "apps-section", "import-section"]);
+  assert.deepEqual(ids({ tiling: false, linux: true }), ["keys-section", "apps-section", "clocks-section", "extras", "linux", "import-section"]);
+  assert.deepEqual(ids({ tiling: false }), ["keys-section", "apps-section", "clocks-section", "extras", "import-section"]);
 });
 
 test("the options page shows its address's section, else the one Launch asked for", () => {

@@ -937,7 +937,8 @@ bound the key suggested, as with tide's own.
   the same (`launcher` to the dashboard, `focus_down` to focus next, and so
   on). One with no command here is dropped: the terminal, close (Chrome's
   own), quit, fullscreen (the Shortcuts app's), focus and move left and
-  right, resize mode, and `home_or_back`, which no command here does.
+  right, resize mode, and `home_or_back` and `last_layout` (dwm's
+  Super+Space, the layout used last), which no command here does.
 - Of a binding's keys, the first Chrome can bind (§7.3) is suggested. If it
   has none, as with Return, `[` or a Search+arrow chromeOS keeps (§7.2),
   the command keeps this spec's key, and the checklist says why.

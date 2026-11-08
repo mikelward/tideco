@@ -53,11 +53,12 @@ test("a preset suggests its keys for the commands that do the same", () => {
 
 test("bindings with no command here are dropped", () => {
   // dwm's terminal (Super+Shift+Return), close (Super+Shift+C), quit,
-  // Super+Tab and focus and move left and right (Super+, and .) do
-  // nothing here, so no command takes their keys.
+  // Super+Tab, focus and move left and right (Super+, and .) and the
+  // layout used last (Super+Space) do nothing here, so no command takes
+  // their keys.
   const s = suggestions("dwm", manifest);
   const fromPreset = Object.keys(s).filter((n) => s[n].why === "preset").sort();
-  assert.deepEqual(fromPreset, ["float", "focus-next", "focus-prev", "grow", "layout-next", "master-add", "master-remove", "monocle", "popup", "shrink"]);
+  assert.deepEqual(fromPreset, ["float", "focus-next", "focus-prev", "grow", "master-add", "master-remove", "monocle", "popup", "shrink"]);
   assert.equal(s["layout-prev"].key, "Search+,", "dwm's Super+, takes nothing from it");
   assert.equal(s["app-chat"].key, "Search+Shift+C", "nor its Super+Shift+C");
   assert.equal(Object.keys(s).length, Object.keys(manifest).length, "a suggestion for each command, nothing else");

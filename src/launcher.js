@@ -66,7 +66,7 @@ export const SETTINGS_APP = "Tide Settings";
 export const SETTINGS_SECTIONS = [
   { id: "linux", name: "Tabs in tide's switcher", covers: "Linux native helper tide-tabs", linux: true },
   { id: "extras", name: "Extras", covers: "permissions allow tab search unread dim" },
-  { id: "clocks-section", name: "Clocks", covers: "time zones cities daytime working hours" },
+  { id: "clocks-section", name: "Clocks", covers: "time zones world clocks cities daytime working hours" },
   { id: "setup-section", name: "Setup checklist", covers: "chromeOS settings", chromeos: true },
   { id: "keys-section", name: "Keys", covers: "shortcuts bindings" },
   { id: "apps-section", name: "Apps", covers: "app keys web apps addresses" },

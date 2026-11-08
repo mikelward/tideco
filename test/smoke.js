@@ -97,6 +97,33 @@ test("on Linux, the settings offer tide's tab list", async () => {
   await page.close();
 });
 
+// The search field (SPEC.md §13) keeps the sections a query finds, never
+// shows one the platform hides, and Esc puts back just what it shows.
+test("the settings search keeps the sections it finds", async () => {
+  const { page, errors } = await open("src/options.html?os=linux");
+  await page.waitForSelector("#linux:not([hidden])");
+  const shown = await page.locator("h2:visible").allInnerTexts();
+  assert.equal(await page.evaluate(() => document.activeElement.id), "", "the field waits to be clicked");
+  const search = page.locator("#search");
+  assert.equal(await search.getAttribute("placeholder"), "Search settings");
+  await search.fill("time zone");
+  assert.deepEqual(await page.locator("h2:visible").allInnerTexts(), ["Clocks"]);
+  assert.equal(await page.locator("#no-match").isVisible(), false);
+  // Dim is chromeOS's, so off it nothing is found.
+  await search.fill("inactive windows");
+  assert.deepEqual(await page.locator("h2:visible").allInnerTexts(), []);
+  assert.equal(await page.locator("#no-match").innerText(), "No settings match");
+  await search.press("Escape");
+  assert.equal(await search.inputValue(), "");
+  assert.deepEqual(await page.locator("h2:visible").allInnerTexts(), shown);
+  assert.equal(await page.locator("#no-match").isVisible(), false);
+  await search.fill("keys");
+  await search.fill("");
+  assert.deepEqual(await page.locator("h2:visible").allInnerTexts(), shown);
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
 test("off chromeOS, the settings and dashboard keep only what places no window", async () => {
   const { page, errors } = await open("src/options.html?real-platform");
   await page.waitForSelector("#untiled:not([hidden])");
@@ -753,8 +780,12 @@ test("a right-click on a bar item opens the settings at its section", async () =
     return r.top > -1 && r.top < innerHeight / 2;
   }, id);
   await near("clocks-section");
+  // A section the search left out comes back, with every other.
+  await options.locator("#search").fill("clocks");
   await page.locator("#workspaces").click({ button: "right" });
   await near("workspaces");
+  assert.equal(await options.locator("#search").inputValue(), "");
+  assert.equal(await options.locator("#import-section").isVisible(), true);
   await page.locator("#logo").click({ button: "right" });
   await options.waitForFunction(() => scrollY === 0);
   await options.close();

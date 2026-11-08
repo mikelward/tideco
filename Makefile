@@ -10,8 +10,10 @@ TESTS = \
 	src/keys_test.js \
 	src/launcher_test.js \
 	src/mouse_test.js \
+	src/optionssearch_test.js \
 	src/restart_test.js \
 	src/settings_test.js \
+	src/settingssearch_test.js \
 	src/setup_test.js \
 	src/tabsbridge_test.js \
 	src/untiled_test.js \

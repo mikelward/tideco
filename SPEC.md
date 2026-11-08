@@ -1286,6 +1286,15 @@ Crostini runs kitty, the shell config and the terminal tools, so `conf` and
 - Import and export as JSON, in the same shape as tide for Linux's
   `~/.config/tide/*.json`, so one clocks list and one layouts file serve
   both.
+- A **search field** under the heading, "Search settings", keeps the
+  sections a query finds, by heading or by the words `SETTINGS_SECTIONS`
+  says each covers, as Launch finds them (§9.4), with tide for Linux's
+  matcher (`src/settingssearch.js`, copied unchanged). Every word typed
+  must start a word there. A section the platform hides stays hidden;
+  when none is found, "No settings match" shows. Esc or an empty field
+  shows every section again, and a section Launch or the bar opens clears
+  the search. The field isn't focused on open, since the page opens on
+  install for Extras *(a guess)*.
 - **Built so far:** the clocks page (zones, labels, cities and order, and
   each zone's daytime and working hours), the apps page (each app key's
   name and address, beside the key Chrome has bound), the keys checklist
@@ -1539,7 +1548,7 @@ each event, since Chrome answers at once.
 | Repo | Gets |
 |---|---|
 | **tide for Chrome** (this) | The spec. The extension: worker, layout geometry, workspaces, the full-screen dashboard and home page with the launcher, options page with the checklist, attention and dim content scripts. Its tests. |
-| **tide for Linux** | Its layout fixtures (window counts → rectangles) are the reference tide for Chrome's geometry tests are checked against, copied with a note of the commit. `tide-tabs`, the native-messaging host and relay tide for Chrome's Linux tab list talks to, and the switcher's side of it (§14.6). |
+| **tide for Linux** | Its layout fixtures (window counts → rectangles) are the reference tide for Chrome's geometry tests are checked against, copied with a note of the commit. Its settings matcher, copied unchanged for the options page's search (§13). `tide-tabs`, the native-messaging host and relay tide for Chrome's Linux tab list talks to, and the switcher's side of it (§14.6). |
 | **conf** | The shared `clocks.json` and layouts settings, if tide for Chrome imports them (§13). Crostini needs nothing new: the Debian path already covers it. |
 | **scripts** | `setup` installs `tide-tabs`'s host manifest for Chrome and Brave, naming tide for Chrome's extension ID (§14.6). `setup` detects Crostini (`/dev/.cros_milestone` or `/opt/google/cros-containers`, *(unverified on a device)*) and skips the desktop: no KDE, no tide for Linux, no display manager (A.5). |
 

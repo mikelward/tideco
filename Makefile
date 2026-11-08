@@ -9,6 +9,7 @@ TESTS = \
 	src/geometry_test.js \
 	src/keys_test.js \
 	src/launcher_test.js \
+	src/presets_test.js \
 	src/mouse_test.js \
 	src/optionspages_test.js \
 	src/optionssearch_test.js \
@@ -34,7 +35,7 @@ test:
 
 # Every script parses, including the pages' own, which no test imports.
 lint:
-	@for f in src/*.js test/*.js scripts/*.js; do node --check "$$f" || exit 1; done
+	@for f in src/*.js src/*.mjs test/*.js scripts/*.js; do node --check "$$f" || exit 1; done
 
 # Needs `npm ci` and Playwright's Chromium (`npx playwright install chromium`).
 smoke:

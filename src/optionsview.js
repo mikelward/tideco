@@ -4,6 +4,7 @@
 
 import { APP_COMMANDS, appLabel, withHomeApp } from "./apps.js";
 import { checklist } from "./keys.js";
+import { loadPreset, PRESET_NAMES, PRESETS, savePreset, suggestions } from "./presets.js";
 import { MOUSE_PAGE } from "./mouse.js";
 import { ITEMS, progress, SETUP_KEY, tick } from "./setup.js";
 import { EXTRAS as BASE_EXTRAS, extrasFor } from "./extras.js";
@@ -581,23 +582,47 @@ async function renderKeys() {
   shortcuts = Object.fromEntries(bound.map((c) => [c.name, c.shortcut]));
   for (const tr of appRows.rows) tr.querySelector("kbd").textContent = shortcuts[tr.dataset.command] || "No key";
   const tiling = await tiles;
-  const rows = checklist(chrome.runtime.getManifest().commands, bound).filter((r) => tiling || worksUntiled(r.name));
+  const manifest = chrome.runtime.getManifest().commands;
+  const preset = await loadPreset(chrome.storage.local);
+  $("keys-preset").value = preset;
+  const all = checklist(manifest, bound, suggestions(preset, manifest));
+  const titles = Object.fromEntries(all.map((r) => [r.name, r.title]));
+  const rows = all.filter((r) => tiling || worksUntiled(r.name));
   // A command on another key is your choice (or Chrome's default off
   // chromeOS), so only an unbound one is still to do.
   const todo = rows.filter((r) => r.state === "unbound").length;
-  $("keys-summary").textContent = todo === 0 ? "Every command has a key." : `${todo} of ${rows.length} commands have no key yet.`;
+  const other = rows.filter((r) => r.state === "other").length;
+  const elsewhere = preset !== "tide" && other > 0 ? ` ${other} ${other > 1 ? "are" : "is"} on keys other than ${PRESETS[preset].label}'s.` : "";
+  $("keys-summary").textContent = (todo === 0 ? "Every command has a key." : `${todo} of ${rows.length} commands have no key yet.`) + elsewhere;
   // Still to do first, in manifest order.
   const order = { unbound: 0, other: 1, bound: 2 };
   $("keys").tBodies[0].replaceChildren(
     ...[...rows].sort((a, b) => order[a.state] - order[b.state]).map((r) => {
       const tr = document.createElement("tr");
       tr.className = r.state;
-      const cells = [r.title, r.intended, r.state === "unbound" ? "not bound" : r.bound];
+      const cells = [r.title, r.intended || "Your choice", r.state === "unbound" ? "not bound" : r.bound];
       for (const text of cells) tr.append(Object.assign(document.createElement("td"), { textContent: text }));
+      const note = keyNote(r.suggestion, PRESETS[preset].label, titles);
+      if (note) tr.cells[1].append(" ", Object.assign(document.createElement("span"), { className: "muted", textContent: note }));
       return tr;
     }),
   );
 }
+// Why a preset's key isn't the one suggested (§7.4), or "".
+function keyNote(s, label, titles) {
+  if (s.why === "chrome") return `Chrome can't bind ${label}'s ${s.wanted}`;
+  if (s.why === "chromeos") return `chromeOS keeps ${label}'s ${s.wanted}`;
+  if (s.why === "taken") return `${label} gives ${s.wanted} to ${titles[s.by] ?? s.by}`;
+  return "";
+}
+$("keys-preset").replaceChildren(
+  ...PRESET_NAMES.map((n) => Object.assign(document.createElement("option"), { value: n, textContent: PRESETS[n].label })),
+);
+$("keys-preset").addEventListener("change", (e) =>
+  savePreset(chrome.storage.local, e.target.value)
+    .then(renderKeys)
+    .catch((err) => showErrors([`Couldn't save Start from: ${err.message}`])),
+);
 // The setup checklist (§3.4): ticks are this Chromebook's, in storage.local.
 async function renderSetup() {
   const { done, left } = progress((await chrome.storage.local.get(SETUP_KEY))[SETUP_KEY]);

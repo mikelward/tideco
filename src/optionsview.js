@@ -12,7 +12,7 @@ import { pattern } from "./watchers.js";
 import { DEFAULT_SETTINGS, PER_MACHINE, pick, resolve, SETTINGS_KEY, SHARED, standingProblems, START_MODES, withWorkspaceSetting, workspaceSetting } from "./settings.js";
 import { osName, platform, TABS, TILE, worksUntiled } from "./platform.js";
 import { SECTION_KEY, sectionToShow, settingsSections, SETTINGS_SECTIONS, TOP } from "./launcher.js";
-import { searchSections } from "./optionssearch.js";
+import { escapeDoes, pageAfterSearch, searchedSidebar } from "./optionssearch.js";
 import { movedPage, pageIds, pageToShow, sidebarRows } from "./optionspages.js";
 import { ACCESS as BRIDGE_ACCESS, bridgeText, STATUS_KEY as BRIDGE_KEY } from "./tabsbridge.js";
 
@@ -710,16 +710,20 @@ $("bridge-toggle").addEventListener("click", async () => {
 // The sidebar (§13), as tide for Linux's settings panel's: each group's
 // heading, then its pages, those the platform shows, with one page showing
 // at a time. The platform hides a page with `hidden`; the one showing has
-// the class `current`.
+// the class `current`. The search field over it keeps only the pages its
+// query finds (`kept`), as tide's does.
 const sidebar = $("sidebar");
+const search = $("search");
 let sideRows = [];
+let kept = [];
 let showing = null;
 const buttons = new Map();
 
 function drawSidebar() {
+  kept = searchedSidebar(sideRows, search.value);
   sidebar.replaceChildren();
   buttons.clear();
-  for (const row of sideRows) {
+  for (const row of kept) {
     if (row.page === undefined) {
       sidebar.append(Object.assign(document.createElement("h3"), { textContent: row.heading }));
       continue;
@@ -731,6 +735,7 @@ function drawSidebar() {
     buttons.set(row.page, b);
     sidebar.append(b);
   }
+  $("no-match").hidden = kept.length > 0 || sideRows.length === 0;
   markShowing();
 }
 
@@ -746,35 +751,50 @@ function turnTo(id) {
   $("content").scrollTop = 0;
 }
 
-// The pages the sidebar lists now.
-const listed = () => pageIds(sideRows).filter((id) => !buttons.get(id)?.hidden);
+// The page `step` on from the one showing, among those the sidebar lists.
+const moved = (e) => movedPage(showing, e.key === "ArrowUp" ? -1 : 1, pageIds(kept));
 
-// Up and Down move a page in the sidebar, as on tide, keeping to the pages
-// it lists, and take the keyboard along.
+// Up and Down move a page in the sidebar, as on tide, and take the keyboard
+// along.
 sidebar.addEventListener("keydown", (e) => {
   if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
   e.preventDefault();
-  turnTo(movedPage(showing, e.key === "ArrowUp" ? -1 : 1, listed()));
+  turnTo(moved(e));
   buttons.get(showing)?.focus();
 });
 
-// The search field keeps the pages a query finds (§13), hiding the rest of
-// the sidebar's buttons.
-const search = $("search");
-function filterSidebar() {
-  const { unmatched, none } = searchSections(
-    pageIds(sideRows).map((id) => ({ id, heading: $(id).querySelector("h2")?.textContent ?? "", shown: true })),
-    search.value,
-  );
-  for (const [id, b] of buttons) b.hidden = unmatched.includes(id);
-  $("no-match").hidden = !none;
+// A query typed: the sidebar keeps what it finds, and the first page kept
+// shows if the one showing isn't. With none kept, the page showing stays.
+function searched() {
+  drawSidebar();
+  const next = pageAfterSearch(showing, kept);
+  if (next !== showing) turnTo(next);
 }
-search.addEventListener("input", filterSidebar);
-search.addEventListener("keydown", (e) => {
-  if (e.key !== "Escape" || search.value === "") return;
-  e.preventDefault();
+
+// The search empty, every page back, the page showing kept.
+function clearSearch() {
+  if (search.value === "") return;
   search.value = "";
-  filterSidebar();
+  drawSidebar();
+}
+
+search.addEventListener("input", searched);
+search.addEventListener("keydown", (e) => {
+  if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+    // Up and Down move among the pages kept, the keyboard staying here.
+    e.preventDefault();
+    turnTo(moved(e));
+  } else if (e.key === "Escape") {
+    // Escape clears a query first, and closes the settings once it's empty,
+    // as tide's panel does. An extension page may close its own tab.
+    e.preventDefault();
+    if (escapeDoes(search.value) === "clear") {
+      search.value = "";
+      searched();
+    } else {
+      window.close();
+    }
+  }
 });
 
 where.then((p) => {
@@ -797,6 +817,8 @@ const sidebarShown = where.then((p) => {
   sideRows = sidebarRows(settingsSections({ tiling: p.role === TILE, linux: p.role === TABS }));
   drawSidebar();
 });
+// The keyboard starts in the search, as tide's panel opens.
+search.focus();
 
 // A page Launch or the bar asked for (§9.4), or the address's anchor: shown
 // once the sidebar is drawn, and again whenever one is asked for while this
@@ -809,6 +831,8 @@ async function showSection() {
     const id = sectionToShow(location.hash, asked, SECTION_IDS);
     if (asked !== undefined) await chrome.storage.session.remove(SECTION_KEY);
     if (id === null || id === TOP) {
+      // The top asked for clears the search too, so the first page is listed.
+      if (id === TOP) clearSearch();
       if (id === TOP || showing === null) turnTo(null);
       return;
     }
@@ -817,11 +841,9 @@ async function showSection() {
       if (showing === null) turnTo(null);
       return;
     }
-    // A page the search left out comes back with every other.
-    if (buttons.get(id)?.hidden) {
-      search.value = "";
-      filterSidebar();
-    }
+    // A page asked for while searching clears the search, so every page,
+    // the one asked for among them, is listed.
+    clearSearch();
     turnTo(id);
   } catch (e) {
     console.error("tide: couldn't show the settings page:", e);

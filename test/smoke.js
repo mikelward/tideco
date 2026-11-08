@@ -130,29 +130,49 @@ test("on Linux, the settings offer tide's tab list", async () => {
   await page.close();
 });
 
-// The search field (SPEC.md §13) keeps the pages a query finds in the
-// sidebar, never lists one the platform hides, and Esc puts back just what
-// it lists.
+// The search field (SPEC.md §13), as tide for Linux's and macOS's: focused
+// on open, it keeps the pages a query finds under their headings, never
+// one the platform hides; the first kept shows if the one showing isn't;
+// Up and Down move among those kept; Esc clears, then closes.
 test("the settings search keeps the pages it finds", async () => {
   const { page, errors } = await open("src/options.html?os=linux");
   await page.waitForSelector('#sidebar [data-page="linux"]');
-  const pages = () => page.locator("#sidebar button:not([hidden])").allInnerTexts();
-  const shown = await pages();
+  const all = await sidebarText(page);
+  const heading = () => page.locator("h2:visible").innerText();
+  assert.equal(await page.evaluate(() => document.activeElement.id), "search", "the keyboard starts in the field");
   const search = page.locator("#search");
   assert.equal(await search.getAttribute("placeholder"), "Search settings");
-  await search.fill("time zone");
-  assert.deepEqual(await pages(), ["Clocks"]);
+  assert.equal(await heading(), "Keyboard");
+  await page.keyboard.type("time zone");
+  assert.deepEqual(await sidebarText(page), ["General", "Clocks"]);
+  assert.equal(await heading(), "Clocks", "the first kept shows");
   assert.equal(await page.locator("#no-match").isVisible(), false);
-  // Appearance is chromeOS's, so off it nothing is found.
+  // Up and Down in the field move among the pages kept.
+  await search.fill("keys");
+  assert.deepEqual(await sidebarText(page), ["Hardware", "Keyboard", "Windows", "Apps"]);
+  assert.equal(await heading(), "Keyboard");
+  await search.press("ArrowDown");
+  assert.equal(await heading(), "Apps");
+  await search.press("ArrowDown");
+  assert.equal(await heading(), "Apps", "stopping at the end");
+  assert.equal(await page.evaluate(() => document.activeElement.id), "search");
+  // Appearance is chromeOS's, so off it nothing is found; Apps stays.
   await search.fill("inactive windows");
-  assert.deepEqual(await pages(), []);
+  assert.deepEqual(await sidebarText(page), []);
   assert.equal(await page.locator("#no-match").innerText(), "No settings match");
+  assert.equal(await heading(), "Apps");
+  // Esc clears, listing every page and keeping the one showing.
   await search.press("Escape");
   assert.equal(await search.inputValue(), "");
-  assert.deepEqual(await pages(), shown);
+  assert.deepEqual(await sidebarText(page), all);
   assert.equal(await page.locator("#no-match").isVisible(), false);
+  assert.equal(await heading(), "Apps");
+  // With nothing typed, Esc closes the settings, as tide's do.
+  // The press can't hear back from a page that closed under it.
+  const closed = page.waitForEvent("close");
+  await search.press("Escape").catch((e) => assert.match(e.message, /closed/));
+  await closed;
   assert.deepEqual(errors, []);
-  await page.close();
 });
 
 test("off chromeOS, the settings and dashboard keep only what places no window", async () => {
@@ -843,9 +863,12 @@ test("a right-click on a bar item opens the settings at its section", async () =
   await showing("workspaces");
   assert.equal(await options.locator("#search").inputValue(), "");
   assert.equal(await options.locator('#sidebar [data-page="import-section"]').isVisible(), true);
-  // The logo asks for the first page.
+  // The logo asks for the first page, clearing a search that left it out.
+  await options.locator("#search").fill("clocks");
   await page.locator("#logo").click({ button: "right" });
   await showing("mouse");
+  assert.equal(await options.locator("#search").inputValue(), "");
+  assert.equal(await options.locator('#sidebar [data-page="mouse"]').isVisible(), true);
   await options.close();
   assert.deepEqual(errors, []);
   await page.close();

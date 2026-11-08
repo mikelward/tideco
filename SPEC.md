@@ -1303,15 +1303,23 @@ Crostini runs kitty, the shell config and the terminal tools, so `conf` and
 - Import and export as JSON, in the same shape as tide for Linux's
   `~/.config/tide/*.json`, so one clocks list and one layouts file serve
   both.
-- A **search field** at the top of the sidebar, "Search settings", keeps
-  the pages a query finds, by title or by the words `SETTINGS_SECTIONS`
-  says each covers, as Launch finds them (§9.4), with tide for Linux's
-  matcher (`src/settingssearch.js`, copied unchanged). Every word typed
-  must start a word there. A page the platform hides stays out; when none
-  is found, "No settings match" shows. Esc or an empty field lists every
-  page again, and a page Launch or the bar opens clears the search. The
-  field isn't focused on open, since the page opens on install for Extras
-  *(a guess)*.
+- A **search field** at the top of the sidebar, "Search settings", as tide
+  for Linux's and tide for macOS's, has the keyboard when the page opens.
+  Typing keeps the pages a query finds, each under its group's heading,
+  and no heading with none left under it, using tide for Linux's matcher
+  and its `searchedRows` (`src/settingssearch.js`, copied unchanged). A
+  page is found by its name or by the words `SETTINGS_SECTIONS` says it
+  covers, as Launch finds it (§9.4); every word typed must start a word
+  there. A page the platform hides is never found. If the page showing
+  isn't kept, the first kept shows; when none is, "No settings match"
+  shows in the sidebar and the page showing stays. Up and Down in the
+  field move among the pages kept. Esc clears the query, listing every
+  page again and keeping the one showing; with the field empty, Esc
+  closes the settings tab, as tide's panel closes, since an extension
+  page may close its own tab with `window.close()`. A page an address,
+  Launch or the bar asks for clears the search. tide for Linux opens a
+  page found only by a part of it (Keyboard's shortcuts) scrolled there;
+  tide for Chrome's pages have no such parts.
 - **Built so far:** the clocks page (zones, labels, cities and order, and
   each zone's daytime and working hours), the apps page (each app key's
   name and address, beside the key Chrome has bound), the keys checklist

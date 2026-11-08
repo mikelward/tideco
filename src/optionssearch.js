@@ -1,23 +1,36 @@
-// The options page's search field (SPEC.md §13): a query keeps the sections
-// it finds, by heading and by what each covers, as Launch finds them (§9.4).
-// Pure; optionsview.js does the hiding.
+// The options page's search (SPEC.md §13), as tide for Linux's settings
+// panel's and tide for macOS's settings window's: the field at the top of
+// the sidebar keeps the pages a query finds, by name and by what each
+// covers, as Launch finds them (§9.4). Pure; optionsview.js draws it.
 
 import { SETTINGS_SECTIONS } from "./launcher.js";
-import { matches } from "./settingssearch.js";
+import { searchedRows } from "./settingssearch.js";
+import { pageIds } from "./optionspages.js";
 
-const COVERS = new Map(SETTINGS_SECTIONS.map((s) => [s.id, [s.name, s.covers]]));
+const BY_ID = new Map(SETTINGS_SECTIONS.map((s) => [s.id, s]));
 
-// What a query can find a section by: its heading on the page, and its name
-// and what it covers in SETTINGS_SECTIONS.
-export function sectionTerms(id, heading) {
-  return [heading, ...(COVERS.get(id) ?? [])];
+// What a query finds page `id` by: its name and what it covers.
+export function pageTerms(id) {
+  const s = BY_ID.get(id);
+  return s ? [s.name, s.covers] : [id];
 }
 
-// Which of `sections`, each {id, heading, shown}, `query` leaves out, by id,
-// and whether it found none of those the platform shows. A section the
-// platform hides stays hidden whatever the query, so it can't count as found.
-export function searchSections(sections, query) {
-  const unmatched = sections.filter((s) => !matches(query, sectionTerms(s.id, s.heading))).map((s) => s.id);
-  const none = sections.some((s) => s.shown) && sections.every((s) => !s.shown || unmatched.includes(s.id));
-  return { unmatched, none };
+// The sidebar's rows (optionspages.js's sidebarRows) that `query` keeps:
+// the pages it finds, each under its group's heading, and no heading left
+// with no page under it.
+export function searchedSidebar(rows, query) {
+  return searchedRows(rows, query, (r) => r.page === undefined, (r) => pageTerms(r.page));
+}
+
+// The page to show once the sidebar keeps `kept` (rows): the one `showing`
+// if it's kept, else the first kept; with none kept, the one showing stays.
+export function pageAfterSearch(showing, kept) {
+  const ids = pageIds(kept);
+  return ids.length === 0 || ids.includes(showing) ? showing : ids[0];
+}
+
+// What Escape in the field does: clear a query, else close the settings,
+// as tide for Linux's panel and tide for macOS's window do.
+export function escapeDoes(query) {
+  return query === "" ? "close" : "clear";
 }

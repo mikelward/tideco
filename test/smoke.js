@@ -263,6 +263,17 @@ test("the options page renders every page and saves changes", async () => {
   await page.locator("#setup input[type=checkbox]").first().check();
   await page.waitForFunction(async () => ((await chrome.storage.local.get("setup")).setup ?? []).length === 1);
 
+  // Start from changes only the keys suggested, and stays on this Chromebook.
+  await turnTo(page, "keys-section");
+  await page.locator("#keys-preset").selectOption("dwm");
+  await page.waitForFunction(async () => (await chrome.storage.local.get("keysPreset")).keysPreset === "dwm");
+  const keyFor = (title) => page.locator("#keys tbody tr", { has: page.locator(`td:first-child:text-is("${title}")`) }).locator("td:nth-child(2)");
+  await page.waitForFunction(() => /Search\+P/.test(document.getElementById("keys").innerText));
+  assert.equal(await keyFor("Toggle monocle").innerText(), "Search+M");
+  assert.match(await keyFor("Swap the window with the master").innerText(), /^Search\+Shift\+M Chrome can't bind dwm's Search\+Enter$/);
+  await page.locator("#keys-preset").selectOption("tide");
+  await page.waitForFunction(async () => (await chrome.storage.local.get("keysPreset")).keysPreset === undefined);
+
   assert.deepEqual(errors, []);
   assert.equal(await page.locator("#errors").isHidden(), true, await page.locator("#errors").innerText());
 });

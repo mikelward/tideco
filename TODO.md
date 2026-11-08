@@ -59,6 +59,17 @@ Guesses made on autopilot (2026-10-24), each cheap to undo.
   with `window.close()`, which Chrome allows an extension page whatever
   the tab's history (tried in Chromium's smoke test). Reversible:
   `src/optionssearch.js`, the search in `src/optionsview.js`.
+- **Start from is a guide, kept per Chromebook** (2026-11-08): Chrome lets
+  no extension set its keys, so a preset changes only the keys the
+  checklist suggests, in `storage.local` beside the setup ticks.
+  `home_or_back` (dwm's Super+Tab) is dropped, as no command here toggles
+  home and back; attention keeps Search+Tab. Of a binding's keys the first
+  Chrome can bind is used, so i3's focus up and dwm's and xmonad's grow
+  are Search+L, which chromeOS's lock holds until it's removed in the
+  Shortcuts app; the checklist doesn't say so. Under a preset the summary
+  also counts commands on keys other than its, though they still count as
+  done. Reversible: `COMMANDS` and `suggestions` in `src/presets.js`,
+  `renderKeys` in `src/optionsview.js`.
 - **A pinned app's closed window reopens after a second, at most 3
   times a minute** (2026-11-04), at the end of its workspace's stack, and
   not while that workspace still has a window of the app. The delay lets

@@ -60,9 +60,9 @@ test("every file the manifest names is in the ZIP", () => {
 // installed, so follow every import, script, stylesheet and image.
 test("every file a packaged page or module loads is in the ZIP", () => {
   for (const f of files) {
-    if (!/\.(js|html)$/.test(f)) continue;
+    if (!/\.(m?js|html)$/.test(f)) continue;
     const text = readFileSync(join(ROOT, f), "utf8");
-    const refs = [...text.matchAll(/(?:from\s+|import\s*\(\s*|\b(?:src|href)=)["'](\.{0,2}\/?[\w./-]+\.(?:js|css|html|png|svg))["']/g)].map((m) => m[1]);
+    const refs = [...text.matchAll(/(?:from\s+|import\s*\(\s*|\b(?:src|href)=)["'](\.{0,2}\/?[\w./-]+\.(?:m?js|css|html|png|svg))["']/g)].map((m) => m[1]);
     for (const ref of refs) {
       const path = ref.startsWith("/") ? ref.slice(1) : posix.normalize(posix.join(posix.dirname(f), ref));
       assert.ok(files.has(path), `${f} loads ${ref}, which isn't packaged`);

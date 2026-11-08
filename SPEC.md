@@ -923,6 +923,30 @@ Search+Alt and Search+Ctrl are allowed too, and untried unless listed.
 Search+Ctrl+S opens the Shortcuts app itself, and Search+Esc the task manager (Esc can't be a tide for Chrome key anyway). Search+S, Search+V, Search+X and Search+Z may be removable too: whether the
 Shortcuts app shows them with a padlock is untried.
 
+### 7.4 Start from another window manager's keys
+
+The keys checklist's **Start from** (tide, dwm, i3, sway, xmonad or bspwm)
+picks whose keys it suggests, from tide for Linux's presets
+(`src/keymaps.mjs`, a copy of tide for Linux's `shell/lib/keymaps.mjs`),
+with Search for Super (`src/presets.js`). Chrome lets no extension set its
+keys, so a preset changes only the suggestions: you bind them at
+`chrome://extensions/shortcuts`, and a command is done once Chrome has
+bound the key suggested, as with tide's own.
+
+- Each of tide for Linux's binding names maps to the command here that does
+  the same (`launcher` to the dashboard, `focus_down` to focus next, and so
+  on). One with no command here is dropped: the terminal, close (Chrome's
+  own), quit, fullscreen (the Shortcuts app's), focus and move left and
+  right, resize mode, and `home_or_back`, which no command here does.
+- Of a binding's keys, the first Chrome can bind (§7.3) is suggested. If it
+  has none, as with Return, `[` or a Search+arrow chromeOS keeps (§7.2),
+  the command keeps this spec's key, and the checklist says why.
+- No two commands are suggested one key: the preset's wins, and a command
+  whose key it takes is suggested none, for you to choose. With i3,
+  Search+D is the dashboard, so remove a master is yours to place.
+- The choice is this Chromebook's, in `storage.local` (`keysPreset`), as
+  Chrome's keys are.
+
 ## 8. Status, bar and clocks
 
 ### 8.1 No top bar
@@ -1325,7 +1349,8 @@ Crostini runs kitty, the shell config and the terminal tools, so `conf` and
   name and address, beside the key Chrome has bound), the keys checklist
   (every command, the key this spec gives it and the key Chrome has bound,
   the unbound ones first, with a button to `chrome://extensions/shortcuts`;
-  a command on another key counts as done), the setup checklist (the
+  a command on another key counts as done; Start from suggests another
+  window manager's keys instead, §7.4), the setup checklist (the
   chromeOS settings in §3.4, each with how to set it and, where it has
   one, a button to its `chrome://os-settings` page; you tick them off, as
   chromeOS can't be read, and the ticks stay in `storage.local`), the

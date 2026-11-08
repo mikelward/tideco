@@ -60,33 +60,42 @@ const SCOPE_NAMES = { launch: "Launch", tabs: "Tabs", workspaces: "Workspaces", 
 // The name of the options page as an app (§9.4), in the user's words.
 export const SETTINGS_APP = "Tide Settings";
 
-// The options page's sections, each found from Launch by its name and what
-// it covers, and opened at its anchor, `id`. `chromeos` ones show only
-// there and `linux` only on Linux, as the options page shows them (§14.6).
+// The options page's pages (§13), in its sidebar's order, as tide for
+// Linux's settings panel has them (tide's shell/lib/settings.mjs): each in
+// its `group`, under that group's heading, with its `icon`. Launch finds
+// each by its name and what it covers, and opens it by `id`, its element on
+// the options page. `chromeos` ones show only there and `linux` only on
+// Linux, as the options page shows them (§14.6). Names and groups are
+// tide for Linux's where the page is the same; the rest are Chrome's own.
+export const SETTINGS_GROUPS = [
+  { id: "hardware", label: "Hardware" },
+  { id: "windows", label: "Windows" },
+  { id: "general", label: "General" },
+];
 export const SETTINGS_SECTIONS = [
-  { id: "linux", name: "Tabs in tide's switcher", covers: "Linux native helper tide-tabs", linux: true },
-  { id: "extras", name: "Extras", covers: "permissions allow tab search unread dim" },
-  { id: "clocks-section", name: "Clocks", covers: "time zones world clocks cities daytime working hours" },
-  { id: "setup-section", name: "Setup checklist", covers: "chromeOS settings", chromeos: true },
-  { id: "keys-section", name: "Keys", covers: "shortcuts bindings" },
-  { id: "apps-section", name: "Apps", covers: "app keys web apps addresses" },
-  { id: "startup-section", name: "Start at login", covers: "websites autostart", chromeos: true },
-  { id: "unread", name: "Unread counts", covers: "Gmail Chat Calendar sites", chromeos: true },
-  { id: "dim", name: "Dim", covers: "strength inactive windows", chromeos: true },
-  { id: "workspaces", name: "Workspaces", covers: "standing home apps layouts main share", chromeos: true },
-  { id: "layouts", name: "Layouts", covers: "ultrawide aspect ratio width", chromeos: true },
-  { id: "mouse", name: "Mouse", covers: "wheel scroll step crosh", chromeos: true },
-  { id: "import-section", name: "Import and export", covers: "JSON backup reset defaults" },
+  { id: "mouse", group: "hardware", icon: "mouse", name: "Mouse", covers: "wheel scroll step crosh", chromeos: true },
+  { id: "keys-section", group: "hardware", icon: "keyboard", name: "Keyboard", covers: "keys shortcuts bindings hotkeys" },
+  { id: "layouts", group: "windows", icon: "layouts", name: "Layouts", covers: "tiling start in main share main windows ultrawide aspect ratio width", chromeos: true },
+  { id: "workspaces", group: "windows", icon: "workspaces", name: "Workspaces", covers: "standing workspaces home apps pinned apps ask for a name", chromeos: true },
+  { id: "apps-section", group: "windows", icon: "open", name: "Apps", covers: "app keys web apps addresses" },
+  { id: "dim", group: "general", icon: "appearance", name: "Appearance", covers: "dim strength inactive windows", chromeos: true },
+  { id: "unread", group: "general", icon: "muted", name: "Notifications", covers: "unread counts Gmail Chat Calendar sites", chromeos: true },
+  { id: "clocks-section", group: "general", icon: "clocks", name: "Clocks", covers: "time zones world clocks cities daytime working hours" },
+  { id: "startup-section", group: "general", icon: "startup", name: "Start at login", covers: "websites autostart login items", chromeos: true },
+  { id: "extras", group: "general", icon: "more", name: "Extras", covers: "permissions allow tab search unread dim" },
+  { id: "linux", group: "general", icon: "floating", name: "Tabs in tide's switcher", covers: "Linux native helper tide-tabs", linux: true },
+  { id: "setup-section", group: "general", icon: "setup", name: "Setup checklist", covers: "chromeOS settings", chromeos: true },
+  { id: "import-section", group: "general", icon: "folder", name: "Import and export", covers: "JSON backup reset defaults" },
 ];
 
-// Asked for in place of a section, the top of the options page, so a tab
-// that's open and scrolled goes back up.
+// Asked for in place of a page, the options page's first, so a tab that's
+// open on another goes back to it.
 export const TOP = "top";
 
-// The section a right-click on each item of the dashboard's bar opens, by
-// its id in launcher.html, as tide's bar opens a page (tide SPEC.md §7.1,
-// shell/lib/barsettings.mjs); TOP for the top of the page, where tide has
-// no section to match: tide's logo, and keep awake, whose tide page is Idle.
+// The page a right-click on each item of the dashboard's bar opens, by its
+// id in launcher.html, as tide's bar opens a page (tide SPEC.md §7.1,
+// shell/lib/barsettings.mjs); TOP for the first page, where tide has
+// no page to match: tide's logo, and keep awake, whose tide page is Idle.
 // The title names the workspace here, so it opens Workspaces.
 export const BAR_SECTIONS = Object.freeze({
   logo: TOP,
@@ -96,11 +105,11 @@ export const BAR_SECTIONS = Object.freeze({
   clocks: "clocks-section",
 });
 
-// Where Launch leaves the section to show, in session storage, for the
-// options page to scroll to and clear (§9.4).
+// Where Launch leaves the page to show, in session storage, for the
+// options page to show and clear (§9.4).
 export const SECTION_KEY = "settingsSection";
 
-// The section the options page shows: its address's anchor, else the one
+// The page the options page shows: its address's anchor, else the one
 // Launch asked for; either only if the page has it, by `ids`, or TOP.
 export function sectionToShow(hash, asked, ids) {
   const id = hash.replace(/^#/, "") || asked || "";

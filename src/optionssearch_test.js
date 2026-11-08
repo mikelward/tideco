@@ -7,7 +7,7 @@ import { SETTINGS_SECTIONS } from "./launcher.js";
 // The options page's sections, as its HTML has them, all shown, as on chromeOS
 // but for Linux's own.
 const html = readFileSync(new URL("options.html", import.meta.url), "utf8");
-const PAGE = [...html.matchAll(/<section id="([^"]+)"([^>]*)>\s*<h2>([^<]+)<\/h2>/g)].map(([, id, attrs, heading]) => ({
+const PAGE = [...html.matchAll(/<section class="page" id="([^"]+)"([^>]*)>\s*<h2>([^<]+)<\/h2>/g)].map(([, id, attrs, heading]) => ({
   id,
   heading,
   shown: !/\bhidden\b/.test(attrs),
@@ -26,16 +26,16 @@ test("every section on the page has terms beyond its heading", () => {
 test("a query keeps the sections it finds by heading", () => {
   assert.deepEqual(found("clocks"), ["Clocks"]);
   assert.deepEqual(found("IMPORT"), ["Import and export"]);
-  assert.deepEqual(found("chromebook"), ["Start at login on this Chromebook", "Layouts on this Chromebook", "Mouse on this Chromebook"]);
+  assert.deepEqual(found("unread"), ["Notifications", "Extras"]);
 });
 
 test("a query finds sections by the words a person would search for", () => {
   assert.deepEqual(found("time zone"), ["Clocks"]);
   assert.deepEqual(found("world clock"), ["Clocks"]);
-  assert.deepEqual(found("shortcuts"), ["Keys"]);
-  assert.deepEqual(found("bindings"), ["Keys"]);
-  assert.deepEqual(found("inactive windows"), ["Dim"]);
-  assert.deepEqual(found("ultrawide"), ["Layouts on this Chromebook"]);
+  assert.deepEqual(found("shortcuts"), ["Keyboard"]);
+  assert.deepEqual(found("bindings"), ["Keyboard"]);
+  assert.deepEqual(found("inactive windows"), ["Appearance"]);
+  assert.deepEqual(found("ultrawide"), ["Layouts"]);
   assert.deepEqual(found("backup"), ["Import and export"]);
 });
 

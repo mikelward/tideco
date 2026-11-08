@@ -973,12 +973,12 @@ Instead:
   the space around it, the clocks as one row. The rounding is drawn, not
   hit-tested, so it leaves no dead corners. tide for macOS's bar shares this
   stylesheet. Neither bar has an appearance (dark mode) button.
-- **A right-click on a bar item opens its settings section,** as tide for Linux's
+- **A right-click on a bar item opens its settings page,** as tide for Linux's
   bar opens a page (tide for Linux §7.1), in place of Chrome's menu
   (`BAR_SECTIONS` in `launcher.js`): the workspaces and the title, which
   names the workspace here, open Workspaces, and the clocks Clocks. The
-  logo and keep awake open the top of the page, since tide for Chrome has no
-  section for them, where tide for Linux's open its first page and Idle.
+  logo and keep awake open the first page, since tide for Chrome has no
+  page for them, where tide for Linux's open its first page and Idle.
 
 ### 8.2 Clocks
 
@@ -1272,29 +1272,46 @@ Crostini runs kitty, the shell config and the terminal tools, so `conf` and
 
 ## 13. Settings
 
-- One **options page**, in the style of tide for Linux's settings panel, with pages
-  for layouts, workspaces, keys (with the checklist), apps, clocks, dim and
-  attention.
+- One **options page** with the same sidebar as tide for Linux's settings
+  panel (tide for Linux §16) and tide for macOS's settings window: a
+  sidebar on the left lists the pages under the headings Hardware, Windows
+  and General, and the page chosen shows beside it, one at a time, under
+  its title and what to know first. Each scrolls on its own. A page has
+  tide for Linux's name where it's the same page: Mouse and Keyboard (the
+  keys checklist) under Hardware; Layouts and Workspaces under Windows;
+  Appearance (the dim's strength), Notifications (unread counts), Clocks
+  and Start at login under General. Chrome's own pages follow tide's in
+  their group: Apps under Windows; Extras, Tabs in tide's switcher (Linux
+  only), the Setup checklist, and Import and export at the end of General
+  *(a guess)*. A page the platform hides (§14.6) isn't in the sidebar,
+  nor is a group with none. `SETTINGS_SECTIONS` in `launcher.js` is the
+  one list of pages, with each one's group, icon, name and words, so the
+  sidebar and Launch (§9.4) agree. Up and Down in the sidebar move a page,
+  over the headings, stopping at either end. The page opens on the first
+  page; on Extras when tide is installed; and on the page an address's
+  anchor (`#clocks-section`), Launch or the bar asks for, which shows at
+  once in a page already open.
 - Every change applies live; no reload.
 - **Shared vs per-machine**, as tide for Linux's §16.1: `chrome.storage.sync` holds
   the shared settings (apps, clocks, keys, layouts), and
   `chrome.storage.local` holds per-machine overrides (lone-window width per
-  display, ultrawide threshold). Objects merge key by key; lists replace
+  display, ultrawide threshold), which Layouts lists below the shared
+  layouts, saying they stay on this Chromebook. Objects merge key by key; lists replace
   whole.
 - A bad value is an error on the options page naming the setting, and the
   last good value stays.
 - Import and export as JSON, in the same shape as tide for Linux's
   `~/.config/tide/*.json`, so one clocks list and one layouts file serve
   both.
-- A **search field** under the heading, "Search settings", keeps the
-  sections a query finds, by heading or by the words `SETTINGS_SECTIONS`
+- A **search field** at the top of the sidebar, "Search settings", keeps
+  the pages a query finds, by title or by the words `SETTINGS_SECTIONS`
   says each covers, as Launch finds them (§9.4), with tide for Linux's
   matcher (`src/settingssearch.js`, copied unchanged). Every word typed
-  must start a word there. A section the platform hides stays hidden;
-  when none is found, "No settings match" shows. Esc or an empty field
-  shows every section again, and a section Launch or the bar opens clears
-  the search. The field isn't focused on open, since the page opens on
-  install for Extras *(a guess)*.
+  must start a word there. A page the platform hides stays out; when none
+  is found, "No settings match" shows. Esc or an empty field lists every
+  page again, and a page Launch or the bar opens clears the search. The
+  field isn't focused on open, since the page opens on install for Extras
+  *(a guess)*.
 - **Built so far:** the clocks page (zones, labels, cities and order, and
   each zone's daytime and working hours), the apps page (each app key's
   name and address, beside the key Chrome has bound), the keys checklist
@@ -1313,12 +1330,13 @@ Crostini runs kitty, the shell config and the terminal tools, so `conf` and
   import, export and reset of the shared settings.
   `src/settings.js` checks every value, and the dashboard and home page pick
   up a change at once through `storage.onChanged`; tide for Chrome reads its settings
-  on each step. The workspaces page sets the layout a workspace starts in,
+  on each step. The Layouts page sets the layout a workspace starts in,
   on an ultrawide and on any other display, and each layout's main share
-  and main-window count, under tide for Linux's names (`defaultMode`, `modes`). A
+  and main-window count, under tide for Linux's names (`defaultMode`, `modes`), as
+  tide for Linux's Layouts page does. A
   change reaches every workspace and replaces what the keys set there, as
   in tide.
-  Above those, as on tide for Linux's Workspaces page, the section lists the
+  As on tide for Linux's Workspaces page, the Workspaces page lists the
   **standing workspaces** (`standing`, §6.1) and **home's apps**
   (`homeApps`), both shared:
   - The standing workspaces are a list of names, in order, the first
@@ -1579,7 +1597,7 @@ each event, since Chrome answers at once.
   Window management on Linux Chromium differs from chromeOS, so those
   results don't stand in for M2's device checks.
   - `test/smoke.js`, run by `make smoke` and CI's `smoke` job, checks that
-    the worker starts, that the options page renders every section and
+    the worker starts, that the options page lists every page and
     saves a setting and a checklist tick, and that the home page and
     dashboard render the bar, clocks, launcher and calendar, all with no
     page errors. Content scripts aren't covered yet.

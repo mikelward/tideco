@@ -8,53 +8,30 @@
 <script type="module" src="optionsview.js"></script>
 </head>
 <body>
-<main>
-<h1>tide settings</h1>
-<input id="search" type="search" placeholder="Search settings" aria-label="Search settings">
+<div class="side">
+<input id="search" type="search" placeholder="Search settings" aria-label="Search settings" autocomplete="off" spellcheck="false">
+<nav id="sidebar" aria-label="Settings pages"></nav>
 <p id="no-match" class="muted" role="status" hidden>No settings match</p>
-<section id="linux" hidden>
-<h2>Tabs in tide's switcher</h2>
-<p class="muted">On Linux, tide tiles your windows itself. This extension can also list this browser's tabs in tide's switcher, on the Windows tab, so you can find a tab from anywhere. The tabs go only to tide, on this computer, through its <code>tide-tabs</code> helper, which <code>setup</code> installs. Chrome calls this “read your browsing history” and “communicate with cooperating native applications”.</p>
-<p><strong>Tabs in tide's switcher</strong> <span id="bridge-state" class="muted">Off</span> <button id="bridge-toggle" type="button">Allow</button></p>
-<p id="bridge-detail" class="muted" hidden></p>
-</section>
+<div class="notes">
 <p id="untiled" class="muted" hidden></p>
-<p class="muted" data-chromeos>Changes apply as you make them. Layouts stay on this Chromebook; the rest follow you to every one you sign in to.</p>
-<p id="overrides" class="muted" hidden></p>
+<p class="muted" data-chromeos>Changes apply as you make them, and follow you to every Chromebook you sign in to, but for what a page says stays here.</p>
+</div>
+</div>
+<main id="content">
 <div id="errors" role="alert" hidden></div>
-
-<section id="extras">
-<h2>Extras</h2>
-<p class="muted">tide tiles your windows and runs your workspaces without any of these. Each needs Chrome's permission, which it asks for when you click Allow, and you can turn each off again here.</p>
-<ul id="permissions" class="checklist"></ul>
+<p id="overrides" class="muted" hidden></p>
+<section class="page" id="mouse" data-chromeos>
+<h2>Mouse</h2>
+<p class="muted about">A longer step per wheel click than Settings offers, set from crosh (Ctrl+Alt+T), which needs <code>chrome://flags/#gesture-properties-dbus-service</code> enabled once. chromeOS forgets it at each reboot, so with a step here, tide opens a page with the lines to copy at each login. Leave it empty for no reminder.</p>
+<div class="row">
+<label>Step per click <input id="wheel-step" type="number" step="any" min="1" max="1000" placeholder="off"></label>
+<button id="show-mouse" type="button">Show the lines</button>
+</div>
 </section>
 
-<section id="clocks-section">
-<h2>Clocks</h2>
-<p class="muted">Shown on the dashboard and the home page, in this order, with local time last. A zone that is your local zone is hidden.</p>
-<table id="clocks">
-<thead><tr><th>Label</th><th>Time zone</th><th>City</th><th>Bar</th><th><span class="visually-hidden">Order</span></th></tr></thead>
-<tbody></tbody>
-</table>
-<datalist id="zones"></datalist>
-<button id="add-clock" type="button">Add a clock</button>
-<fieldset class="hours">
-<legend>Each zone's day</legend>
-<label>Daytime <input id="day-from" type="number" min="0" max="23" required> to <input id="day-to" type="number" min="1" max="24" required></label>
-<label>Working hours <input id="work-from" type="number" min="0" max="23" required> to <input id="work-to" type="number" min="1" max="24" required></label>
-</fieldset>
-</section>
-
-<section id="setup-section" data-chromeos>
-<h2>Setup checklist</h2>
-<p class="muted">chromeOS settings that bring this Chromebook closer to tide for Linux. tide can't change them for you, so each says where to go; tick them off as you go. The ticks stay on this Chromebook.</p>
-<p id="setup-summary"></p>
-<ul id="setup" class="checklist"></ul>
-</section>
-
-<section id="keys-section">
-<h2>Keys</h2>
-<p class="muted">Chrome binds four keys when tide installs; the rest you bind once at <code>chrome://extensions/shortcuts</code>. This list says which are still to do, and updates when you come back.</p>
+<section class="page" id="keys-section">
+<h2>Keyboard</h2>
+<p class="muted about">Chrome binds four keys when tide installs; the rest you bind once at <code>chrome://extensions/shortcuts</code>. This list says which are still to do, and updates when you come back.</p>
 <p><span id="keys-summary"></span> <button id="open-shortcuts" type="button">Open the shortcuts page</button></p>
 <table id="keys">
 <thead><tr><th>Command</th><th>Key</th><th>Bound to</th></tr></thead>
@@ -62,44 +39,31 @@
 </table>
 </section>
 
-<section id="apps-section">
-<h2>Apps</h2>
-<p class="muted">Each key opens a new window of its app on the current workspace. Chrome fixes the keys; you choose the apps. Change a key at <code>chrome://extensions/shortcuts</code>.</p>
-<table id="apps">
-<thead><tr><th>Key</th><th>Name</th><th>Address</th></tr></thead>
+<section class="page" id="layouts" data-chromeos>
+<h2>Layouts</h2>
+<p class="muted about">New workspaces start in these layouts. A change reaches every workspace, replacing what the grow, shrink and main-window keys set.</p>
+<fieldset class="start">
+<legend>Start in</legend>
+<label>On an ultrawide display <select id="start-ultrawide"></select></label>
+<label>On any other <select id="start-normal"></select></label>
+</fieldset>
+<table id="modes">
+<thead><tr><th>Layout</th><th>Main share (%)</th><th>Main windows</th></tr></thead>
 <tbody></tbody>
 </table>
+<p class="muted layouts">These two depend on this Chromebook's displays, so they stay here rather than follow you.</p>
+<label>A display is ultrawide, with three columns, from aspect ratio <input id="ultrawide" type="number" step="0.1" min="1" max="10" required></label>
+<p class="muted">A lone window is centered at this width on displays from each aspect ratio up; below them all, it fills the width.</p>
+<table id="rules">
+<thead><tr><th>From aspect ratio</th><th>Width (%)</th><th><span class="visually-hidden">Remove</span></th></tr></thead>
+<tbody></tbody>
+</table>
+<button id="add-rule" type="button">Add a width</button>
 </section>
 
-<section id="startup-section" data-chromeos>
-<h2>Start at login on this Chromebook</h2>
-<p class="muted">Websites tide opens each time you log in, in this order, as app windows on the workspace you're on, without taking focus. A change takes effect at the next login. The list stays on this Chromebook.</p>
-<ol id="startup"></ol>
-<form id="startup-form" class="row">
-<input id="startup-site" type="url" placeholder="https://mail.google.com" aria-label="Website to open at login" required>
-<button type="submit">Add</button>
-</form>
-</section>
-
-<section id="unread" data-chromeos>
-<h2>Unread counts</h2>
-<p class="muted">tide highlights a window when a site's unread count goes up in its title, like "Inbox (3)". Gmail, Chat and Calendar are here to start with, and you can add other sites. Chrome asks for access to each site you add, on this Chromebook.</p>
-<ul id="watched"></ul>
-<form id="watch-form" class="row">
-<input id="watch-site" type="url" placeholder="https://app.example.com" aria-label="Site to show unread counts for" required>
-<button type="submit">Add</button>
-</form>
-</section>
-
-<section id="dim" data-chromeos>
-<h2>Dim</h2>
-<p class="muted">How dark the dim makes the windows you're not in, when it's on (turn it on under Extras).</p>
-<label>Strength <input id="dim-strength" type="number" step="any" min="2" max="50" required> %</label>
-</section>
-
-<section id="workspaces" data-chromeos>
+<section class="page" id="workspaces" data-chromeos>
 <h2>Workspaces</h2>
-<p class="muted">The standing workspaces are always on the bar, in this order, even when empty. The first is home, which holds home's apps and only theirs, so moving another first makes it home. A name taken out of the list stays a workspace until it's empty.</p>
+<p class="muted about">The standing workspaces are always on the bar, in this order, even when empty. The first is home, which holds home's apps and only theirs, so moving another first makes it home. A name taken out of the list stays a workspace until it's empty.</p>
 <table id="standing">
 <thead><tr><th>Standing workspaces</th><th><span class="visually-hidden">Home</span></th><th><span class="visually-hidden">Order</span></th></tr></thead>
 <tbody></tbody>
@@ -113,42 +77,82 @@
 </fieldset>
 <p class="muted layouts">Each standing workspace's own settings. A new window on a workspace that asks opens the name prompt, to go to a workspace of its own; home's apps never ask. A pinned app's window there reopens if you close it.</p>
 <div id="workspace-settings"></div>
-<p class="muted layouts">The layout each workspace starts in, and each layout's main windows. A change reaches every workspace, replacing what the grow, shrink and main-window keys set.</p>
-<fieldset class="start">
-<legend>Start in</legend>
-<label>On an ultrawide display <select id="start-ultrawide"></select></label>
-<label>On any other <select id="start-normal"></select></label>
+</section>
+
+<section class="page" id="apps-section">
+<h2>Apps</h2>
+<p class="muted about">Each key opens a new window of its app on the current workspace. Chrome fixes the keys; you choose the apps. Change a key at <code>chrome://extensions/shortcuts</code>.</p>
+<table id="apps">
+<thead><tr><th>Key</th><th>Name</th><th>Address</th></tr></thead>
+<tbody></tbody>
+</table>
+</section>
+
+<section class="page" id="dim" data-chromeos>
+<h2>Appearance</h2>
+<p class="muted about">How dark the dim makes the windows you're not in, when it's on (turn it on under Extras).</p>
+<label>Strength <input id="dim-strength" type="number" step="any" min="2" max="50" required> %</label>
+</section>
+
+<section class="page" id="unread" data-chromeos>
+<h2>Notifications</h2>
+<p class="muted about">tide highlights a window when a site's unread count goes up in its title, like "Inbox (3)". Gmail, Chat and Calendar are here to start with, and you can add other sites. Chrome asks for access to each site you add, on this Chromebook.</p>
+<ul id="watched"></ul>
+<form id="watch-form" class="row">
+<input id="watch-site" type="url" placeholder="https://app.example.com" aria-label="Site to show unread counts for" required>
+<button type="submit">Add</button>
+</form>
+</section>
+
+<section class="page" id="clocks-section">
+<h2>Clocks</h2>
+<p class="muted about">Shown on the dashboard and the home page, in this order, with local time last. A zone that is your local zone is hidden.</p>
+<table id="clocks">
+<thead><tr><th>Label</th><th>Time zone</th><th>City</th><th>Bar</th><th><span class="visually-hidden">Order</span></th></tr></thead>
+<tbody></tbody>
+</table>
+<datalist id="zones"></datalist>
+<button id="add-clock" type="button">Add a clock</button>
+<fieldset class="hours">
+<legend>Each zone's day</legend>
+<label>Daytime <input id="day-from" type="number" min="0" max="23" required> to <input id="day-to" type="number" min="1" max="24" required></label>
+<label>Working hours <input id="work-from" type="number" min="0" max="23" required> to <input id="work-to" type="number" min="1" max="24" required></label>
 </fieldset>
-<table id="modes">
-<thead><tr><th>Layout</th><th>Main share (%)</th><th>Main windows</th></tr></thead>
-<tbody></tbody>
-</table>
 </section>
 
-<section id="layouts" data-chromeos>
-<h2>Layouts on this Chromebook</h2>
-<p class="muted">These depend on this Chromebook's displays, so they stay here rather than follow you.</p>
-<label>A display is ultrawide, with three columns, from aspect ratio <input id="ultrawide" type="number" step="0.1" min="1" max="10" required></label>
-<p class="muted">A lone window is centered at this width on displays from each aspect ratio up; below them all, it fills the width.</p>
-<table id="rules">
-<thead><tr><th>From aspect ratio</th><th>Width (%)</th><th><span class="visually-hidden">Remove</span></th></tr></thead>
-<tbody></tbody>
-</table>
-<button id="add-rule" type="button">Add a width</button>
+<section class="page" id="startup-section" data-chromeos>
+<h2>Start at login</h2>
+<p class="muted about">Websites tide opens each time you log in, in this order, as app windows on the workspace you're on, without taking focus. A change takes effect at the next login. The list stays on this Chromebook.</p>
+<ol id="startup"></ol>
+<form id="startup-form" class="row">
+<input id="startup-site" type="url" placeholder="https://mail.google.com" aria-label="Website to open at login" required>
+<button type="submit">Add</button>
+</form>
 </section>
 
-<section id="mouse" data-chromeos>
-<h2>Mouse on this Chromebook</h2>
-<p class="muted">A longer step per wheel click than Settings offers, set from crosh (Ctrl+Alt+T), which needs <code>chrome://flags/#gesture-properties-dbus-service</code> enabled once. chromeOS forgets it at each reboot, so with a step here, tide opens a page with the lines to copy at each login. Leave it empty for no reminder.</p>
-<div class="row">
-<label>Step per click <input id="wheel-step" type="number" step="any" min="1" max="1000" placeholder="off"></label>
-<button id="show-mouse" type="button">Show the lines</button>
-</div>
+<section class="page" id="extras">
+<h2>Extras</h2>
+<p class="muted about">tide tiles your windows and runs your workspaces without any of these. Each needs Chrome's permission, which it asks for when you click Allow, and you can turn each off again here.</p>
+<ul id="permissions" class="checklist"></ul>
 </section>
 
-<section id="import-section">
+<section class="page" id="linux" hidden>
+<h2>Tabs in tide's switcher</h2>
+<p class="muted about">On Linux, tide tiles your windows itself. This extension can also list this browser's tabs in tide's switcher, on the Windows tab, so you can find a tab from anywhere. The tabs go only to tide, on this computer, through its <code>tide-tabs</code> helper, which <code>setup</code> installs. Chrome calls this “read your browsing history” and “communicate with cooperating native applications”.</p>
+<p><strong>Tabs in tide's switcher</strong> <span id="bridge-state" class="muted">Off</span> <button id="bridge-toggle" type="button">Allow</button></p>
+<p id="bridge-detail" class="muted" hidden></p>
+</section>
+
+<section class="page" id="setup-section" data-chromeos>
+<h2>Setup checklist</h2>
+<p class="muted about">chromeOS settings that bring this Chromebook closer to tide for Linux. tide can't change them for you, so each says where to go; tick them off as you go. The ticks stay on this Chromebook.</p>
+<p id="setup-summary"></p>
+<ul id="setup" class="checklist"></ul>
+</section>
+
+<section class="page" id="import-section">
 <h2>Import and export</h2>
-<p class="muted">The settings as JSON, in the shape of tide's config on Linux, to copy between machines or keep in a dotfiles repo.</p>
+<p class="muted about">The settings as JSON, in the shape of tide's config on Linux, to copy between machines or keep in a dotfiles repo.</p>
 <textarea id="json" rows="10" spellcheck="false" aria-label="Settings as JSON"></textarea>
 <div class="row">
 <button id="import" type="button">Import</button>

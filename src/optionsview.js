@@ -11,8 +11,9 @@ import { DEFAULT_SITES } from "./unread.js";
 import { pattern } from "./watchers.js";
 import { DEFAULT_SETTINGS, PER_MACHINE, pick, resolve, SETTINGS_KEY, SHARED, standingProblems, START_MODES, withWorkspaceSetting, workspaceSetting } from "./settings.js";
 import { osName, platform, TABS, TILE, worksUntiled } from "./platform.js";
-import { SECTION_KEY, sectionToShow, SETTINGS_SECTIONS, TOP } from "./launcher.js";
+import { SECTION_KEY, sectionToShow, settingsSections, SETTINGS_SECTIONS, TOP } from "./launcher.js";
 import { searchSections } from "./optionssearch.js";
+import { movedPage, pageIds, pageToShow, sidebarRows } from "./optionspages.js";
 import { ACCESS as BRIDGE_ACCESS, bridgeText, STATUS_KEY as BRIDGE_KEY } from "./tabsbridge.js";
 
 const $ = (id) => document.getElementById(id);
@@ -706,25 +707,74 @@ $("bridge-toggle").addEventListener("click", async () => {
   renderBridge();
 });
 
-// The search field keeps the sections a query finds (§13). It marks the rest
-// with data-unmatched, leaving `hidden` to the platform, so clearing it shows
-// just what the platform shows.
+// The sidebar (§13), as tide for Linux's settings panel's: each group's
+// heading, then its pages, those the platform shows, with one page showing
+// at a time. The platform hides a page with `hidden`; the one showing has
+// the class `current`.
+const sidebar = $("sidebar");
+let sideRows = [];
+let showing = null;
+const buttons = new Map();
+
+function drawSidebar() {
+  sidebar.replaceChildren();
+  buttons.clear();
+  for (const row of sideRows) {
+    if (row.page === undefined) {
+      sidebar.append(Object.assign(document.createElement("h3"), { textContent: row.heading }));
+      continue;
+    }
+    const b = Object.assign(document.createElement("button"), { type: "button", textContent: row.label });
+    b.dataset.icon = row.icon;
+    b.dataset.page = row.page;
+    b.addEventListener("click", () => turnTo(row.page));
+    buttons.set(row.page, b);
+    sidebar.append(b);
+  }
+  markShowing();
+}
+
+function markShowing() {
+  for (const [id, b] of buttons) b.setAttribute("aria-current", id === showing ? "page" : "false");
+}
+
+// To page `id`, at its top: the first page for one the sidebar doesn't have.
+function turnTo(id) {
+  showing = pageToShow(id, pageIds(sideRows));
+  for (const el of document.querySelectorAll("section.page")) el.classList.toggle("current", el.id === showing);
+  markShowing();
+  $("content").scrollTop = 0;
+}
+
+// The pages the sidebar lists now.
+const listed = () => pageIds(sideRows).filter((id) => !buttons.get(id)?.hidden);
+
+// Up and Down move a page in the sidebar, as on tide, keeping to the pages
+// it lists, and take the keyboard along.
+sidebar.addEventListener("keydown", (e) => {
+  if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+  e.preventDefault();
+  turnTo(movedPage(showing, e.key === "ArrowUp" ? -1 : 1, listed()));
+  buttons.get(showing)?.focus();
+});
+
+// The search field keeps the pages a query finds (§13), hiding the rest of
+// the sidebar's buttons.
 const search = $("search");
-function filterSections() {
-  const sections = [...document.querySelectorAll("main > section")];
+function filterSidebar() {
   const { unmatched, none } = searchSections(
-    sections.map((el) => ({ id: el.id, heading: el.querySelector("h2")?.textContent ?? "", shown: !el.hidden })),
+    pageIds(sideRows).map((id) => ({ id, heading: $(id).querySelector("h2")?.textContent ?? "", shown: true })),
     search.value,
   );
-  for (const el of sections) el.toggleAttribute("data-unmatched", unmatched.includes(el.id));
+  for (const [id, b] of buttons) b.hidden = unmatched.includes(id);
   $("no-match").hidden = !none;
 }
-search.addEventListener("input", filterSections);
+search.addEventListener("input", filterSidebar);
 search.addEventListener("keydown", (e) => {
   if (e.key !== "Escape" || search.value === "") return;
   e.preventDefault();
   search.value = "";
-  filterSections();
+  filterSidebar();
 });
 
 where.then((p) => {
@@ -742,35 +792,42 @@ where.then((p) => {
   chrome.permissions.onRemoved.addListener(renderBridge);
 });
 
-// A section Launch found (§9.4), or the address's anchor: scrolled to once
-// the platform's sections are shown or hidden, and again whenever Launch
-// asks for another while this page is open. The request is cleared once
-// shown, so a later visit opens at the top.
+// The sidebar holds the pages the platform shows, as Launch lists them.
+const sidebarShown = where.then((p) => {
+  sideRows = sidebarRows(settingsSections({ tiling: p.role === TILE, linux: p.role === TABS }));
+  drawSidebar();
+});
+
+// A page Launch or the bar asked for (§9.4), or the address's anchor: shown
+// once the sidebar is drawn, and again whenever one is asked for while this
+// page is open; else the first page. The request is cleared once shown, so
+// a later visit opens on the first page.
 const SECTION_IDS = SETTINGS_SECTIONS.map((s) => s.id);
 async function showSection() {
   try {
     const asked = (await chrome.storage.session.get(SECTION_KEY))[SECTION_KEY];
     const id = sectionToShow(location.hash, asked, SECTION_IDS);
     if (asked !== undefined) await chrome.storage.session.remove(SECTION_KEY);
-    if (id === TOP) {
-      window.scrollTo({ top: 0 });
+    if (id === null || id === TOP) {
+      if (id === TOP || showing === null) turnTo(null);
       return;
     }
-    const el = id && $(id);
-    if (!el || el.hidden) return;
-    // A section the search left out comes back with every other.
-    if (el.hasAttribute("data-unmatched")) {
-      search.value = "";
-      filterSections();
+    // A page the platform hides isn't in the sidebar to show.
+    if (!pageIds(sideRows).includes(id)) {
+      if (showing === null) turnTo(null);
+      return;
     }
-    el.scrollIntoView({ block: "start" });
-    el.querySelector("h2")?.setAttribute("tabindex", "-1");
-    el.querySelector("h2")?.focus({ preventScroll: true });
+    // A page the search left out comes back with every other.
+    if (buttons.get(id)?.hidden) {
+      search.value = "";
+      filterSidebar();
+    }
+    turnTo(id);
   } catch (e) {
-    console.error("tide: couldn't show the settings section:", e);
+    console.error("tide: couldn't show the settings page:", e);
   }
 }
-where.then(filterSections).then(showSection);
+sidebarShown.then(showSection);
 window.addEventListener("hashchange", showSection);
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === "session" && changes[SECTION_KEY]?.newValue) {

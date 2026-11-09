@@ -127,7 +127,7 @@ chrome.action.onClicked.addListener(() => command("popup"));
 // The launcher runs commands too, but only ones the manifest declares, and
 // its bar and Workspaces scope show a workspace by name, and Search+Shift+W's
 // prompt moves its window to one, but only by a valid name from tide's own
-// pages. Pages on the watched origins report their titles (§10.3). The
+// pages. The overview goes to a window, asked by tide's pages alone. Pages on the watched origins report their titles (§10.3). The
 // popup turns the dim on and off, answering once it's done so the popup can
 // give back the access only after every page is undimmed.
 // Off chromeOS only the launcher's own asks apply, and only those that
@@ -159,6 +159,8 @@ function handle(message, sender, respond) {
   const valid = (name) => typeof name === "string" && checkName(name).name === name;
   if (fromTide && valid(message?.workspace)) return done(tide.workspace(message.workspace));
   if (fromTide && valid(message?.moveTo)) return done(tide.moveTo(message.moveTo));
+  // The overview goes to a window by its ID (§6.5).
+  if (fromTide && Number.isInteger(message?.activate)) return done(tide.activateWindow(message.activate));
   if (fromTide && Number.isInteger(message?.tabId) && Number.isInteger(message?.windowId)) {
     return done(tide.activateTab(message.tabId, message.windowId));
   }

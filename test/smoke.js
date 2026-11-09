@@ -92,7 +92,7 @@ test("a new install opens the settings on Extras", async () => {
 // The extension shows itself as tide (SPEC.md, top), rendered text included,
 // with tide's logo as each tab's icon.
 test("every page says tide, not tideco, under tide's logo", async () => {
-  for (const [path, ready] of [["src/options.html", "#sidebar button"], ["src/launcher.html?mode=dashboard", "#logo"], ["src/mouse.html", "body"]]) {
+  for (const [path, ready] of [["src/options.html", "#sidebar button"], ["src/launcher.html?mode=dashboard", "#logo"], ["src/overview.html", ".group"], ["src/mouse.html", "body"]]) {
     const { page, errors } = await open(path);
     await page.waitForSelector(ready);
     assert.match(await page.title(), /^tide\b/, path);
@@ -514,6 +514,52 @@ for (const mode of ["home", "dashboard"]) {
     assert.deepEqual(errors, []);
   });
 }
+
+// The overview (§6.5) groups the windows by workspace, the one showing
+// first; typing filters, and Esc closes it. Without all-sites access it
+// says why there are no pictures.
+test("the overview shows the workspace you're on, filters as you type, and closes on Esc", async () => {
+  const { page, errors } = await open("src/overview.html");
+  await page.waitForSelector(".group.current .header");
+  await page.evaluate(() => {
+    window.closes = 0;
+    window.close = () => window.closes++;
+  });
+  const { state } = await worker.evaluate(() => chrome.storage.local.get("state"));
+  assert.equal(await page.locator(".group.current .header").innerText(), state.current);
+  assert.match(await page.locator("#notes").innerText(), /No pictures: they need the dim's access/);
+  await page.keyboard.type("zzqqxx");
+  await page.waitForSelector("text=No windows match");
+  assert.equal(await page.locator("#filter").innerText(), "zzqqxx");
+  for (let i = 0; i < 6; i++) await page.keyboard.press("Backspace");
+  await page.waitForSelector(".group.current .header");
+  await page.keyboard.press("Escape");
+  assert.equal(await page.evaluate(() => window.closes), 1);
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
+// A window's picture is kept small (§6.5): shrinking runs where the worker
+// would run it, with no DOM, only OffscreenCanvas.
+test("a picture is shrunk to a card's width", async () => {
+  const { page, errors } = await open("src/overview.html");
+  await page.waitForSelector(".group.current .header");
+  const size = await page.evaluate(async () => {
+    const { shrink, PICTURE_WIDTH } = await import("./pictures.js");
+    const canvas = document.createElement("canvas");
+    canvas.width = 1920;
+    canvas.height = 1080;
+    canvas.getContext("2d").fillRect(0, 0, 960, 540);
+    const small = await shrink(canvas.toDataURL("image/jpeg"));
+    const img = new Image();
+    img.src = small;
+    await img.decode();
+    return { width: img.naturalWidth, height: img.naturalHeight, max: PICTURE_WIDTH, jpeg: small.startsWith("data:image/jpeg;base64,") };
+  });
+  assert.deepEqual(size, { width: size.max, height: 270, max: 480, jpeg: true });
+  assert.deepEqual(errors, []);
+  await page.close();
+});
 
 // The bar names the workspaces in bar order, the standing ones before
 // they're made, and a click shows one by name (§6.1).

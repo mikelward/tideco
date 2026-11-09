@@ -275,3 +275,14 @@ test("a right-click on each bar item opens a settings section, or the top", () =
   assert.equal(BAR_SECTIONS.clocks, "clocks-section");
   assert.equal(BAR_SECTIONS.logo, TOP);
 });
+
+// The overview has no key yet (§6.5), so the dashboard is a way to it: its
+// command is in Actions, and Launch finds it.
+test("the dashboard finds the overview, which has no key to show", () => {
+  const manifest = JSON.parse(readFileSync(new URL("../manifest.json", import.meta.url))).commands;
+  const list = items({ commands: manifest });
+  const row = list.find((i) => i.command === "overview");
+  assert.deepEqual({ title: row.title, key: row.key }, { title: "Overview of every workspace's windows", key: "" });
+  assert.ok(rank("", list, { scope: "actions", limit: Infinity }).includes(row));
+  assert.equal(rank("overview", list, { scope: "launch" })[0]?.command, "overview");
+});

@@ -27,9 +27,17 @@ export class FakeChrome {
         get: async (key) => (key in fake.syncStore ? { [key]: structuredClone(fake.syncStore[key]) } : {}),
       },
       session: {
-        get: async (key) => (key in fake.sessionStore ? { [key]: structuredClone(fake.sessionStore[key]) } : {}),
+        get: async (key) =>
+          key === null || key === undefined
+            ? structuredClone(fake.sessionStore)
+            : key in fake.sessionStore
+              ? { [key]: structuredClone(fake.sessionStore[key]) }
+              : {},
         set: async (items) => {
           for (const [k, v] of Object.entries(items)) fake.sessionStore[k] = structuredClone(v);
+        },
+        remove: async (keys) => {
+          for (const k of [keys].flat()) delete fake.sessionStore[k];
         },
       },
     };
@@ -148,7 +156,20 @@ export class FakeChrome {
     };
     this.tabUpdates = [];
     this.createdTabs = [];
+    // Each capture's window, in order. A picture is "data:<window>,<n>",
+    // `n` counting captures, so a test can tell a fresh one.
+    this.captures = [];
     this.tabs = {
+      // As Chrome: all-sites access, a window that shows, and a page that
+      // isn't Chrome's own.
+      captureVisibleTab: async (id) => {
+        const w = fake.win(id);
+        if (!fake.granted) throw new Error("Either the '<all_urls>' or 'activeTab' permission is required.");
+        if (w.state === "minimized") throw new Error("Failed to capture tab: view is invisible");
+        if ((w.url ?? "chrome://newtab/").startsWith("chrome")) throw new Error("Cannot access contents of url");
+        fake.captures.push(id);
+        return `data:${id},${fake.captures.length}`;
+      },
       create: async (props) => {
         fake.createdTabs.push(props);
       },

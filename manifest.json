@@ -46,6 +46,9 @@
         "default": "Alt+Shift+Space"
       }
     },
+    "overview": {
+      "description": "Overview of every workspace's windows"
+    },
     "swap-master": {
       "description": "Swap the window with the master (Search+Shift+M)"
     },

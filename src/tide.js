@@ -6,6 +6,7 @@
 import { appOf, appOfUrl, DEFAULT_APPS, homeAppOf } from "./apps.js";
 import { DEFAULT_SETTINGS, load as loadSettings, workspaceSetting } from "./settings.js";
 import { overlay } from "./dim.js";
+import { Pictures } from "./pictures.js";
 import { toggle as toggleKeepAwake } from "./keepawake.js";
 import { matchWindows, windowUrls } from "./restart.js";
 import * as geometry from "./geometry.js";
@@ -93,6 +94,8 @@ export class Tide {
     this.later = (f, ms) => setTimeout(f, ms);
     // When each pinned app came back on each workspace, by "ws\napp".
     this.reopens = new Map();
+    // The overview's pictures of windows (§6.5), on tide's clock.
+    this.pictures = new Pictures(api, { now: () => this.now() });
   }
 
   // Run one step at a time: events arrive faster than Chrome answers, and
@@ -690,6 +693,7 @@ export class Tide {
     if (name === "workspace-last") return this.showWorkspace(display, ws.last(s, n));
     if (name === "popup") return this.dashboard(display);
     if (name === "workspace-go") return this.dashboard(display, "go");
+    if (name === "overview") return this.dashboard(display, "overview");
     if (name === "app-browser") return this.browser(display);
     if (name === "attention") return this.attention();
     if (name === "keep-awake") {
@@ -783,13 +787,13 @@ export class Tide {
     await this.api.action?.setBadgeBackgroundColor({ color: elsewhere ? BADGE_ATTENTION : BADGE });
   }
 
-  // The launcher page full screen on `display` (§6.2, §8.1): opened on that
-  // display first, since Chrome won't take a position and a full-screen
-  // state in one call.
-  async fullscreen(mode, display, focused, extra = "") {
+  // One of tide's pages, `page` under src/, full screen on `display` (§6.2,
+  // §6.5, §8.1): opened on that display first, since Chrome won't take a
+  // position and a full-screen state in one call.
+  async fullscreen(page, display, focused) {
     const b = display.bounds;
     const w = await this.api.windows.create({
-      url: this.api.runtime.getURL(`src/launcher.html?mode=${mode}${extra}`),
+      url: this.api.runtime.getURL(`src/${page}`),
       type: "popup",
       focused,
       left: b.left,
@@ -805,9 +809,10 @@ export class Tide {
   // screen over the focused display. The key again closes it (§8.1).
   // `how` is "tabs" for that, "go" for Search+W's name prompt, on the
   // Workspaces scope, and "move" for Search+Shift+W's, which moves window
-  // `moving` (§6.1), offering home if that's one of home's apps'. A new
-  // window's prompt starts its field as `name`. A different one's key swaps
-  // it for that one.
+  // `moving` (§6.1), offering home if that's one of home's apps'; and
+  // "overview" for the overview (§6.5), its own page, which first takes
+  // the picture of the window you're in. A new window's prompt starts its
+  // field as `name`. A different one's key swaps it for that one.
   async dashboard(display, how = "tabs", moving = null, name = "") {
     const s = this.state;
     if (s.dashboard !== undefined) {
@@ -820,12 +825,28 @@ export class Tide {
       if (was === how) return null;
     }
     const d = this.displays.find((x) => x.id === display) ?? this.displays[0];
-    let extra = { tabs: "", go: "&scope=workspaces", move: "&scope=workspaces&move=1" }[how];
-    if (name) extra += `&name=${encodeURIComponent(name)}`;
-    s.dashboard = (await this.fullscreen("dashboard", d, true, extra)).id;
+    let page = `launcher.html?mode=dashboard${{ tabs: "", go: "&scope=workspaces", move: "&scope=workspaces&move=1" }[how] ?? ""}`;
+    if (name) page += `&name=${encodeURIComponent(name)}`;
+    if (how === "overview") {
+      const f = this.focusedWindow();
+      if (this.dimGranted && f !== null && ws.isShown(s, f)) await this.pictures.take(f);
+      page = "overview.html";
+    }
+    s.dashboard = (await this.fullscreen(page, d, true)).id;
     if (how !== "tabs") s.dashboardFor = how;
     if (moving !== null) s.moving = moving;
     return null;
+  }
+
+  // A window chosen in the overview (§6.5): it comes forward with its
+  // workspace, restored if you'd minimized it (§6.1 Activate). One that
+  // closed meanwhile changes nothing.
+  activateWindow(id) {
+    return this.run(async () => {
+      await this.sync();
+      this.restored();
+      await this.apply(id in this.state.windows ? this.activate(id) : null);
+    });
   }
 
   // A tab chosen in the launcher: its tab comes forward, and its window with
@@ -931,7 +952,7 @@ export class Tide {
       if (!empty) delete s.homeShownFor[display.id];
       if (empty && home === undefined && s.homeShownFor[display.id] !== n) {
         s.homeShownFor[display.id] = n;
-        const w = await this.fullscreen("home", display, wantFocus);
+        const w = await this.fullscreen("launcher.html?mode=home", display, wantFocus);
         s.homes[display.id] = w.id;
       } else if (!empty && home !== undefined) {
         delete s.homes[display.id];
@@ -984,6 +1005,10 @@ export class Tide {
         refusedNow.push(id);
       }
     };
+    // The window you were in keeps its picture for the overview (§6.5),
+    // taken before it hides; the rest were taken while they showed.
+    const was = this.focusedWindow();
+    if (this.dimGranted && minimize.includes(was)) await this.pictures.take(was);
     for (const id of restore) await setState(id, "normal");
     for (const id of minimize) await setState(id, "minimized");
     for (const id of refusedNow) {
@@ -1028,5 +1053,20 @@ export class Tide {
     await this.dim(focus ?? this.focusedWindow());
     await this.badge();
     await this.save();
+    await this.refreshPictures();
+  }
+
+  // The windows showing have their pictures taken in turn, in the
+  // background, while no page of tide's covers them (§6.5); a closed
+  // window's picture goes.
+  async refreshPictures() {
+    const s = this.state;
+    await this.pictures.forget(new Set(this.windows.keys()));
+    if (!this.dimGranted || s.dashboard !== undefined) return;
+    const shown = Object.keys(s.windows).map(Number).filter((id) => ws.isShown(s, id));
+    this.pictures.refresh(shown, (id) => {
+      const now = this.state;
+      return now.dashboard === undefined && ws.isShown(now, id) && this.windows.get(id)?.state !== "minimized";
+    });
   }
 }

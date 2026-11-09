@@ -1,5 +1,5 @@
 ---
-last_modified: 2026-11-07
+last_modified: 2026-11-09
 ---
 
 # tide for Chrome: design spec (milestone 1)
@@ -778,6 +778,74 @@ is logged and skipped, so it can't stop the rest of a workspace switch.
 tide for Chrome then stops managing it, like an always-on-top window, so it isn't read
 as a window you restored by hand on the next event.
 
+### 6.5 The overview
+
+**Built** (2026-11-09), tested only with FakeChrome and the smoke test. It
+follows tide for macOS's (tide for macOS §6.9). chromeOS's own Overview shows
+every workspace's windows mixed together, the parked ones among them
+(§6.3), so tide has its own.
+
+- **What it is:** tide's page `src/overview.html`, full screen over the
+  focused display, opened as the dashboard is (§8.1). `overview.js` makes
+  the cards from tide's stored state and Chrome's windows;
+  `overviewview.js` shows them, on the dashboard's stylesheet.
+- **The groups:** each workspace with a window tide manages is a group,
+  headed by its name. The one showing comes first, then the rest in bar
+  order. The one showing is listed even with no windows, and says so.
+- **The cards:** every window tide manages on that workspace, on any
+  display: each display's in turn, its tiles in stack order, then its
+  floats. Each has its picture, else its favicon, then its title and its
+  app: the app key's app it belongs to, else "Browser window", with its
+  tab count, else its site. One you minimized says so.
+- **Pictures** (`src/pictures.js`). `tabs.captureVisibleTab` captures a
+  window's active tab only while it shows, and tide parks the other
+  workspaces' windows by minimizing them (§6.1). So tide takes each
+  window's picture while it shows and keeps the latest:
+  - the window you're in, just before a switch hides it, and as the
+    overview opens;
+  - in the background, each window showing whose picture is over 15
+    seconds old, one every 600 ms, since Chrome allows two captures a
+    second (`MAX_CAPTURE_VISIBLE_TAB_CALLS_PER_SECOND`), and none while a
+    page of tide's covers them;
+  - shrunk to 480 px wide in the worker (`OffscreenCanvas`), kept in
+    `storage.session` by window, and dropped when the window closes.
+  A capture needs all-sites access or activeTab
+  (`PermissionsData::CanCaptureVisiblePage`). activeTab lasts only for a
+  tab you clicked tide's button in, so pictures use the dim's optional
+  `<all_urls>` (§10.1); tide asks for nothing more. Without it the cards
+  show favicons, and the footer says so, linking to Extras. `chrome://`
+  pages and the Web Store can't be captured, so those windows show their
+  icon too.
+- **Titles and favicons need tab search or all-sites access** (§14.1).
+  Without either, a card names its app, and the footer says so.
+- **Choosing:**
+  - A click on a card, or the arrows and Enter, goes to that window: its
+    workspace comes with it, and one you minimized is restored (Activate,
+    §6.1). The arrows step through the cards in order, starting on the
+    window you were in.
+  - A click on a group's header shows that workspace.
+  - Typing filters the cards by title and app with the launcher's fuzzy
+    match (§9.4). Backspace takes a letter back.
+- **Closing:** Esc, its key again, a click on empty space, or a click on
+  another window. The dashboard's key swaps it for the dashboard, and back.
+- **Its key isn't settled.** tide for Linux and macOS put the overview on
+  `Super+W` for now. Here `Search+W` is the name prompt (§6.1), so the
+  `overview` command has no default key, and Chrome's four suggested keys
+  are taken anyway (§7.1). Bind one at `chrome://extensions/shortcuts`,
+  or open it from the dashboard: Launch and Actions find "Overview of
+  every workspace's windows".
+- **The page talks to tide** as the dashboard does: it reads `state` from
+  `storage.local` and the pictures from `storage.session`, and sends
+  `{ activate: id }` or `{ workspace: name }`, which tide takes only from
+  its own pages.
+- **Unchecked on a Chromebook:** that `captureVisibleTab` works for app
+  windows and tide's app popups as for browser windows; how long a capture
+  takes, which a switch waits for; that a capture just before minimizing
+  shows the window as it was, not mid-animation; whether a window partly
+  under another captures its own contents; the page's look; and whether
+  chromeOS's full-screen bubble shows as it opens, as for the dashboard.
+  Each unfocused window's picture carries the dim, if it's on.
+
 ## 7. Keys
 
 ### 7.1 The map
@@ -796,6 +864,7 @@ Bound by tide for Chrome, unless the column says the Shortcuts app:
 | `Search+Shift+Page Up` / `Page Down` | send to previous / next workspace | tide for Chrome |
 | `Search+J` / `K`, with Shift | focus / move down and up the stack | tide for Chrome |
 | `Search+Space` | the dashboard: tide for Chrome's bar and launcher, full screen (§8.1) | tide for Chrome |
+| none yet (tide for Linux and macOS: `Super+W`, for now) | the overview of every workspace's windows (§6.5); here `Search+W` is the name prompt, so it has no default key, and its key isn't settled | tide for Chrome, bound by hand |
 | `Search+Shift+M` (tide for Linux: `Super+Return`) | swap with master | tide for Chrome |
 | `Search+N` / `Search+H` (tide for Linux: `Super+\` / `Super+/`) | grow / shrink master | tide for Chrome |
 | `Search+I` / `Search+D` (tide for Linux: `Super+=` / `Super+-`) | add / remove a master, dwm's letters | tide for Chrome (Search+D after removing dictation's shortcut; §7.2) |
@@ -904,7 +973,7 @@ Search+Alt and Search+Ctrl are allowed too, and untried unless listed.
 | T | reserved: the terminal (§1) | | |
 | U | | | |
 | V | OS: clipboard history | | |
-| W | tide for Chrome: go to a workspace by name | tide for Chrome: move the window to a workspace by name | |
+| W | tide for Chrome: go to a workspace by name (tide for Linux and macOS: the overview, for now; §6.5) | tide for Chrome: move the window to a workspace by name | |
 | X | OS: picture-in-picture | | |
 | Y | tide for Chrome: app 4 (YouTube Music) | | |
 | Z | OS: window layout menu | | |
@@ -1449,7 +1518,8 @@ program, so tide for Chrome's list is web addresses alone.
     those popups float and a restart loses workspaces.
   - Each unread-count site's own origin (§10.3). Gmail, Chat and Calendar
     are one Allow.
-  - `<all_urls>`, for dimming inactive windows (§10.1).
+  - `<all_urls>`, for dimming inactive windows (§10.1). The overview's
+    pictures of windows use it too (§6.5).
 - On Linux only, `tabs` and `nativeMessaging` together, for tide for Linux's
   switcher (§14.6). They're asked for from their own Allow on the settings,
   never on chromeOS.
@@ -1599,7 +1669,7 @@ each event, since Chrome answers at once.
 
 | Repo | Gets |
 |---|---|
-| **tide for Chrome** (this) | The spec. The extension: worker, layout geometry, workspaces, the full-screen dashboard and home page with the launcher, options page with the checklist, attention and dim content scripts. Its tests. |
+| **tide for Chrome** (this) | The spec. The extension: worker, layout geometry, workspaces, the full-screen dashboard and home page with the launcher, the overview, options page with the checklist, attention and dim content scripts. Its tests. |
 | **tide for Linux** | Its layout fixtures (window counts → rectangles) are the reference tide for Chrome's geometry tests are checked against, copied with a note of the commit. Its settings matcher, copied unchanged for the options page's search (§13). `tide-tabs`, the native-messaging host and relay tide for Chrome's Linux tab list talks to, and the switcher's side of it (§14.6). |
 | **conf** | The shared `clocks.json` and layouts settings, if tide for Chrome imports them (§13). Crostini needs nothing new: the Debian path already covers it. |
 | **scripts** | `setup` installs `tide-tabs`'s host manifest for Chrome and Brave, naming tide for Chrome's extension ID (§14.6). `setup` detects Crostini (`/dev/.cros_milestone` or `/opt/google/cros-containers`, *(unverified on a device)*) and skips the desktop: no KDE, no tide for Linux, no display manager (A.5). |
@@ -1632,9 +1702,10 @@ each event, since Chrome answers at once.
   results don't stand in for M2's device checks.
   - `test/smoke.js`, run by `make smoke` and CI's `smoke` job, checks that
     the worker starts, that the options page lists every page and
-    saves a setting and a checklist tick, and that the home page and
-    dashboard render the bar, clocks, launcher and calendar, all with no
-    page errors. Content scripts aren't covered yet.
+    saves a setting and a checklist tick, that the home page and
+    dashboard render the bar, clocks, launcher and calendar, and that the
+    overview renders, filters and closes and shrinks a picture, all with
+    no page errors. Content scripts aren't covered yet.
   - Playwright is tide for Chrome's one dependency, a pinned dev dependency for tests
     only; the extension still loads `src/` as it is. CI caches npm and
     Chromium, and mikelward/npm-update batches its updates weekly.

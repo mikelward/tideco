@@ -12,6 +12,8 @@ TESTS = \
 	src/presets_test.js \
 	src/mouse_test.js \
 	src/optionspages_test.js \
+	src/overview_test.js \
+	src/pictures_test.js \
 	src/optionssearch_test.js \
 	src/restart_test.js \
 	src/settings_test.js \

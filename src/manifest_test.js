@@ -39,7 +39,7 @@ test("every icon the manifest names is a PNG of its size", () => {
 
 // The extension shows itself as tide; tide is only the repo's and the
 // code's name, which users never see.
-const PAGES = ["src/launcher.html", "src/options.html", "src/mouse.html"];
+const PAGES = ["src/launcher.html", "src/overview.html", "src/options.html", "src/mouse.html"];
 const page = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
 test("the name Chrome shows, in chrome://extensions, the toolbar and the shortcuts, is tide", () => {
@@ -114,6 +114,8 @@ test("frequent actions take no modifier but Search, and no two commands share a 
   for (const [name, c] of Object.entries(manifest.commands)) {
     const key = keyOf(c);
     if (frequent.test(name)) assert.match(key, /^Search\+[^+]+$/, `${name}: ${key}`);
+    // A command with no key yet is yours to place (§7.1).
+    if (key === "") continue;
     assert.ok(!seen.has(key), `${name} and ${seen.get(key)} both take ${key}`);
     seen.set(key, name);
   }
@@ -371,6 +373,30 @@ test("on chromeOS, the name prompt's move is asked by tide's pages only, by a va
   // A valid name reaches tide, which has no prompt's window to move here.
   await fire(w, "runtime.onMessage", { moveTo: "notes" }, launcher, (a) => (answer = a));
   assert.equal(answer, false);
+});
+
+// tide for Linux and macOS put the overview on Super+W for now, but here
+// Search+W is the name prompt, so the overview has no key yet (§6.5, §7.1).
+test("the overview is a command with no key yet, and Search+W stays the name prompt", () => {
+  const c = manifest.commands.overview;
+  assert.equal(c.description, "Overview of every workspace's windows");
+  assert.equal(c.suggested_key, undefined);
+  assert.equal(/\(([^)]*)\)$/.exec(c.description), null, "no key in its description");
+});
+
+// The overview goes to a window by its ID (§6.5), asked by tide's pages
+// alone.
+test("on chromeOS, the overview's window is asked for by tide's pages only", async () => {
+  const w = await startWorker("cros");
+  const overview = { url: "chrome-extension://tide/src/overview.html" };
+  const site = { url: "https://example.com/", tab: { id: 5, windowId: 6, url: "https://example.com/" } };
+  let answer = "none";
+  await fire(w, "runtime.onMessage", { activate: 7 }, site, (a) => (answer = a));
+  assert.equal(answer, undefined, "a website can't");
+  await fire(w, "runtime.onMessage", { activate: "7" }, overview, (a) => (answer = a));
+  assert.equal(answer, undefined, "nor by anything but an ID");
+  await fire(w, "runtime.onMessage", { activate: 7 }, overview, (a) => (answer = a));
+  assert.equal(answer, true, "a window tide doesn't know changes nothing");
 });
 
 test("the two name prompt commands are in the manifest, with their keys", () => {

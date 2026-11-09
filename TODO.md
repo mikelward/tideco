@@ -31,6 +31,24 @@ visible flicker; that unplugging a display hands its windows to the first
 left, and plugging it back returns them; and that a window chromeOS moves
 with the unplug isn't read as a drag.
 
+## The overview of every workspace (SPEC.md §6.5)
+
+The MVP is built, as tide for macOS's (its SPEC.md §6.9), tested with
+FakeChrome and the smoke test.
+
+- [x] The page (`src/overview.html`), its cards (`src/overview.js`) and the
+      `overview` command, which the dashboard finds too.
+- [x] Pictures of windows, taken while they show (`src/pictures.js`), with
+      all-sites access; icons otherwise, and the page says why.
+- [ ] Its key. tide for Linux and macOS put it on `Super+W` for now, but
+      here `Search+W` is the name prompt (§6.1), so it has none: bind one
+      at `chrome://extensions/shortcuts`. Not settled; see *Decisions
+      needing review*.
+- [ ] Try it on a Chromebook: the captures, their timing and look (§6.5's
+      unchecked list).
+- [ ] This workspace's windows alone, as tide for macOS's Ctrl+Down does.
+- [ ] Pictures as their own extra, if sharing the dim's access is wrong.
+
 ## Decisions needing review
 
 Guesses made on autopilot (2026-10-24), each cheap to undo.
@@ -379,6 +397,31 @@ Guesses made on autopilot (2026-10-24), each cheap to undo.
   reconnect. Reversible: the protocol, with tide for Linux's `tide-tabs`.
 - **No incognito windows in tide for Linux's list**, even where you've allowed tide for Chrome
   in incognito. Reversible: the filter in `tabsMessage`.
+- **The overview has no key yet** (2026-11-09). tide for Linux and macOS
+  put it on `Super+W` for now, without settling it. Here `Search+W` is
+  the name prompt (§6.1), and existing keys don't change yet, so the
+  `overview` command suggests none (Chrome allows four suggested keys,
+  all taken): you bind one at `chrome://extensions/shortcuts`, or choose
+  it in the dashboard, which finds it as "Overview of every workspace's
+  windows". The keys checklist lists it as yours to choose. To settle
+  across tide for Linux, macOS and Chrome. Reversible: `manifest.json`.
+- **The overview's pictures use the dim's all-sites access** (2026-11-09),
+  the one access `tabs.captureVisibleTab` takes besides activeTab, which
+  lasts only for a tab you clicked tide's button in. So turning the dim
+  on allows pictures, and turning it off, which gives the access back,
+  stops them. The alternative is a fourth extra for pictures alone, which
+  would also turn the dim on, as granting all-sites access does now.
+  Reversible: `ACCESS` in `src/pictures.js` and the grant handling in
+  `src/background.js`.
+- **When pictures are taken** (2026-11-09): the window you were in, just
+  before a switch hides it; the window you're in as the overview opens;
+  and in the background, every window showing whose picture is over 15
+  seconds old, 600 ms apart (Chrome allows two a second), never while a
+  page of tide's covers them. A switch never waits for more than one
+  capture, and a second switch within 600 ms takes none. Each is shrunk
+  to 480 px wide and kept in `storage.session` until its window closes or
+  the browser restarts. An unfocused window's picture carries the dim.
+  Reversible: `src/pictures.js` and `Tide.apply`.
 - **Waiting: a `key` in the manifest** (needs the maintainer). Without it an
   unpacked copy's ID comes from its folder's path, so `setup` allows both
   that ID and the store's. The store item's public key (dashboard ›

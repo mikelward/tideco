@@ -582,6 +582,126 @@ test("a dashboard that closed itself is forgotten", async () => {
   assert.equal(chrome.wins.filter((w) => w.url === DASHBOARD).length, 1, "the next press opens a new one");
 });
 
+// The overview (§6.5): its own page, full screen, on its key alone.
+const OVERVIEW = "chrome-extension://tide/src/overview.html";
+const SITE = "https://example.com/";
+
+test("the overview opens full screen on the focused display, and its key closes it", async () => {
+  const { chrome, tide } = await setup([HD, UW], [on(HD, 1), on(UW, 2, { focused: true })]);
+  await tide.command("overview");
+  const [o] = chrome.wins.filter((w) => w.url === OVERVIEW);
+  assert.ok(o, "the overview opened");
+  assert.equal(o.state, "fullscreen");
+  assert.equal(o.focused, true);
+  assert.deepEqual(chrome.box(o.id), { x: 1920, y: 0, w: 3440, h: 1440 }, "on the ultrawide, where the focus was");
+  assert.equal(o.id in tide.state.windows, false, "it isn't tiled or tracked");
+  await tide.command("overview");
+  assert.equal(chrome.wins.some((w) => w.url === OVERVIEW), false, "the key again closes it");
+  // The dashboard's key swaps it for the dashboard, and back.
+  await tide.command("overview");
+  await tide.command("popup");
+  assert.deepEqual(chrome.wins.filter((w) => w.url === OVERVIEW || w.url === DASHBOARD).map((w) => w.url), [DASHBOARD]);
+  await tide.command("overview");
+  assert.deepEqual(chrome.wins.filter((w) => w.url === OVERVIEW || w.url === DASHBOARD).map((w) => w.url), [OVERVIEW]);
+});
+
+test("a window chosen in the overview comes with its workspace, restored", async () => {
+  const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true }), on(HD, 2)]);
+  await tide.command("send-2");
+  await tide.command("overview");
+  await tide.activateWindow(1);
+  assert.equal(tide.state.current, "re", "its workspace shows");
+  assert.equal(chrome.win(1).state, "normal");
+  assert.equal(chrome.win(1).focused, true);
+  assert.equal(chrome.win(2).state, "minimized", "and the one you were in goes");
+  // One you minimized comes back too.
+  chrome.win(1).state = "minimized";
+  chrome.focus(2);
+  await tide.command("workspace-1");
+  await tide.activateWindow(1);
+  assert.equal(chrome.win(1).state, "normal");
+  assert.equal(tide.state.windows[1].minimizedByYou, false);
+  // One that closed meanwhile changes nothing.
+  const before = tide.state.current;
+  await tide.activateWindow(99);
+  assert.equal(tide.state.current, before);
+});
+
+// Pictures (§6.5) need all-sites access, the dim's; tide's clock and the
+// pictures' timer are the test's.
+function pictured(tide) {
+  const pending = [];
+  let t = 1_000_000;
+  tide.now = () => t;
+  tide.pictures.later = (f) => pending.push(f);
+  return {
+    pending,
+    fire: async (ms) => {
+      t += ms;
+      for (const f of pending.splice(0)) await f();
+    },
+  };
+}
+
+test("a window's picture is taken before a switch hides it", async () => {
+  const { chrome, tide } = await setup([HD], [on(HD, 1, { url: SITE, focused: true }), on(HD, 2, { url: SITE })]);
+  chrome.granted = true;
+  const clock = pictured(tide);
+  tide.pictures.shrink = async (raw) => raw;
+  // Only the switch takes pictures here, none in the background.
+  tide.pictures.refresh = () => {};
+  await tide.command("send-2");
+  chrome.focus(2);
+  await tide.event();
+  await clock.fire(1000);
+  chrome.captures.length = 0;
+  await tide.command("workspace-2");
+  assert.deepEqual(chrome.captures, [2], "the window you were in, while it showed");
+  assert.match(chrome.sessionStore["picture:2"].url, /^data:2,/);
+});
+
+test("the windows showing have their pictures taken in turn, and none behind tide's pages", async () => {
+  const { chrome, tide } = await setup([HD], [on(HD, 1, { url: SITE, focused: true }), on(HD, 2, { url: SITE })]);
+  chrome.granted = true;
+  const clock = pictured(tide);
+  tide.pictures.shrink = async (raw) => raw;
+  await tide.event();
+  await clock.fire(1000);
+  await clock.fire(1000);
+  assert.deepEqual(chrome.captures, [1, 2]);
+  assert.deepEqual(Object.keys(chrome.sessionStore).filter((k) => k.startsWith("picture:")).sort(), ["picture:1", "picture:2"]);
+  // Behind the dashboard there's nothing to capture.
+  await clock.fire(60_000);
+  await tide.command("popup");
+  await clock.fire(1000);
+  assert.deepEqual(chrome.captures, [1, 2]);
+  // A closed window's picture goes.
+  await tide.command("popup");
+  chrome.wins = chrome.wins.filter((w) => w.id !== 2);
+  await tide.event();
+  assert.equal(chrome.sessionStore["picture:2"], undefined);
+});
+
+test("the overview takes the picture of the window you're in as it opens", async () => {
+  const { chrome, tide } = await setup([HD], [on(HD, 1, { url: SITE, focused: true })]);
+  chrome.granted = true;
+  pictured(tide);
+  tide.pictures.shrink = async (raw) => raw;
+  await tide.command("overview");
+  assert.deepEqual(chrome.captures, [1]);
+});
+
+test("without all-sites access tide takes no pictures", async () => {
+  const { chrome, tide } = await setup([HD], [on(HD, 1, { url: SITE, focused: true }), on(HD, 2, { url: SITE })]);
+  const clock = pictured(tide);
+  await tide.command("send-2");
+  await tide.command("workspace-2");
+  await tide.command("overview");
+  await clock.fire(1000);
+  assert.deepEqual(chrome.captures, []);
+  assert.deepEqual(clock.pending, []);
+});
+
 // The name prompt (§6.1) is the dashboard on its Workspaces scope.
 const PROMPT = `${DASHBOARD}&scope=workspaces`;
 const MOVE_PROMPT = `${PROMPT}&move=1`;

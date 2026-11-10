@@ -152,8 +152,10 @@ export function singleWidthFor(area, was, now) {
 // Every layout's edges move one way as the share grows, so bisection finds
 // the shares that put the edge on pixel `x`, and the middle one is taken.
 export function mfactFor(mode, area, n, o, singleRules, i, edge, x) {
+  // Object.assign, not spread: tide on KDE copies this file, and KWin's
+  // script engine has no object spread.
   const at = (mfact) => {
-    const b = arrange(mode, area, n, { ...o, mfact }, singleRules)[i];
+    const b = arrange(mode, area, n, Object.assign({}, o, { mfact }), singleRules)[i];
     return edge === "left" ? b.x : b.x + b.w;
   };
   const [lo, hi] = [0.05, 0.95];

@@ -1070,15 +1070,18 @@ Instead:
   stylesheet. Neither bar has an appearance (dark mode) button.
 - **A right-click on a bar item opens its settings page,** as tide for Linux's
   bar opens a page (tide for Linux §7.1), in place of Chrome's menu
-  (`BAR_SECTIONS` in `launcher.js`): the workspaces and the title, which
+  (`BAR_SECTIONS` in `launcher.js`, kept in step with tide for Linux's
+  `shell/lib/barsettings.mjs`): the workspaces and the title, which
   names the workspace here, open Workspaces, and the clocks Clocks. The
-  logo and keep awake open the first page, since tide for Chrome has no
-  page for them, where tide for Linux's open its first page and Idle.
+  logo, and the bar anywhere off its items, open the Bar page, as tide
+  for Linux's do. Keep awake opens the first page, since tide for Chrome
+  has no Idle page, which tide for Linux's opens.
 - **The bar can sit along the bottom** of the dashboard and the home page,
   as tide for Linux's can along its monitor's (`barPosition`, `"top"` or
   `"bottom"`, the same key and values as tide for Linux's
-  `appearance.json`). The options page's **Bar** row under Appearance sets
-  it, shared, and an open dashboard or home page moves the bar at once. At
+  `appearance.json`). The options page's **Bar** page, after Appearance
+  as in tide for Linux, sets it in its **Position** row, Top or Bottom,
+  shared, and an open dashboard or home page moves the bar at once. At
   the bottom the page is mirrored top to bottom: the launcher sits above
   the bar, its field below the results with the best result next to it
   and the scope chips under it, so Up goes on to the next result; the
@@ -1386,8 +1389,9 @@ Crostini runs kitty, the shell config and the terminal tools, so `conf` and
   its title and what to know first. Each scrolls on its own. A page has
   tide for Linux's name where it's the same page: Mouse and Keyboard (the
   keys checklist) under Hardware; Layouts and Workspaces under Windows;
-  Appearance (where the bar sits, §8.1, and the dim's strength), Notifications (unread counts), Clocks
-  and Start at login under General. Chrome's own pages follow tide's in
+  Appearance (the dim's strength), Bar (where the bar sits, §8.1),
+  Notifications (unread counts), Clocks and Start at login under
+  General. Chrome's own pages follow tide's in
   their group: Apps under Windows; Extras, Tabs in tide's switcher (Linux
   only), the Setup checklist, and Import and export at the end of General
   *(a guess)*. A page the platform hides (§14.6) isn't in the sidebar,

@@ -179,7 +179,7 @@ test("off chromeOS, the settings and dashboard keep only what places no window",
   const { page, errors } = await open("src/options.html?real-platform");
   await page.waitForSelector("#untiled:not([hidden])");
   await page.waitForSelector("#sidebar button");
-  assert.deepEqual(await sidebarText(page), ["Hardware", "Keyboard", "Windows", "Apps", "General", "Clocks", "Extras", ...(ON_LINUX ? ["Tabs in tide's switcher"] : []), "Import and export"]);
+  assert.deepEqual(await sidebarText(page), ["Hardware", "Keyboard", "Windows", "Apps", "General", "Bar", "Clocks", "Extras", ...(ON_LINUX ? ["Tabs in tide's switcher"] : []), "Import and export"]);
   // The first page shows.
   assert.equal(await page.locator("h2:visible").innerText(), "Keyboard");
   assert.match(await page.locator("#untiled").innerText(), new RegExp(`only on chromeOS, so on ${HOST_OS}`));
@@ -223,7 +223,7 @@ test("the options page renders every page and saves changes", async () => {
   assert.deepEqual(await sidebarText(page), [
     "Hardware", "Mouse", "Keyboard",
     "Windows", "Layouts", "Workspaces", "Apps",
-    "General", "Appearance", "Notifications", "Clocks", "Start at login", "Extras", "Setup checklist", "Import and export",
+    "General", "Appearance", "Bar", "Notifications", "Clocks", "Start at login", "Extras", "Setup checklist", "Import and export",
   ]);
   // One page shows at a time, the first to start with, under its title.
   assert.deepEqual(await page.locator("h2:visible").allInnerTexts(), ["Mouse"]);
@@ -516,7 +516,7 @@ for (const mode of ["home", "dashboard"]) {
 }
 
 // With the setting, the bar sits along the bottom (§8.1): the options
-// page's Bar row moves it at once on an open home page, with the launcher
+// Bar page's Position row moves it at once on an open home page, with the launcher
 // above it, the clocks' panel above that, and the best result next to the
 // field, so Up goes on to the next.
 test("the Bar setting puts the bar along the bottom, live, with the launcher above it", async () => {
@@ -529,7 +529,7 @@ test("the Bar setting puts the bar along the bottom, live, with the launcher abo
     assert.equal((await box(".bar")).top, 0, "the bar starts on top");
 
     await settings.page.waitForSelector("#sidebar button");
-    await turnTo(settings.page, "dim");
+    await turnTo(settings.page, "bar");
     assert.equal(await settings.page.locator("#bar-position").inputValue(), "top");
     assert.deepEqual(await settings.page.locator("#bar-position option").allInnerTexts(), ["Top", "Bottom"]);
     await settings.page.locator("#bar-position").selectOption("bottom");
@@ -959,9 +959,10 @@ test("Launch finds a settings section and opens the settings there", async () =>
 });
 
 // A right-click on the bar (§8.1) opens the settings at that item's
-// section, in place of Chrome's menu; the logo asks for the top, so an open
-// tab that's scrolled goes back up.
-test("a right-click on a bar item opens the settings at its section", async () => {
+// section, in place of Chrome's menu; keep awake asks for the top, so an
+// open tab that's scrolled goes back up; the logo and the bar off its
+// items open Bar, as tide's do.
+test("a right-click on a bar item opens the settings at its section, and off them at Bar", async () => {
   const { page, errors } = await open("src/launcher.html?mode=home");
   await page.waitForSelector("#clocks li");
   await page.evaluate(() => document.addEventListener("contextmenu", (e) => (window.prevented = e.defaultPrevented)));
@@ -979,12 +980,27 @@ test("a right-click on a bar item opens the settings at its section", async () =
   await showing("workspaces");
   assert.equal(await options.locator("#search").inputValue(), "");
   assert.equal(await options.locator('#sidebar [data-page="import-section"]').isVisible(), true);
-  // The logo asks for the first page, clearing a search that left it out.
+  // Keep awake asks for the first page, clearing a search that left it out.
   await options.locator("#search").fill("clocks");
-  await page.locator("#logo").click({ button: "right" });
+  await page.locator("#keep-awake").click({ button: "right" });
   await showing("mouse");
   assert.equal(await options.locator("#search").inputValue(), "");
   assert.equal(await options.locator('#sidebar [data-page="mouse"]').isVisible(), true);
+  await page.locator("#logo").click({ button: "right" });
+  await showing("bar");
+  await page.locator("#clocks").click({ button: "right" });
+  await showing("clocks-section");
+  // The bar between the title and keep awake is no item's.
+  const [x, y] = await page.evaluate(() => {
+    const title = document.getElementById("title").getBoundingClientRect();
+    const cup = document.getElementById("keep-awake").getBoundingClientRect();
+    const bar = document.getElementById("bar").getBoundingClientRect();
+    return [(title.right + cup.left) / 2, (bar.top + bar.bottom) / 2];
+  });
+  assert.equal(await page.evaluate(([x, y]) => document.elementFromPoint(x, y).id, [x, y]), "bar");
+  await page.mouse.click(x, y, { button: "right" });
+  await showing("bar");
+  assert.equal(await page.evaluate(() => window.prevented), true, "Chrome's menu shows on the bar");
   await options.close();
   assert.deepEqual(errors, []);
   await page.close();

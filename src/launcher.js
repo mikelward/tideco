@@ -78,7 +78,8 @@ export const SETTINGS_SECTIONS = [
   { id: "layouts", group: "windows", icon: "layouts", name: "Layouts", covers: "tiling start in main share main windows ultrawide aspect ratio width", chromeos: true },
   { id: "workspaces", group: "windows", icon: "workspaces", name: "Workspaces", covers: "standing workspaces home apps pinned apps ask for a name", chromeos: true },
   { id: "apps-section", group: "windows", icon: "open", name: "Apps", covers: "app keys web apps addresses" },
-  { id: "dim", group: "general", icon: "appearance", name: "Appearance", covers: "bar position top bottom dim strength inactive windows", chromeos: true },
+  { id: "dim", group: "general", icon: "appearance", name: "Appearance", covers: "dim strength inactive windows", chromeos: true },
+  { id: "bar", group: "general", icon: "bar", name: "Bar", covers: "panel taskbar position top bottom" },
   { id: "unread", group: "general", icon: "muted", name: "Notifications", covers: "unread counts Gmail Chat Calendar sites", chromeos: true },
   { id: "clocks-section", group: "general", icon: "clocks", name: "Clocks", covers: "time zones world clocks cities daytime working hours" },
   { id: "startup-section", group: "general", icon: "startup", name: "Start at login", covers: "websites autostart login items", chromeos: true },
@@ -94,11 +95,14 @@ export const TOP = "top";
 
 // The page a right-click on each item of the dashboard's bar opens, by its
 // id in launcher.html, as tide's bar opens a page (tide SPEC.md §7.1,
-// shell/lib/barsettings.mjs); TOP for the first page, where tide has
-// no page to match: tide's logo, and keep awake, whose tide page is Idle.
-// The title names the workspace here, so it opens Workspaces.
+// shell/lib/barsettings.mjs): "bar", the Bar page, for the bar itself (a
+// right-click anywhere that isn't an item) and for tide's logo, as tide's
+// do; TOP for the first page where tide's has a page tide for Chrome
+// lacks: keep awake, whose tide page is Idle. The title names the
+// workspace here, so it opens Workspaces.
 export const BAR_SECTIONS = Object.freeze({
-  logo: TOP,
+  bar: "bar",
+  logo: "bar",
   workspaces: "workspaces",
   title: "workspaces",
   "keep-awake": TOP,

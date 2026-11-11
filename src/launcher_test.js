@@ -216,8 +216,8 @@ test("each platform gets the sections its options page shows", () => {
   const ids = (where) => settingsSections(where).map((s) => s.id);
   assert.ok(ids({ tiling: true }).includes("workspaces"));
   assert.ok(!ids({ tiling: true }).includes("linux"));
-  assert.deepEqual(ids({ tiling: false, linux: true }), ["keys-section", "apps-section", "clocks-section", "extras", "linux", "import-section"]);
-  assert.deepEqual(ids({ tiling: false }), ["keys-section", "apps-section", "clocks-section", "extras", "import-section"]);
+  assert.deepEqual(ids({ tiling: false, linux: true }), ["keys-section", "apps-section", "bar", "clocks-section", "extras", "linux", "import-section"]);
+  assert.deepEqual(ids({ tiling: false }), ["keys-section", "apps-section", "bar", "clocks-section", "extras", "import-section"]);
 });
 
 test("the options page shows its address's section, else the one Launch asked for", () => {
@@ -226,7 +226,7 @@ test("the options page shows its address's section, else the one Launch asked fo
   assert.equal(sectionToShow("", "mouse", ids), "mouse");
   assert.equal(sectionToShow("", undefined, ids), null);
   assert.equal(sectionToShow("#nowhere", undefined, ids), null);
-  // The bar's logo asks for the top, so an open tab scrolls back up.
+  // Keep awake asks for the top, so an open tab scrolls back up.
   assert.equal(sectionToShow("", TOP, ids), TOP);
 });
 
@@ -264,7 +264,7 @@ test("the Actions footer runs, and Tab goes round to Launch", () => {
   );
 });
 
-test("a right-click on each bar item opens a settings section, or the top", () => {
+test("a right-click on each bar item opens a settings section, or the top, and on the bar off them the Bar page", () => {
   const page = readFileSync(new URL("./launcher.html", import.meta.url), "utf8");
   const ids = SETTINGS_SECTIONS.map((s) => s.id);
   for (const [id, section] of Object.entries(BAR_SECTIONS)) {
@@ -273,7 +273,10 @@ test("a right-click on each bar item opens a settings section, or the top", () =
   }
   assert.equal(BAR_SECTIONS.workspaces, "workspaces");
   assert.equal(BAR_SECTIONS.clocks, "clocks-section");
-  assert.equal(BAR_SECTIONS.logo, TOP);
+  // As tide's barsettings.mjs: the bar itself and the logo open Bar.
+  assert.equal(BAR_SECTIONS.bar, "bar");
+  assert.equal(BAR_SECTIONS.logo, "bar");
+  assert.equal(BAR_SECTIONS["keep-awake"], TOP);
 });
 
 // The overview has no key yet (§6.5), so the dashboard is a way to it: its

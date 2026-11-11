@@ -432,6 +432,12 @@ Guesses made on autopilot (2026-10-24), each cheap to undo.
 
 ## Later
 
+- **Choose the bar's items on the Bar page** (SPEC.md §8.1, §13). The
+  Bar page has only Position (top or bottom). Next: which items the
+  dashboard's bar shows (keep awake, the layout symbol, the title, say)
+  and their order, as tide for Linux's Bar page is to choose its status
+  icons (its TODO.md), in the same settings key so one file serves both.
+
 - **Attention from notifications, not unread counts** (SPEC.md §10.3).
   tide for Linux and tide for macOS stopped marking windows whose title's unread count
   rises: Gmail's "(3) Inbox" goes up with every message, so it marked all

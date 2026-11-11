@@ -13,17 +13,17 @@ test("on chromeOS the sidebar lists every page under tide's group headings", () 
   assert.deepEqual(labels(sidebarRows(settingsSections({ tiling: true }))), [
     "Hardware", "Mouse", "Keyboard",
     "Windows", "Layouts", "Workspaces", "Apps",
-    "General", "Appearance", "Notifications", "Clocks", "Start at login", "Extras", "Setup checklist", "Import and export",
+    "General", "Appearance", "Bar", "Notifications", "Clocks", "Start at login", "Extras", "Setup checklist", "Import and export",
   ]);
 });
 
 test("off chromeOS the sidebar leaves out the pages the platform hides", () => {
   assert.deepEqual(labels(sidebarRows(settingsSections({ tiling: false, linux: true }))), [
-    "Hardware", "Keyboard", "Windows", "Apps", "General", "Clocks", "Extras", "Tabs in tide's switcher", "Import and export",
+    "Hardware", "Keyboard", "Windows", "Apps", "General", "Bar", "Clocks", "Extras", "Tabs in tide's switcher", "Import and export",
   ]);
   // A group with no page shown has no heading.
   const general = settingsSections({ tiling: false }).filter((s) => s.group === "general");
-  assert.deepEqual(labels(sidebarRows(general)), ["General", "Clocks", "Extras", "Import and export"]);
+  assert.deepEqual(labels(sidebarRows(general)), ["General", "Bar", "Clocks", "Extras", "Import and export"]);
 });
 
 test("every page is in a group, with an icon, and on the options page under its name", () => {

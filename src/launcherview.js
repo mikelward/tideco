@@ -364,9 +364,11 @@ async function openSettings(section = null) {
 }
 $("open-settings").addEventListener("click", () => openSettings());
 // A right-click on a bar item opens its settings section, in place of
-// Chrome's menu (§8.1).
+// Chrome's menu (§8.1); one on the bar off its items, the bar's, which
+// hears it after the item, so an item's comes first.
 for (const [id, section] of Object.entries(BAR_SECTIONS)) {
   $(id).addEventListener("contextmenu", (e) => {
+    if (e.defaultPrevented) return;
     e.preventDefault();
     openSettings(section);
   });

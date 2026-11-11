@@ -32,7 +32,8 @@ test("a query finds pages by the words a person would search for", () => {
   assert.deepEqual(found("shortcuts"), ["Hardware", "Keyboard"]);
   assert.deepEqual(found("keys"), ["Hardware", "Keyboard", "Windows", "Apps"]);
   assert.deepEqual(found("inactive windows"), ["General", "Appearance"]);
-  assert.deepEqual(found("bar bottom"), ["General", "Appearance"]);
+  // As tide's Bar page.
+  for (const q of ["bar", "panel", "taskbar", "top", "bottom"]) assert.deepEqual(found(q), ["General", "Bar"], q);
   assert.deepEqual(found("ultrawide"), ["Windows", "Layouts"]);
   assert.deepEqual(found("backup"), ["General", "Import and export"]);
 });

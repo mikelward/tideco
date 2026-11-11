@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { actions, BAR_SECTIONS, footerKeys, footerText, fuzzyScore, items, limitFor, logoTapped, nextScope, opening, rank, sectionToShow, settingsSections, SETTINGS_SECTIONS, TOP, workspaceRows } from "./launcher.js";
+import { actions, arrowStep, barAtBottom, BAR_SECTIONS, footerKeys, footerText, fuzzyScore, items, limitFor, logoTapped, nextScope, opening, rank, sectionToShow, settingsSections, SETTINGS_SECTIONS, TOP, workspaceRows } from "./launcher.js";
 
 test("a fuzzy match needs every query letter in order", () => {
   assert.equal(fuzzyScore("cal", "Google Calendar") > 0, true);
@@ -285,4 +285,20 @@ test("the dashboard finds the overview, which has no key to show", () => {
   assert.deepEqual({ title: row.title, key: row.key }, { title: "Overview of every workspace's windows", key: "" });
   assert.ok(rank("", list, { scope: "actions", limit: Infinity }).includes(row));
   assert.equal(rank("overview", list, { scope: "launch" })[0]?.command, "overview");
+});
+
+test("the bar is at the top unless the settings put it at the bottom", () => {
+  assert.equal(barAtBottom({ barPosition: "top" }), false);
+  assert.equal(barAtBottom({ barPosition: "bottom" }), true);
+  // tide for macOS's settings have no barPosition yet.
+  assert.equal(barAtBottom({}), false);
+  assert.equal(barAtBottom(undefined), false);
+});
+
+test("the arrow pointing away from the field goes on to the next result", () => {
+  assert.equal(arrowStep("ArrowDown"), 1);
+  assert.equal(arrowStep("ArrowUp"), -1);
+  // With the bar at the bottom the results run up from the field.
+  assert.equal(arrowStep("ArrowUp", true), 1);
+  assert.equal(arrowStep("ArrowDown", true), -1);
 });

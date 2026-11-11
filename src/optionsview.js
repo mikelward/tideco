@@ -364,12 +364,13 @@ function fromForm() {
     return [tr.dataset.mode, { mfact: Number((num(share) / 100).toPrecision(12)), nmaster: num(count) }];
   }));
   const standing = standingFields().map((f) => f.value.trim());
-  return { clocks, ...hours, apps, dimStrength: Number((strength / 100).toPrecision(12)), watched: [...watchedSites], defaultMode, modes, standing, homeApps: [...homeApps], workspaceSettings };
+  return { clocks, ...hours, apps, dimStrength: Number((strength / 100).toPrecision(12)), barPosition: $("bar-position").value, watched: [...watchedSites], defaultMode, modes, standing, homeApps: [...homeApps], workspaceSettings };
 }
 
 function toForm(settings) {
   rows.replaceChildren(...settings.clocks.map(clockRow));
   $("dim-strength").value = Number((settings.dimStrength * 100).toPrecision(12));
+  $("bar-position").value = settings.barPosition;
   watchedSites = [...settings.watched];
   standingRows.replaceChildren(...settings.standing.map(standingRow));
   markStanding();
@@ -494,6 +495,7 @@ $("add-clock").addEventListener("click", () => {
 });
 for (const ids of Object.values(HOURS)) for (const id of ids) $(id).addEventListener("change", () => save());
 $("dim-strength").addEventListener("change", () => save());
+$("bar-position").addEventListener("change", () => save());
 // Chrome asks for a site's access only from a click, so Add asks first and
 // saves the site once it's granted.
 $("watch-form").addEventListener("submit", async (e) => {

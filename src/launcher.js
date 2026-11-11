@@ -78,7 +78,7 @@ export const SETTINGS_SECTIONS = [
   { id: "layouts", group: "windows", icon: "layouts", name: "Layouts", covers: "tiling start in main share main windows ultrawide aspect ratio width", chromeos: true },
   { id: "workspaces", group: "windows", icon: "workspaces", name: "Workspaces", covers: "standing workspaces home apps pinned apps ask for a name", chromeos: true },
   { id: "apps-section", group: "windows", icon: "open", name: "Apps", covers: "app keys web apps addresses" },
-  { id: "dim", group: "general", icon: "appearance", name: "Appearance", covers: "dim strength inactive windows", chromeos: true },
+  { id: "dim", group: "general", icon: "appearance", name: "Appearance", covers: "bar position top bottom dim strength inactive windows", chromeos: true },
   { id: "unread", group: "general", icon: "muted", name: "Notifications", covers: "unread counts Gmail Chat Calendar sites", chromeos: true },
   { id: "clocks-section", group: "general", icon: "clocks", name: "Clocks", covers: "time zones world clocks cities daytime working hours" },
   { id: "startup-section", group: "general", icon: "startup", name: "Start at login", covers: "websites autostart login items", chromeos: true },
@@ -313,4 +313,19 @@ export function footerText(keys) {
 // Launch, ready to type.
 export function logoTapped({ home }) {
   return home ? "launch" : "close";
+}
+
+// Whether the bar sits along the bottom of the dashboard and the home page
+// (§8.1), with the launcher above it: `settings` is settings.js's resolve's.
+export function barAtBottom(settings) {
+  return settings?.barPosition === "bottom";
+}
+
+// The step an arrow key takes through the results, `key` being "ArrowDown"
+// or "ArrowUp". The best result is next to the field, so the list runs
+// down from it with the bar on top and up from it with the bar at the
+// bottom; either way the key pointing away from the field goes on to the
+// next (§8.1).
+export function arrowStep(key, bottom = false) {
+  return (key === "ArrowDown") !== bottom ? 1 : -1;
 }

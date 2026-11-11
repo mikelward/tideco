@@ -729,7 +729,7 @@ workspace, or a display with nothing in its part of the workspace showing
 page** there instead: an extension page in a `popup` window, opened on that
 display and then made full screen. It shows:
 
-- tide for Linux's bar across the top: tide for Linux's wave logo, workspaces, layout, the
+- tide for Linux's bar across the top, or the bottom with the setting: tide for Linux's wave logo, workspaces, layout, the
   workspace's name and the clocks (§8.1);
 - the launcher (§9.4), focused on its **Launch** scope, ready to type;
 - every zone's day, the next clock change and a month calendar (§8.2).
@@ -1042,7 +1042,8 @@ Instead:
   page's sibling (§6.2), full screen over the focused display: tide for Linux's bar on
   top (tide for Linux's wave logo, workspaces in tide for Linux's style — current, occupied,
   urgent, empty — the layout symbol, keep awake's cup (§11) and the
-  clocks) and the launcher (§9.4), opening on its
+  clocks), or along the bottom with the setting (below), and the launcher
+  (§9.4), opening on its
   **Tabs** scope for switching. It closes once you choose, on Esc, when you
   click away, or on its key again. It doesn't use Chrome's action popup,
   which is small, anchored to the toolbar and refused where there's no
@@ -1073,10 +1074,22 @@ Instead:
   names the workspace here, open Workspaces, and the clocks Clocks. The
   logo and keep awake open the first page, since tide for Chrome has no
   page for them, where tide for Linux's open its first page and Idle.
+- **The bar can sit along the bottom** of the dashboard and the home page,
+  as tide for Linux's can along its monitor's (`barPosition`, `"top"` or
+  `"bottom"`, the same key and values as tide for Linux's
+  `appearance.json`). The options page's **Bar** row under Appearance sets
+  it, shared, and an open dashboard or home page moves the bar at once. At
+  the bottom the page is mirrored top to bottom: the launcher sits above
+  the bar, its field below the results with the best result next to it
+  and the scope chips under it, so Up goes on to the next result; the
+  clocks' panel and the extras open above the launcher, and the footer
+  is on top. The page keeps the last place it drew the bar in
+  `localStorage`, so it opens there rather than moving once the settings
+  load. Tooltips are Chrome's own and go where Chrome puts them.
 
 ### 8.2 Clocks
 
-tide for Linux's clock rules, in the bar of the dashboard and the home page, with the detail under it:
+tide for Linux's clock rules, in the bar of the dashboard and the home page, with the detail under it (over it with the bar at the bottom, §8.1):
 
 - `SF`, `NYC`, `LON` and local, 24-hour, tabular figures.
 - Labels are fixed place names, not CLDR names.
@@ -1373,7 +1386,7 @@ Crostini runs kitty, the shell config and the terminal tools, so `conf` and
   its title and what to know first. Each scrolls on its own. A page has
   tide for Linux's name where it's the same page: Mouse and Keyboard (the
   keys checklist) under Hardware; Layouts and Workspaces under Windows;
-  Appearance (the dim's strength), Notifications (unread counts), Clocks
+  Appearance (where the bar sits, §8.1, and the dim's strength), Notifications (unread counts), Clocks
   and Start at login under General. Chrome's own pages follow tide's in
   their group: Apps under Windows; Extras, Tabs in tide's switcher (Linux
   only), the Setup checklist, and Import and export at the end of General
@@ -1387,7 +1400,7 @@ Crostini runs kitty, the shell config and the terminal tools, so `conf` and
   once in a page already open.
 - Every change applies live; no reload.
 - **Shared vs per-machine**, as tide for Linux's §16.1: `chrome.storage.sync` holds
-  the shared settings (apps, clocks, keys, layouts), and
+  the shared settings (apps, clocks, keys, layouts, the bar's place), and
   `chrome.storage.local` holds per-machine overrides (lone-window width per
   display, ultrawide threshold), which Layouts lists below the shared
   layouts, saying they stay on this Chromebook. Objects merge key by key; lists replace
@@ -1426,7 +1439,8 @@ Crostini runs kitty, the shell config and the terminal tools, so `conf` and
   chromeOS can't be read, and the ticks stay in `storage.local`), the
   extra sites watched for
   attention (§10.3), the dim's strength (2% to 50%,
-  repainting what's already dimmed), this Chromebook's
+  repainting what's already dimmed), the bar at the top or the bottom
+  (§8.1), this Chromebook's
   layouts (the ultrawide threshold and the lone-window widths, kept in
   `storage.local`), this Chromebook's mouse wheel step, for the login
   reminder (§19.2), this Chromebook's Start at login list (below), and

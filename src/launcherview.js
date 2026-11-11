@@ -1,5 +1,6 @@
 // tide's full-screen page (SPEC.md §6.2, §8.1, §9.4): tide's bar on top,
-// with a launcher under it. As the home page of an empty workspace it opens
+// with a launcher under it, or with the setting, the bar along the bottom
+// and the launcher above it. As the home page of an empty workspace it opens
 // on the launch scope and stays; as the dashboard, from its key or the
 // toolbar button, it opens on open tabs and closes once you choose. Search+W
 // opens the dashboard on its workspaces, the name prompt (§6.1), and
@@ -10,7 +11,7 @@ import { stepMonth } from "./calendar.js";
 import { renderClocks, renderDetail, today } from "./clockview.js";
 import { addDefaultSites, DISMISSED_KEY, extrasFor, isOn } from "./extras.js";
 import { KEEP_AWAKE_KEY, isOn as keepingAwake, words as awakeWords } from "./keepawake.js";
-import { actions, BAR_SECTIONS, footerKeys, footerText, items, limitFor, logoTapped, nextScope, opening, rank, SCOPE_ORDER, SECTION_KEY, settingsSections, workspaceRows } from "./launcher.js";
+import { actions, arrowStep, barAtBottom, BAR_SECTIONS, footerKeys, footerText, items, limitFor, logoTapped, nextScope, opening, rank, SCOPE_ORDER, SECTION_KEY, settingsSections, workspaceRows } from "./launcher.js";
 import { load as loadSettings, SETTINGS_KEY } from "./settings.js";
 import { platform, TABS, TILE } from "./platform.js";
 
@@ -224,7 +225,7 @@ query.addEventListener("keydown", (e) => {
   if (e.key === "ArrowDown" || e.key === "ArrowUp") {
     e.preventDefault();
     const n = shown.length;
-    if (n) selected = (selected + (e.key === "ArrowDown" ? 1 : n - 1)) % n;
+    if (n) selected = (selected + arrowStep(e.key, barAtBottom(settings)) + n) % n;
     update();
   } else if (e.key === "Enter") {
     e.preventDefault();
@@ -280,9 +281,29 @@ function renderTime() {
   renderDetail(detail, at, scrubbed !== null, settings, month, stepCalendar);
   if (focused) detail.querySelector(`[aria-label="${focused}"]`)?.focus();
 }
+// The bar along the bottom, with the setting (§8.1), the page mirrored top
+// to bottom. The last place it was drawn is kept in localStorage, which the
+// page can read at once, so it opens there rather than jumping once the
+// settings load.
+const BAR_PLACE_KEY = "tide.barAtBottom";
+function placeBar(bottom) {
+  document.body.classList.toggle("bar-bottom", bottom);
+  try {
+    localStorage.setItem(BAR_PLACE_KEY, String(bottom));
+  } catch (e) {
+    // Only the first frame needs it; the settings place the bar anyway.
+    console.debug("tide: couldn't keep where the bar is:", e);
+  }
+}
+try {
+  document.body.classList.toggle("bar-bottom", localStorage.getItem(BAR_PLACE_KEY) === "true");
+} catch (e) {
+  console.debug("tide: couldn't read where the bar was:", e);
+}
 // The options page reports bad settings; here the defaults stand in.
 async function loadClocks() {
   settings = (await loadSettings(chrome.storage)).settings;
+  placeBar(barAtBottom(settings));
   renderTime();
 }
 function toggleDetail() {

@@ -11,7 +11,7 @@ export const SETTINGS_KEY = "settings";
 
 // What follows you to every Chromebook, in storage.sync, and what each one
 // keeps for its own displays, in storage.local.
-export const SHARED = ["clocks", "day", "work", "apps", "dimStrength", "watched", "defaultMode", "modes", "standing", "homeApps", "workspaceSettings"];
+export const SHARED = ["clocks", "day", "work", "apps", "dimStrength", "barPosition", "watched", "defaultMode", "modes", "standing", "homeApps", "workspaceSettings"];
 export const PER_MACHINE = ["singleRules", "ultrawideAspect", "wheelStep", "startup"];
 
 export function pick(settings, keys) {
@@ -24,6 +24,9 @@ export const DEFAULT_SETTINGS = {
   work: WORK,
   apps: DEFAULT_APPS,
   dimStrength: 0.1,
+  // Where the dashboard's and home page's bar sits (§8.1), as tide's
+  // appearance.json has it.
+  barPosition: "top",
   // Sites whose unread counts tide shows (§10.3).
   watched: DEFAULT_SITES,
   // The layout a workspace starts in, by its display's aspect (§5.2), and
@@ -141,6 +144,13 @@ function checkStrength(strength) {
     throw new Error(`${strength} isn't a strength from 0.02 to 0.5 (2% to 50%), like 0.1`);
   }
   return strength;
+}
+
+export const BAR_POSITIONS = ["top", "bottom"];
+
+function checkBarPosition(position) {
+  if (!BAR_POSITIONS.includes(position)) throw new Error(`must be one of ${BAR_POSITIONS.map((p) => `"${p}"`).join(", ")}`);
+  return position;
 }
 
 function checkWatched(sites) {
@@ -316,7 +326,7 @@ function checkModes(value, current) {
   return modes;
 }
 
-const CHECKS = { clocks: checkClocks, day: checkHours, work: checkHours, apps: checkApps, singleRules: checkSingleRules, ultrawideAspect: (a) => checkAspect(a), dimStrength: checkStrength, watched: checkWatched, defaultMode: checkDefaultMode, modes: checkModes, wheelStep: checkWheelStep, startup: checkStartup, standing: checkStanding, homeApps: checkHomeApps, workspaceSettings: checkWorkspaceSettings };
+const CHECKS = { clocks: checkClocks, day: checkHours, work: checkHours, apps: checkApps, singleRules: checkSingleRules, ultrawideAspect: (a) => checkAspect(a), dimStrength: checkStrength, barPosition: checkBarPosition, watched: checkWatched, defaultMode: checkDefaultMode, modes: checkModes, wheelStep: checkWheelStep, startup: checkStartup, standing: checkStanding, homeApps: checkHomeApps, workspaceSettings: checkWorkspaceSettings };
 
 // Settings from what's stored: `sync` then `local`, each an object or
 // undefined. Returns {settings, errors}, an error for each bad or unknown

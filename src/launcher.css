@@ -292,6 +292,27 @@ main {
 .home .panel {
   width: min(760px, 100%);
 }
+/* With the bar at the bottom (§8.1) the page is mirrored top to bottom: the
+   bar along the bottom, the launcher above it with its field next to the
+   best result, the panels above the launcher, and the footer on top. */
+body.bar-bottom {
+  flex-direction: column-reverse;
+}
+.bar-bottom main {
+  flex-direction: column-reverse;
+  padding: 24px 24px 12vh;
+}
+.bar-bottom .launcher,
+.bar-bottom #results {
+  display: flex;
+  flex-direction: column-reverse;
+}
+.bar-bottom .scopes {
+  margin: 10px 0 0;
+}
+.bar-bottom #results {
+  margin: 0 0 8px;
+}
 .scopes {
   display: flex;
   gap: 6px;

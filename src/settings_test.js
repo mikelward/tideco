@@ -101,7 +101,7 @@ test("layouts are set per Chromebook, and checked", () => {
 
 test("pick keeps the shared settings apart from this Chromebook's", () => {
   const all = resolve().settings;
-  assert.deepEqual(Object.keys(pick(all, SHARED)), ["clocks", "day", "work", "apps", "dimStrength", "watched", "defaultMode", "modes", "standing", "homeApps", "workspaceSettings"]);
+  assert.deepEqual(Object.keys(pick(all, SHARED)), ["clocks", "day", "work", "apps", "dimStrength", "barPosition", "watched", "defaultMode", "modes", "standing", "homeApps", "workspaceSettings"]);
   assert.deepEqual(Object.keys(pick(all, PER_MACHINE)), ["singleRules", "ultrawideAspect", "wheelStep", "startup"]);
 });
 
@@ -114,6 +114,16 @@ test("the dim's strength is shared, and checked", () => {
   assert.equal(resolve({ dimStrength: 0.2 }).settings.dimStrength, 0.2);
   assert.deepEqual(resolve({ dimStrength: 0.9 }).errors, ["dimStrength: 0.9 isn't a strength from 0.02 to 0.5 (2% to 50%), like 0.1"]);
   assert.ok(SHARED.includes("dimStrength"));
+});
+
+test("the bar is at the top unless barPosition puts it at the bottom, shared and checked", () => {
+  assert.equal(resolve().settings.barPosition, "top");
+  assert.equal(resolve({ barPosition: "bottom" }).settings.barPosition, "bottom");
+  assert.equal(resolve({ barPosition: "bottom" }, { barPosition: "top" }).settings.barPosition, "top", "this Chromebook's wins");
+  const bad = resolve({ barPosition: "left" });
+  assert.deepEqual(bad.errors, ['barPosition: must be one of "top", "bottom"']);
+  assert.equal(bad.settings.barPosition, "top");
+  assert.ok(SHARED.includes("barPosition"));
 });
 
 test("watched sites are shared https origins", () => {

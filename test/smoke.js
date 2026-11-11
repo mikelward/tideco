@@ -515,6 +515,65 @@ for (const mode of ["home", "dashboard"]) {
   });
 }
 
+// With the setting, the bar sits along the bottom (§8.1): the options
+// page's Bar row moves it at once on an open home page, with the launcher
+// above it, the clocks' panel above that, and the best result next to the
+// field, so Up goes on to the next.
+test("the Bar setting puts the bar along the bottom, live, with the launcher above it", async () => {
+  const { page, errors } = await open("src/launcher.html?mode=home");
+  const settings = await open("src/options.html");
+  try {
+    await page.waitForSelector("#clocks li");
+    await page.waitForSelector("#results li");
+    const box = (selector) => page.locator(selector).first().evaluate((e) => e.getBoundingClientRect().toJSON());
+    assert.equal((await box(".bar")).top, 0, "the bar starts on top");
+
+    await settings.page.waitForSelector("#sidebar button");
+    await turnTo(settings.page, "dim");
+    assert.equal(await settings.page.locator("#bar-position").inputValue(), "top");
+    assert.deepEqual(await settings.page.locator("#bar-position option").allInnerTexts(), ["Top", "Bottom"]);
+    await settings.page.locator("#bar-position").selectOption("bottom");
+    await settings.page.waitForFunction(async () => (await chrome.storage.sync.get("settings")).settings?.barPosition === "bottom");
+
+    await page.waitForFunction(() => document.body.classList.contains("bar-bottom"));
+    const height = await page.evaluate(() => innerHeight);
+    const bar = await box(".bar");
+    assert.equal(bar.bottom, height, "the bar isn't along the bottom");
+    const launcher = await box(".launcher");
+    assert.ok(launcher.bottom <= bar.top, `the launcher (${launcher.bottom}) isn't above the bar (${bar.top})`);
+    const detail = await box("#clock-detail");
+    assert.ok(detail.bottom <= launcher.top, `the clocks' panel (${detail.bottom}) isn't above the launcher (${launcher.top})`);
+    const query = await box("#query");
+    const results = await box("#results");
+    assert.ok(results.bottom <= query.top, "the results aren't above the field");
+    const best = await box("#results li:nth-child(1)");
+    const next = await box("#results li:nth-child(2)");
+    assert.ok(next.bottom <= best.top, "the best result isn't next to the field");
+    assert.ok((await box(".scopes")).top >= query.bottom, "the scopes aren't under the field");
+    assert.ok((await box(".hint")).bottom <= (await box("main")).top, "the footer isn't on top");
+    await page.locator("#query").focus();
+    await page.keyboard.press("ArrowUp");
+    assert.equal(await page.locator('#results li[aria-selected="true"]').evaluate((li) => [...li.parentNode.children].indexOf(li)), 1);
+
+    // A page opened later draws it there too.
+    const again = await open("src/launcher.html?mode=dashboard");
+    await again.page.waitForSelector("#clocks li");
+    assert.equal(await again.page.evaluate(() => document.body.classList.contains("bar-bottom")), true);
+    assert.deepEqual(again.errors, []);
+    await again.page.close();
+
+    await settings.page.locator("#bar-position").selectOption("top");
+    await page.waitForFunction(() => !document.body.classList.contains("bar-bottom"));
+    assert.equal((await box(".bar")).top, 0, "the bar isn't back on top");
+    assert.deepEqual(errors, []);
+    assert.deepEqual(settings.errors, []);
+  } finally {
+    await worker.evaluate(() => chrome.storage.sync.remove("settings"));
+    await page.close();
+    await settings.page.close();
+  }
+});
+
 // The overview (§6.5) groups the windows by workspace, the one showing
 // first; typing filters, and Esc closes it. Without all-sites access it
 // says why there are no pictures.

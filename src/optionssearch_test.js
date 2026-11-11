@@ -32,6 +32,7 @@ test("a query finds pages by the words a person would search for", () => {
   assert.deepEqual(found("shortcuts"), ["Hardware", "Keyboard"]);
   assert.deepEqual(found("keys"), ["Hardware", "Keyboard", "Windows", "Apps"]);
   assert.deepEqual(found("inactive windows"), ["General", "Appearance"]);
+  assert.deepEqual(found("bar bottom"), ["General", "Appearance"]);
   assert.deepEqual(found("ultrawide"), ["Windows", "Layouts"]);
   assert.deepEqual(found("backup"), ["General", "Import and export"]);
 });

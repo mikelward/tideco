@@ -472,6 +472,9 @@ export class Tide {
       // would ever close it.
       else await this.api.windows.remove(id);
     }
+    // That home wasn't closed by you either: a display that comes back
+    // with nothing to show gets one again (§6.2).
+    for (const d of Object.keys(s.homeShownFor ?? {})) if (!ids.includes(d)) delete s.homeShownFor[d];
     this.state = s;
     for (const c of closed) this.reopenLater(c);
   }

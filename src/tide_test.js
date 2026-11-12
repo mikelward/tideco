@@ -509,6 +509,52 @@ test("a home window you close stays closed until another empty workspace", async
   assert.equal(homes(chrome).length, 1);
 });
 
+test("a home window you close stays closed when the worker restarts", async () => {
+  const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true })]);
+  await tide.command("workspace-2");
+  chrome.wins = chrome.wins.filter((w) => w.url !== HOME);
+  // Chrome stops the idle worker; storage.session outlives it.
+  const woken = new Tide(chrome);
+  await woken.event();
+  assert.equal(homes(chrome).length, 0);
+});
+
+test("after a browser restart on an empty workspace, its home window is back", async () => {
+  const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true, url: "https://mail.google.com/" })]);
+  await tide.command("workspace-2");
+  assert.equal(homes(chrome).length, 1);
+  // The browser restarts: tide's home page went with it, the window is
+  // back with a new ID, and storage.session is empty.
+  chrome.wins = [];
+  chrome.sessionStore = {};
+  chrome.open(on(HD, 11, { url: "https://mail.google.com/" }));
+  const after = new Tide(chrome);
+  await after.event();
+  assert.equal(after.state.current, "re", "the empty workspace still shows");
+  assert.equal(chrome.win(11).state, "minimized", "its one window is back on home, hidden");
+  const [home] = homes(chrome);
+  assert.ok(home, "so the empty workspace has a home window again, for the keys");
+  assert.equal(home.focused, true);
+  // In the new session, that one stays closed once you close it.
+  chrome.wins = chrome.wins.filter((w) => w.url !== HOME);
+  await after.event();
+  assert.equal(homes(chrome).length, 0);
+});
+
+test("after tide reloads on an empty workspace, its home window is back", async () => {
+  const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true })]);
+  await tide.command("workspace-2");
+  assert.equal(homes(chrome).length, 1);
+  // Reloading or updating tide closes its pages and empties
+  // storage.session; Chrome's windows stay as they were.
+  chrome.wins = chrome.wins.filter((w) => w.url !== HOME);
+  chrome.sessionStore = {};
+  const reloaded = new Tide(chrome);
+  await reloaded.event();
+  assert.equal(chrome.win(1).state, "minimized");
+  assert.equal(homes(chrome).length, 1, "the home window you didn't close is back");
+});
+
 test("switching to an empty workspace focuses only your display's home", async () => {
   const { chrome, tide } = await setup([HD, UW], [on(HD, 1), on(UW, 2, { focused: true })]);
   await tide.command("workspace-3");

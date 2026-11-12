@@ -746,6 +746,8 @@ windows.
 One you close stays closed until its display shows another empty part. One
 that went with the browser's restart, or with tide for Chrome reloading or
 updating, which closes its pages, wasn't closed by you, so it opens again.
+Nor was one whose display went (§6.1): when that display is back with
+nothing to show, it has a home page again.
 A flag in `chrome.storage.session`, which both empty, tells the two apart
 (§14.2). Whether chromeOS also restores the old home page after a restart
 is *(unverified)*.

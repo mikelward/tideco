@@ -578,6 +578,25 @@ test("a disconnected display's home window closes", async () => {
   assert.deepEqual(tide.state.homes, {});
 });
 
+test("a display that comes back with nothing to show gets its home window again", async () => {
+  const { chrome, tide } = await setup([HD, UW], [on(HD, 1, { focused: true })]);
+  const [home] = homes(chrome);
+  assert.ok(home.left >= 1920, "the empty ultrawide has a home");
+  // Unplugged: chromeOS moves its home onto the display left, and tide
+  // closes it there.
+  chrome.displaysList = [HD];
+  Object.assign(home, { left: 100, top: 100 });
+  await tide.event();
+  assert.equal(homes(chrome).length, 0);
+  // Plugged back in, with the same workspace showing.
+  chrome.displaysList = [HD, UW];
+  await tide.event();
+  const [back] = homes(chrome);
+  assert.ok(back, "the ultrawide's part is still empty, so it has a home again");
+  assert.ok(back.left >= 1920, "on the ultrawide");
+  assert.equal(chrome.win(1).focused, true, "and focus stays where you are");
+});
+
 test("the last window leaving a workspace brings the home window", async () => {
   const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true })]);
   await tide.command("send-2");

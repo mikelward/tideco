@@ -27,11 +27,30 @@ export function checklist(manifest, bound, suggested = {}) {
   });
 }
 
+// commands.getAll() names a key as Chrome's menus do (§7.3). These are the
+// names that differ from the ones tide's descriptions and presets use, in
+// lowercase without spaces, each with tide's; "Page Up" differs from
+// "PageUp" only by its space. From Chromium 153 on Linux.
+const CHROME_NAMES = new Map([
+  ["period", "."],
+  ["comma", ","],
+  ["leftarrow", "left"],
+  ["rightarrow", "right"],
+  ["uparrow", "up"],
+  ["downarrow", "down"],
+  ["ins", "insert"],
+  ["del", "delete"],
+]);
+
 // Chrome reports chromeOS's Search key as "Search" and orders modifiers its
-// own way, so keys compare as sets of parts.
+// own way, so keys compare as sets of parts, each under one name.
 function sameKey(a, b) {
   if (!a || !b) return false;
-  const parts = (k) => new Set(k.split("+").map((p) => p.trim().toLowerCase()));
+  const part = (p) => {
+    const name = p.toLowerCase().replace(/\s+/g, "");
+    return CHROME_NAMES.get(name) ?? name;
+  };
+  const parts = (k) => new Set(k.split("+").map(part));
   const pa = parts(a);
   const pb = parts(b);
   return pa.size === pb.size && [...pa].every((p) => pb.has(p));

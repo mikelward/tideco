@@ -1,5 +1,5 @@
 ---
-last_modified: 2026-11-09
+last_modified: 2026-11-12
 ---
 
 # tide for Chrome: design spec (milestone 1)
@@ -991,6 +991,13 @@ Search+Alt and Search+Ctrl are allowed too, and untried unless listed.
 
 Search+Ctrl+S opens the Shortcuts app itself, and Search+Esc the task manager (Esc can't be a tide for Chrome key anyway). Search+S, Search+V, Search+X and Search+Z may be removable too: whether the
 Shortcuts app shows them with a padlock is untried.
+
+`commands.getAll` names a bound key as Chrome's menus do, not as a
+manifest does: `Page Up`, `Page Down`, `Period`, `Comma`, `Left Arrow` and
+the other arrows, `Ins` and `Del` (tried in Chromium 153 on Linux; on
+chromeOS *(unverified)*). The keys checklist (§3.4) reads each as the
+`PageUp`, `PageDown`, `.`, `,`, `Left`, `Insert` or `Delete` it suggests,
+so a command on its suggested key shows as done.
 
 ### 7.4 Start from another window manager's keys
 

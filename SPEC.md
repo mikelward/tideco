@@ -743,6 +743,13 @@ arrives, and is never counted as one. If chromeOS shows its "hold Esc to
 exit full screen" bubble when it opens is *(unverified)* for extension
 windows.
 
+One you close stays closed until its display shows another empty part. One
+that went with the browser's restart, or with tide for Chrome reloading or
+updating, which closes its pages, wasn't closed by you, so it opens again.
+A flag in `chrome.storage.session`, which both empty, tells the two apart
+(§14.2). Whether chromeOS also restores the old home page after a restart
+is *(unverified)*.
+
 ### 6.3 Where it can't reach
 
 - **Android and Linux windows** stay visible on every workspace and aren't

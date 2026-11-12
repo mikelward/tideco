@@ -53,6 +53,10 @@ const VIEW_KEY = "view";
 // In storage.session, which a browser restart empties: whether this browser
 // session has had a window yet.
 const SEEN_KEY = "seenWindow";
+// Also there: whether tide has saved its state in this session. A browser
+// restart empties it, and so does reloading or updating tide, each of which
+// closes tide's own pages.
+const SESSION_KEY = "sessionStarted";
 export const DIM_ORIGINS = ["<all_urls>"];
 const BADGE = "#3584e4";
 const BADGE_ATTENTION = "#e5a50a";
@@ -303,8 +307,14 @@ export class Tide {
     this.state = ws.migrate(stored[STATE_KEY] || null, this.settings.standing);
   }
 
+  // The session counts as started only once a state from it is stored, so
+  // a step that fails before then is made up for by the next.
   async save() {
     await this.api.storage.local.set({ [STATE_KEY]: this.state, [VIEW_KEY]: this.view() });
+    if (this.sessionStarted === false) {
+      await this.api.storage.session.set({ [SESSION_KEY]: true });
+      this.sessionStarted = true;
+    }
   }
 
   // What the dashboard and home window show: the workspaces in bar order,
@@ -341,6 +351,7 @@ export class Tide {
     // which display you're on, but only managed ones are tracked.
     const all = await this.api.windows.getAll({ populate: true, windowTypes: [...MANAGED, "popup", "devtools"] });
     this.seenWindow ??= Boolean((await this.api.storage.session.get(SEEN_KEY))[SEEN_KEY]);
+    this.sessionStarted ??= Boolean((await this.api.storage.session.get(SESSION_KEY))[SESSION_KEY]);
     // The state as the last step left the screen, before displays changed,
     // with windows renamed if the browser restarted.
     const { state: before, renamed, waiting } = this.restarted(this.state, all);
@@ -449,6 +460,10 @@ export class Tide {
       delete s.dashboardFor;
       delete s.moving;
     }
+    // A home window that went with the last session's pages, as the browser
+    // restarted or tide reloaded, wasn't closed by you: an empty part gets
+    // one again, or it would have no window for tide's keys (§6.2).
+    if (!this.sessionStarted) delete s.homeShownFor;
     s.homes = {};
     for (const [d, id] of Object.entries(this.state?.homes ?? {})) {
       if (!this.all.has(id)) continue;

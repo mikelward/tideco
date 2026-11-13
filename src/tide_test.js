@@ -2192,3 +2192,120 @@ test("a browser window with the settings in a tab still keeps a pinned app reope
   await clock.fire();
   assert.equal(opened(chrome).length, 2);
 });
+
+// Float rules (§5.4).
+const MEET = "https://meet.google.com/abc-defg";
+const ASK = "chrome-extension://tide/src/floatask.html";
+const asks = (chrome) => chrome.created.filter((c) => c.url?.startsWith(ASK));
+
+test("a rule floats its site's app windows as they open, but not its tab windows", async () => {
+  const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true })]);
+  chrome.syncStore.settings = { floating: [{ site: "meet.google.com" }] };
+  await opens(chrome, tide, 2, { type: "app", url: MEET });
+  assert.equal(tide.state.windows[2].floating, true, "the installed app's window floats");
+  assert.deepEqual(chrome.box(2), { x: 20, y: 10, w: 400, h: 300 }, "where it opened, untiled");
+  assert.deepEqual(chrome.box(1), { x: 0, y: 0, w: 1920, h: 1032 }, "the one tiled window has the display");
+  await opens(chrome, tide, 3, { url: MEET });
+  assert.equal(tide.state.windows[3].floating, false, "a tab window tiles");
+});
+
+test("an app key's window floats from the start under its site's rule", async () => {
+  const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true })]);
+  chrome.syncStore.settings = { floating: [{ site: "https://meet.google.com" }] };
+  await tide.event();
+  await tide.command("app-meet");
+  const [{ id }] = chrome.created.filter((c) => c.url === "https://meet.google.com/");
+  assert.equal(tide.state.windows[id].floating, true);
+  assert.equal(chrome.updates.some((u) => u.id === id && "width" in u), false, "never tiled, not even once");
+});
+
+test("an app window still loading floats once its site shows, and not before", async () => {
+  const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true })]);
+  chrome.syncStore.settings = { floating: [{ site: "https://meet.google.com" }] };
+  chrome.grantedPermissions.delete("tabs");
+  await opens(chrome, tide, 2, { type: "app", url: MEET });
+  assert.equal(tide.state.windows[2].floating, false, "Chrome hides its site without tab search");
+  chrome.grantedPermissions.add("tabs");
+  chrome.win(2).pendingUrl = MEET;
+  await tide.event();
+  assert.equal(tide.state.windows[2].floating, true, "where it's going names its site");
+});
+
+test("an app window whose site shows when its tab loads floats then, with the dim off", async () => {
+  const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true })]);
+  chrome.syncStore.settings = { floating: [{ site: "https://meet.google.com" }] };
+  await opens(chrome, tide, 2, { type: "app", url: "about:blank" });
+  assert.equal(tide.state.windows[2].floating, false, "no site yet");
+  chrome.win(2).url = MEET;
+  await tide.tabLoaded(20);
+  assert.equal(tide.state.windows[2].floating, true, "the load names its site, and its rule floats it");
+});
+
+test("a new rule floats the open windows it covers, but one tiled by hand stays tiled", async () => {
+  const { chrome, tide } = await setup([HD], [
+    on(HD, 1, { focused: true }),
+    on(HD, 2, { type: "app", url: MEET }),
+    on(HD, 3, { type: "app", url: "https://chat.google.com/" }),
+    on(HD, 4, { type: "app", url: "https://example.com/", state: "maximized" }),
+  ]);
+  chrome.focus(3);
+  await tide.event();
+  await tide.command("send-2");
+  chrome.syncStore.settings = { floating: [{ site: "https://meet.google.com" }] };
+  await tide.event();
+  assert.equal(tide.state.windows[2].floating, true, "the open Meet window floats");
+  assert.equal(tide.state.windows[3].floating, false, "Chat isn't covered");
+  chrome.focus(2);
+  await tide.event();
+  await tide.command("float");
+  assert.equal(tide.state.windows[2].floating, false, "tiled by hand");
+  chrome.syncStore.settings = { floating: [{ site: "https://example.com" }, { site: "https://meet.google.com" }] };
+  await tide.event();
+  assert.equal(tide.state.windows[2].floating, false, "a rule that covered it already doesn't float it again");
+  assert.equal(tide.state.windows[4].floating, false, "a maximized window is left as it is");
+  chrome.syncStore.settings = { floating: [] };
+  await tide.event();
+  assert.equal(tide.state.windows[2].floating, false);
+  chrome.syncStore.settings = { floating: [{ site: "https://chat.google.com" }] };
+  await tide.event();
+  assert.equal(tide.state.windows[3].floating, true, "on a workspace not showing too");
+});
+
+test("floating an app window by hand asks once whether its site should always float", async () => {
+  const { chrome, tide } = await setup([HD], [
+    on(HD, 1, { url: "https://example.com/" }),
+    on(HD, 2, { type: "app", url: MEET, focused: true }),
+  ]);
+  await tide.command("float");
+  assert.equal(asks(chrome).length, 1);
+  const [ask] = asks(chrome);
+  assert.equal(ask.url, `${ASK}?site=${encodeURIComponent("https://meet.google.com")}`);
+  assert.equal(ask.type, "popup");
+  assert.equal(chrome.win(2).focused, true, "the question takes no focus");
+  assert.deepEqual(chrome.box(ask.id), { x: 1484, y: 846, w: 420, h: 170 }, "in the corner");
+  await tide.event();
+  assert.equal(ask.id in tide.state.windows, false, "and isn't tracked");
+  await tide.command("float");
+  await tide.command("float");
+  assert.equal(asks(chrome).length, 1, "not again, whatever the answer");
+  chrome.focus(1);
+  await tide.event();
+  await tide.command("float");
+  assert.equal(asks(chrome).length, 1, "a tab window's site isn't asked about");
+});
+
+test("no question for a site a rule covers, or one Chrome hides", async () => {
+  const { chrome, tide } = await setup([HD], [on(HD, 1, { type: "app", url: MEET, focused: true })]);
+  await tide.command("float");
+  await tide.command("float");
+  chrome.sessionStore = {};
+  chrome.syncStore.settings = { floating: [{ site: "https://meet.google.com" }] };
+  await tide.command("float");
+  assert.equal(asks(chrome).length, 1, "only the first, before the rule");
+  chrome.grantedPermissions.delete("tabs");
+  chrome.syncStore.settings = { floating: [] };
+  chrome.sessionStore = {};
+  await tide.command("float");
+  await tide.command("float");
+  assert.equal(asks(chrome).length, 1);
+});

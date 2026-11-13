@@ -16,6 +16,8 @@ import { SECTION_KEY, sectionToShow, settingsSections, SETTINGS_SECTIONS, TOP } 
 import { escapeDoes, pageAfterSearch, searchedSidebar } from "./optionssearch.js";
 import { movedPage, pageIds, pageToShow, sidebarRows } from "./optionspages.js";
 import { ACCESS as BRIDGE_ACCESS, bridgeText, STATUS_KEY as BRIDGE_KEY } from "./tabsbridge.js";
+import { FILL_KEY, floatingNow, movedRule, siteName, withoutRule, withRule } from "./floating.js";
+import { STATE_KEY } from "./tide.js";
 
 const $ = (id) => document.getElementById(id);
 const rows = $("clocks").tBodies[0];
@@ -344,6 +346,79 @@ function renderWorkspaceSettings(settings) {
   );
 }
 
+// The float rules (§5.4): each site, with arrows that move it and × that
+// takes it out. A change that can't be saved is put back, so the list
+// shows what's saved.
+let floatRules = [];
+
+async function changeFloatRules(out) {
+  if (out.error) {
+    showErrors([`floating: ${out.error}`]);
+    return false;
+  }
+  const previous = floatRules;
+  floatRules = out.rules;
+  if (!(await save())) {
+    floatRules = previous;
+    return false;
+  }
+  renderFloatRules();
+  return true;
+}
+
+function renderFloatRules() {
+  $("float-rules").tBodies[0].replaceChildren(
+    ...floatRules.map(({ site }, i) => {
+      const tr = document.createElement("tr");
+      const name = siteName(site);
+      const order = Object.assign(document.createElement("td"), { className: "order" });
+      order.append(
+        button("↑", `Move ${name} up`, () => changeFloatRules(movedRule(floatRules, i, site, -1))),
+        button("↓", `Move ${name} down`, () => changeFloatRules(movedRule(floatRules, i, site, 1))),
+        button("×", `Stop floating ${name}`, () => changeFloatRules(withoutRule(floatRules, i, site))),
+      );
+      tr.append(Object.assign(document.createElement("td"), { textContent: name, title: site }), order);
+      return tr;
+    }),
+  );
+  renderFloatingNow();
+}
+
+// Floating now: the app windows floated by hand that no rule covers, read
+// from tide's state and Chrome's windows, each with Always float.
+async function renderFloatingNow() {
+  try {
+    const state = (await chrome.storage.local.get(STATE_KEY))[STATE_KEY];
+    const windows = await chrome.windows.getAll({ populate: true, windowTypes: ["app", "popup"] });
+    const now = floatingNow(state, windows, floatRules);
+    $("floating-none").hidden = now.length > 0;
+    $("floating-now").replaceChildren(
+      ...now.map(({ site, title }) => {
+        const li = document.createElement("li");
+        const name = siteName(site);
+        li.append(Object.assign(document.createElement("strong"), { textContent: name }));
+        if (title) li.append(" ", Object.assign(document.createElement("span"), { className: "muted", textContent: title }));
+        li.append(" ", button("Always float", `Always float ${name}`, () => changeFloatRules(withRule(floatRules, site))));
+        return li;
+      }),
+    );
+  } catch (e) {
+    console.error("tide: couldn't list the floating windows:", e);
+    showErrors([`Couldn't list the floating windows: ${e.message}`]);
+  }
+}
+
+// Edit rule… in the question after floating a window (§5.4) opens this
+// page with its site in the field, to add with Enter.
+async function fillFloatRule() {
+  const site = (await chrome.storage.session.get(FILL_KEY))[FILL_KEY];
+  if (site === undefined) return;
+  await chrome.storage.session.remove(FILL_KEY);
+  $("float-site").value = typeof site === "string" ? siteName(site) : "";
+  $("float-site").focus();
+  $("float-site").select();
+}
+
 // An emptied hour field is NaN, an error, not Number("")'s midnight.
 function fromForm() {
   const clocks = [...rows.rows].map((tr) => {
@@ -364,7 +439,7 @@ function fromForm() {
     return [tr.dataset.mode, { mfact: Number((num(share) / 100).toPrecision(12)), nmaster: num(count) }];
   }));
   const standing = standingFields().map((f) => f.value.trim());
-  return { clocks, ...hours, apps, dimStrength: Number((strength / 100).toPrecision(12)), barPosition: $("bar-position").value, watched: [...watchedSites], defaultMode, modes, standing, homeApps: [...homeApps], workspaceSettings };
+  return { clocks, ...hours, apps, dimStrength: Number((strength / 100).toPrecision(12)), barPosition: $("bar-position").value, watched: [...watchedSites], defaultMode, modes, standing, homeApps: [...homeApps], workspaceSettings, floating: floatRules.map((r) => ({ ...r })) };
 }
 
 function toForm(settings) {
@@ -376,6 +451,8 @@ function toForm(settings) {
   markStanding();
   renderHomeApps(settings);
   renderWorkspaceSettings(settings);
+  floatRules = settings.floating.map((r) => ({ ...r }));
+  renderFloatRules();
   renderWatched();
   renderPermissions();
   appRows.replaceChildren(...APP_COMMANDS.map((c) => appRow(c, settings.apps.find((a) => a.command === c))));
@@ -530,6 +607,18 @@ $("standing-form").addEventListener("submit", async (e) => {
   if (await save()) $("standing-name").value = "";
   else tr.remove();
   markStanding();
+});
+
+// A site is added at the end, or refused, saying why.
+$("float-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (await changeFloatRules(withRule(floatRules, $("float-site").value))) $("float-site").value = "";
+});
+// Floating now follows tide's state and the windows that come and go.
+chrome.windows.onCreated.addListener(() => renderFloatingNow());
+chrome.windows.onRemoved.addListener(() => renderFloatingNow());
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === "local" && changes[STATE_KEY]) renderFloatingNow();
 });
 
 $("startup-form").addEventListener("submit", async (e) => {
@@ -872,6 +961,7 @@ async function showSection() {
     // the one asked for among them, is listed.
     clearSearch();
     turnTo(id);
+    if (id === "floating") await fillFloatRule();
   } catch (e) {
     console.error("tide: couldn't show the settings page:", e);
   }

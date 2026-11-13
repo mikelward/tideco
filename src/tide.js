@@ -6,6 +6,7 @@
 import { appOf, appOfUrl, DEFAULT_APPS, homeAppOf } from "./apps.js";
 import { DEFAULT_SETTINGS, load as loadSettings, workspaceSetting } from "./settings.js";
 import { overlay } from "./dim.js";
+import { ASK_PAGE, askBounds, askFloat, ASKED_KEY, coveringRule, newlyCovered, ruleable, siteOf } from "./floating.js";
 import { Pictures } from "./pictures.js";
 import { toggle as toggleKeepAwake } from "./keepawake.js";
 import { matchWindows, windowUrls } from "./restart.js";
@@ -48,7 +49,7 @@ function asksByKind(w) {
   return /^https?:/.test(tab?.url || tab?.pendingUrl || "");
 }
 
-const STATE_KEY = "state";
+export const STATE_KEY = "state";
 const VIEW_KEY = "view";
 // In storage.session, which a browser restart empties: whether this browser
 // session has had a window yet.
@@ -156,7 +157,10 @@ export class Tide {
   tabLoaded(tabId) {
     // With the dim off there's nothing to dim, so skip the sync, but the
     // window's URLs still changed, and a restart matches by them (§14.2).
-    if (this.state && !this.dimOn()) return this.run(() => this.rememberUrls());
+    // A window waiting on its site for a float rule (§5.4) needs the sync,
+    // which decides it.
+    const waiting = Object.values(this.state?.windows ?? {}).some((info) => !info.ruled);
+    if (this.state && !this.dimOn() && !waiting) return this.run(() => this.rememberUrls());
     return this.run(async () => {
       await this.sync();
       this.state.dimmed = (this.state.dimmed ?? []).filter((id) => id !== tabId);
@@ -183,6 +187,61 @@ export class Tide {
     const app = appOf(w, this.apps)?.command;
     if (app) info.app = app;
     else delete info.app;
+  }
+
+  // The float rules (§5.4), on state `s` as a sync makes it. A window
+  // floats if a rule covers it when tide first knows its site, which is
+  // then `ruled`, decided for good, so you can tile it by hand; a window
+  // no rule could cover is decided at once. A changed list floats the open
+  // windows it newly covers, on any workspace, but never tiles one.
+  ruleFloats(s, before, appPopups) {
+    const rules = this.settings.floating;
+    const sweep = [];
+    for (const w of this.windows.values()) {
+      const info = s.windows[w.id];
+      if (!info) continue;
+      const can = ruleable(w, appPopups);
+      const site = can ? siteOf(w) : null;
+      if (!info.ruled) {
+        if (can && site === null) continue;
+        info.ruled = true;
+        if (coveringRule(rules, site) >= 0) info.floating = true;
+        continue;
+      }
+      if (can) sweep.push({ id: w.id, site, floating: info.floating, big: w.state === "maximized" || w.state === "fullscreen" });
+    }
+    for (const id of newlyCovered(sweep, before?.floatRules, rules)) s.windows[id].floating = true;
+    s.floatRules = rules;
+  }
+
+  // Search+Shift+F: window `id` floats, or tiles again, and one it floats
+  // may ask about a rule (§5.4).
+  async toggleFloating(id) {
+    this.state = ws.toggleFloating(this.state, id);
+    await this.askAlways(id);
+  }
+
+  // Search+Shift+F floated window `id` (§5.4): if it's an app window no
+  // rule covers, ask once, in a small window in the corner of its display
+  // that takes no focus, whether its site's windows should always float.
+  async askAlways(id) {
+    const w = this.windows.get(id);
+    const appPopups = new Set(this.state.appPopups ?? []);
+    if (!this.state.windows[id]?.floating || !w || !ruleable(w, appPopups)) return;
+    const site = siteOf(w);
+    const { ask, asked } = askFloat((await this.api.storage.session.get(ASKED_KEY))[ASKED_KEY], this.settings.floating, site);
+    if (!ask) return;
+    const display = this.displays.find((d) => d.id === this.state.windows[id].display) ?? this.displays[0];
+    if (!display) return;
+    await this.api.storage.session.set({ [ASKED_KEY]: asked });
+    const url = this.api.runtime.getURL(`src/${ASK_PAGE}?site=${encodeURIComponent(site)}`);
+    try {
+      await this.api.windows.create({ url, type: "popup", focused: false, ...askBounds(display.workArea) });
+    } catch (e) {
+      // The float itself stands; only the question is lost, and isn't
+      // asked again until the browser restarts.
+      console.error(`tide: couldn't ask about always floating ${site}:`, e);
+    }
   }
 
   // The tab addresses kept for a restart (§14.2), only with tab search
@@ -429,6 +488,7 @@ export class Tide {
     s.asking = this.asking(s, before, wins);
     s.appPopups = [...appPopups].filter((id) => this.windows.has(id));
     s.refused = [...refused];
+    this.ruleFloats(s, before, appPopups);
     if (Object.keys(waiting).length > 0) s.restoring = waiting;
     else if (s.restoring) {
       delete s.restoring;
@@ -732,7 +792,7 @@ export class Tide {
     else if (name === "move-next") this.state = ws.moveInStack(s, win, 1);
     else if (name === "move-prev") this.state = ws.moveInStack(s, win, -1);
     else if (name === "swap-master") this.state = ws.swapMaster(s, win);
-    else if (name === "float") this.state = ws.toggleFloating(s, win);
+    else if (name === "float") await this.toggleFloating(win);
     else if (n === null || mode === null) return null;
     else if (name === "grow") this.state = ws.adjust(s, n, display, mode, { mfact: 0.025 });
     else if (name === "shrink") this.state = ws.adjust(s, n, display, mode, { mfact: -0.025 });
@@ -949,6 +1009,12 @@ export class Tide {
     this.state.appPopups.push(w.id);
     const key = appOfUrl(app.url, this.apps)?.command;
     if (key) this.state.windows[w.id].app = key;
+    // A rule for its site floats it from the start (§5.4), not after a tile.
+    const info = this.state.windows[w.id];
+    if (info && !info.ruled) {
+      info.ruled = true;
+      if (coveringRule(this.settings.floating, new URL(app.url).origin) >= 0) info.floating = true;
+    }
     return homeApp && focused ? this.activate(w.id) : w.id;
   }
 

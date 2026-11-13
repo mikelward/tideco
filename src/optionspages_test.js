@@ -12,7 +12,7 @@ const labels = (rows) => rows.map((r) => r.heading ?? r.label);
 test("on chromeOS the sidebar lists every page under tide's group headings", () => {
   assert.deepEqual(labels(sidebarRows(settingsSections({ tiling: true }))), [
     "Hardware", "Mouse", "Keyboard",
-    "Windows", "Layouts", "Workspaces", "Apps",
+    "Windows", "Layouts", "Workspaces", "Floating", "Apps",
     "General", "Appearance", "Bar", "Notifications", "Clocks", "Start at login", "Extras", "Setup checklist", "Import and export",
   ]);
 });

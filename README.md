@@ -3,7 +3,7 @@
 tide for Chrome: tiling on chromeOS, as a Manifest V3 extension that brings the dwm/Krohnkite
 tiling of [tide for Linux](https://github.com/mikelward/tide) to Chrome and installed
 web app windows on a Chromebook. It adds tide for Linux's named workspaces and key map
-on the Search key (or dwm, i3, sway, xmonad or bspwm's, as a guide), an overview of every workspace's windows, an optional dim on inactive windows, and world clocks. A
+on the Search key (or dwm, i3, sway, xmonad or bspwm's, as a guide), an overview of every workspace's windows, float rules for web apps, an optional dim on inactive windows, and world clocks. A
 setup checklist sets the native chromeOS features (lock, launcher,
 notifications, screenshots, dark mode) to match.
 

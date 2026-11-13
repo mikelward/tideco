@@ -25,6 +25,9 @@ export class FakeChrome {
       },
       sync: {
         get: async (key) => (key in fake.syncStore ? { [key]: structuredClone(fake.syncStore[key]) } : {}),
+        set: async (items) => {
+          for (const [k, v] of Object.entries(items)) fake.syncStore[k] = structuredClone(v);
+        },
       },
       session: {
         get: async (key) =>
@@ -43,10 +46,17 @@ export class FakeChrome {
     };
     // Each window's one tab. A window given `pendingUrl` is still loading its
     // first page, so its tab has no address yet, only where it's going.
-    this.tabOf = (w) =>
-      w.pendingUrl
+    // As Chrome, a tab's address and title show only with tab search, or
+    // access to its site ("origin/*" patterns, or all sites).
+    this.tabOf = (w) => {
+      const tab = w.pendingUrl
         ? { id: w.id * 10, active: true, url: "", pendingUrl: w.pendingUrl, title: w.title ?? "" }
         : { id: w.id * 10, active: true, url: w.url ?? "chrome://newtab/", title: w.title ?? "" };
+      const address = w.pendingUrl ?? tab.url;
+      const shown = fake.grantedPermissions.has("tabs") || fake.granted || [...fake.grantedOrigins].some((p) => address.startsWith(p.slice(0, -1)));
+      if (shown) return tab;
+      return { id: tab.id, active: true };
+    };
     // A window given `moreTabs`, addresses, has those tabs after its first,
     // `id * 10 + 1` on, not active.
     this.tabsOf = (w) => [

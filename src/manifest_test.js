@@ -39,7 +39,7 @@ test("every icon the manifest names is a PNG of its size", () => {
 
 // The extension shows itself as tide; tide is only the repo's and the
 // code's name, which users never see.
-const PAGES = ["src/launcher.html", "src/overview.html", "src/options.html", "src/mouse.html"];
+const PAGES = ["src/launcher.html", "src/overview.html", "src/options.html", "src/mouse.html", "src/floatask.html"];
 const page = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
 test("the name Chrome shows, in chrome://extensions, the toolbar and the shortcuts, is tide", () => {

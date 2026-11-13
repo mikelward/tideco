@@ -222,7 +222,7 @@ test("the options page renders every page and saves changes", async () => {
   // As tide for Linux's sidebar, with Chrome's own pages (§13).
   assert.deepEqual(await sidebarText(page), [
     "Hardware", "Mouse", "Keyboard",
-    "Windows", "Layouts", "Workspaces", "Apps",
+    "Windows", "Layouts", "Workspaces", "Floating", "Apps",
     "General", "Appearance", "Bar", "Notifications", "Clocks", "Start at login", "Extras", "Setup checklist", "Import and export",
   ]);
   // One page shows at a time, the first to start with, under its title.
@@ -1004,4 +1004,70 @@ test("a right-click on a bar item opens the settings at its section, and off the
   await options.close();
   assert.deepEqual(errors, []);
   await page.close();
+});
+
+// The Floating page (§5.4, §13): sites added, moved and taken out, each
+// saved as its origin; one listed already is refused, saying why.
+test("the Floating page keeps the sites whose app windows float", async () => {
+  const { page, errors } = await open("src/options.html#floating");
+  await page.waitForSelector("section.page.current#floating");
+  const stored = async () => (await worker.evaluate(() => chrome.storage.sync.get("settings"))).settings?.floating;
+  const add = async (site) => {
+    await page.locator("#float-site").fill(site);
+    await page.locator("#float-site").press("Enter");
+  };
+  assert.equal(await page.locator("#floating-none").isVisible(), true, "nothing floating by hand");
+  await add("meet.google.com");
+  await page.waitForFunction(async () => (await chrome.storage.sync.get("settings")).settings?.floating?.length === 1);
+  assert.equal(await page.locator("#float-site").inputValue(), "");
+  await add("https://chat.google.com/room/1");
+  await page.waitForFunction(async () => (await chrome.storage.sync.get("settings")).settings?.floating?.length === 2);
+  assert.deepEqual(await page.locator("#float-rules tbody td:first-child").allInnerTexts(), ["meet.google.com", "chat.google.com"]);
+  await add("https://meet.google.com/abc");
+  await page.waitForSelector("#errors:not([hidden])");
+  assert.equal(await page.locator("#errors").innerText(), "floating: meet.google.com is listed already");
+  assert.equal(await page.locator("#float-site").inputValue(), "https://meet.google.com/abc", "kept to fix");
+  await page.getByRole("button", { name: "Move chat.google.com up" }).click();
+  await page.waitForFunction(async () => (await chrome.storage.sync.get("settings")).settings?.floating?.[0]?.site === "https://chat.google.com");
+  await page.getByRole("button", { name: "Stop floating meet.google.com" }).click();
+  await page.waitForFunction(async () => (await chrome.storage.sync.get("settings")).settings?.floating?.length === 1);
+  assert.deepEqual(await stored(), [{ site: "https://chat.google.com" }]);
+  assert.match(await page.locator("#json").inputValue(), /"floating": \[\s*\{\s*"site": "https:\/\/chat\.google\.com"/);
+  assert.deepEqual(errors, []);
+  await worker.evaluate(() => chrome.storage.sync.remove("settings"));
+  await page.close();
+});
+
+// The question after floating an app window by hand (§5.4): Always float
+// adds the site's rule; Edit rule… opens the Floating page filled in.
+test("the float question adds the site's rule, or opens the Floating page with it", async () => {
+  const ask = (site) => open(`src/floatask.html?site=${encodeURIComponent(site)}`);
+  const first = await ask("https://meet.google.com");
+  assert.equal(await first.page.locator("#question").innerText(), "Always float meet.google.com?");
+  assert.equal(await first.page.locator("#detail").innerText(), "New meet.google.com app windows will open floating.");
+  const closed = first.page.waitForEvent("close");
+  await first.page.getByRole("button", { name: "Always float" }).click();
+  await closed;
+  assert.deepEqual((await worker.evaluate(() => chrome.storage.sync.get("settings"))).settings, { floating: [{ site: "https://meet.google.com" }] });
+  assert.deepEqual(first.errors, []);
+
+  for (const p of context.pages()) if (p.url().includes("options.html")) await p.close();
+  const second = await ask("https://chat.google.com");
+  const opened = context.waitForEvent("page", (p) => p.url().includes("options.html"));
+  await second.page.getByRole("button", { name: "Edit rule…" }).click();
+  const options = await opened;
+  await options.waitForLoadState();
+  await options.waitForSelector("section.page.current#floating");
+  await options.waitForFunction(() => document.getElementById("float-site").value === "chat.google.com");
+  await options.locator("#float-site").press("Enter");
+  await options.waitForFunction(async () => (await chrome.storage.sync.get("settings")).settings?.floating?.length === 2);
+  assert.deepEqual(second.errors, []);
+  await options.close();
+
+  const third = await ask("https://music.youtube.com");
+  const gone = third.page.waitForEvent("close");
+  await third.page.getByRole("button", { name: "Not now" }).click();
+  await gone;
+  assert.equal((await worker.evaluate(() => chrome.storage.sync.get("settings"))).settings.floating.length, 2, "Not now adds nothing");
+  await worker.evaluate(() => chrome.storage.sync.remove("settings"));
 });

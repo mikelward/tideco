@@ -77,6 +77,7 @@ export const SETTINGS_SECTIONS = [
   { id: "keys-section", group: "hardware", icon: "keyboard", name: "Keyboard", covers: "keys shortcuts bindings hotkeys" },
   { id: "layouts", group: "windows", icon: "layouts", name: "Layouts", covers: "tiling start in main share main windows ultrawide aspect ratio width", chromeos: true },
   { id: "workspaces", group: "windows", icon: "workspaces", name: "Workspaces", covers: "standing workspaces home apps pinned apps ask for a name", chromeos: true },
+  { id: "floating", group: "windows", icon: "floating", name: "Floating", covers: "float rules always float app windows sites", chromeos: true },
   { id: "apps-section", group: "windows", icon: "open", name: "Apps", covers: "app keys web apps addresses" },
   { id: "dim", group: "general", icon: "appearance", name: "Appearance", covers: "dim strength inactive windows", chromeos: true },
   { id: "bar", group: "general", icon: "bar", name: "Bar", covers: "panel taskbar position top bottom" },

@@ -6,6 +6,7 @@ TESTS = \
 	src/clocks_test.js \
 	src/dim_test.js \
 	src/extras_test.js \
+	src/floating_test.js \
 	src/geometry_test.js \
 	src/keys_test.js \
 	src/launcher_test.js \

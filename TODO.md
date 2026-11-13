@@ -346,8 +346,39 @@ Guesses made on autopilot (2026-10-24), each cheap to undo.
   as floating windows that stay on one workspace, which can't hide them.
   Reversible: `managed()` in `src/tide.js`.
 - **Secure Shell's popup windows tile**, by its extension ID in a built-in
-  list, until the options page has tile and float rules (SPEC.md §5.4).
+  list, until the options page has tile rules (SPEC.md §5.4). Float rules
+  are done (2026-11-13); tile rules aren't, as tide for Linux has none.
   Reversible: `TILED_POPUP_ORIGINS`.
+- **Float rules name a site, and cover app windows alone** (2026-11-13).
+  A rule is `{"site": origin}`, the key the app keys and unread counts
+  already use, since Chrome shows no window class and an installed app's
+  ID needs `management`. It covers installed web apps' windows and the
+  app popups tide opens, not tab windows, whose site changes with their
+  tabs. No title pattern, as tide for Linux's rules have: one could be
+  added as `title` later. Reversible: `ruleable` in `src/floating.js`.
+- **A rule decides a window once** (2026-11-13), when tide first knows
+  its site, marking it `ruled`, so a window you tile by hand stays tiled;
+  a changed list floats the open windows it newly covers, as tide for
+  Linux's sweep does. Without tab search no window's site shows, so no
+  rule applies; allowing it later floats the covered windows then.
+  Reversible: `Tide.ruleFloats`.
+- **Float rules are shared** (2026-11-13), in `storage.sync`, as tide for
+  Linux's `floating.json` is, with no per-Chromebook list like its
+  `floating.local.json`. Reversible: `SHARED` in `src/settings.js`.
+- **The float question is a small popup window, not a notification**
+  (2026-11-13). `chrome.notifications` would be a new permission with a
+  warning, which disables an installed copy until you accept it. The
+  window opens without focus in the display's bottom-right corner and
+  closes itself after 30 seconds, as Not now. Whether chromeOS honors
+  `focused: false` for a popup is unchecked. A site is asked about once
+  per browser session (`storage.session`), as tide for Linux asks once
+  per login. The alternative is asking in the dashboard, which takes the
+  whole screen. Reversible: `Tide.askAlways`, `src/floatask.html`.
+- **Always float on Floating now adds the rule at once** (2026-11-13),
+  where tide for Linux's fills the fields to trim a title first: a site
+  has nothing to trim. Edit rule… in the question fills the field
+  instead, for Enter. *Also floating* and *More about this window* aren't
+  ported. Reversible: `renderFloatingNow` in `src/optionsview.js`.
 - **A restart is when every stored window ID is gone**, and windows match
   by shared tab URLs, closest fit first (SPEC.md §14.2). A session with
   one window whose tabs all changed comes back unmatched, on the showing

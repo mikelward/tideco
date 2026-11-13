@@ -80,6 +80,23 @@
 <div id="workspace-settings"></div>
 </section>
 
+<section class="page" id="floating" data-chromeos>
+<h2>Floating</h2>
+<p class="muted about">These sites' app windows open floating: an installed web app's, or one an app key opens. Popups and developer tools always float. tide can tell a window's site only with tab search on, under Extras.</p>
+<table id="float-rules">
+<thead><tr><th>Site</th><th><span class="visually-hidden">Order</span></th></tr></thead>
+<tbody></tbody>
+</table>
+<form id="float-form" class="row">
+<input id="float-site" placeholder="Add a site, such as meet.google.com" aria-label="Site whose app windows float" spellcheck="false" required>
+<button type="submit">Add</button>
+</form>
+<h3>Floating now</h3>
+<p class="muted">App windows you floated with Search+Shift+F that no rule covers.</p>
+<ul id="floating-now"></ul>
+<p id="floating-none" class="muted">None</p>
+</section>
+
 <section class="page" id="apps-section">
 <h2>Apps</h2>
 <p class="muted about">Each key opens a new window of its app on the current workspace. Chrome fixes the keys; you choose the apps. Change a key at <code>chrome://extensions/shortcuts</code>.</p>

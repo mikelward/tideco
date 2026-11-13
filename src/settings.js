@@ -4,6 +4,7 @@
 
 import { APP_COMMANDS, DEFAULT_APPS, DEFAULT_HOME_APPS } from "./apps.js";
 import { checkZone, DAY, DEFAULT_CLOCKS, WORK } from "./clocks.js";
+import { checkFloating } from "./floating.js";
 import { DEFAULT_SITES } from "./unread.js";
 import { checkName, DEFAULT_STANDING, sameName } from "./workspaces.js";
 
@@ -11,7 +12,7 @@ export const SETTINGS_KEY = "settings";
 
 // What follows you to every Chromebook, in storage.sync, and what each one
 // keeps for its own displays, in storage.local.
-export const SHARED = ["clocks", "day", "work", "apps", "dimStrength", "barPosition", "watched", "defaultMode", "modes", "standing", "homeApps", "workspaceSettings"];
+export const SHARED = ["clocks", "day", "work", "apps", "dimStrength", "barPosition", "watched", "defaultMode", "modes", "standing", "homeApps", "workspaceSettings", "floating"];
 export const PER_MACHINE = ["singleRules", "ultrawideAspect", "wheelStep", "startup"];
 
 export function pick(settings, keys) {
@@ -47,6 +48,9 @@ export const DEFAULT_SETTINGS = {
   // reopens once closed. null, unset, is home asking and nothing pinned, as
   // workspaceSetting reads it.
   workspaceSettings: null,
+  // The float rules (§5.4): the sites whose app windows open floating, as
+  // tide's floating.json, and shared as it is.
+  floating: [],
   // Per machine, as they depend on its displays (§5.2).
   singleRules: [{ minAspect: 2.1, width: 0.8 }],
   ultrawideAspect: 2.1,
@@ -326,7 +330,7 @@ function checkModes(value, current) {
   return modes;
 }
 
-const CHECKS = { clocks: checkClocks, day: checkHours, work: checkHours, apps: checkApps, singleRules: checkSingleRules, ultrawideAspect: (a) => checkAspect(a), dimStrength: checkStrength, barPosition: checkBarPosition, watched: checkWatched, defaultMode: checkDefaultMode, modes: checkModes, wheelStep: checkWheelStep, startup: checkStartup, standing: checkStanding, homeApps: checkHomeApps, workspaceSettings: checkWorkspaceSettings };
+const CHECKS = { clocks: checkClocks, day: checkHours, work: checkHours, apps: checkApps, singleRules: checkSingleRules, ultrawideAspect: (a) => checkAspect(a), dimStrength: checkStrength, barPosition: checkBarPosition, watched: checkWatched, defaultMode: checkDefaultMode, modes: checkModes, wheelStep: checkWheelStep, startup: checkStartup, standing: checkStanding, homeApps: checkHomeApps, workspaceSettings: checkWorkspaceSettings, floating: checkFloating };
 
 // Settings from what's stored: `sync` then `local`, each an object or
 // undefined. Returns {settings, errors}, an error for each bad or unknown
@@ -353,6 +357,25 @@ export function resolve(sync, local) {
     }
   }
   return { settings, errors };
+}
+
+// Changes shared setting `key` as stored in storage.sync: `change` takes
+// its value now and returns {value} or {error}. Every other stored key
+// stays as stored. Refused, naming the setting, when what's stored for it
+// doesn't load, so a hand edit gone wrong isn't overwritten, or when the
+// new value wouldn't load either. `storage` is chrome.storage.
+export async function editShared(storage, key, change) {
+  const raw = (await storage.sync.get(SETTINGS_KEY))[SETTINGS_KEY];
+  if (raw !== undefined && (typeof raw !== "object" || raw === null || Array.isArray(raw))) throw new Error("settings must be an object");
+  const stored = raw ?? {};
+  const { settings, errors } = resolve(stored);
+  const bad = errors.find((e) => e.startsWith(`${key}: `));
+  if (bad) throw new Error(bad);
+  const out = change(settings[key]);
+  if (out.error) throw new Error(`${key}: ${out.error}`);
+  const check = resolve({ [key]: out.value });
+  if (check.errors.length > 0) throw new Error(check.errors[0]);
+  await storage.sync.set({ [SETTINGS_KEY]: { ...stored, [key]: out.value } });
 }
 
 // Whether a storage.onChanged batch touched the settings, rather than only

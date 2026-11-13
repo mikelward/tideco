@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { DEFAULT_SETTINGS, load, PER_MACHINE, pick, resolve, SETTINGS_KEY, settingsChanged, SHARED, standingProblems, withWorkspaceSetting, workspaceSetting } from "./settings.js";
+import { DEFAULT_SETTINGS, editShared, load, PER_MACHINE, pick, resolve, SETTINGS_KEY, settingsChanged, SHARED, standingProblems, withWorkspaceSetting, workspaceSetting } from "./settings.js";
 
 test("nothing stored means the defaults", () => {
   assert.deepEqual(resolve(undefined, undefined), { settings: DEFAULT_SETTINGS, errors: [] });
@@ -101,7 +101,7 @@ test("layouts are set per Chromebook, and checked", () => {
 
 test("pick keeps the shared settings apart from this Chromebook's", () => {
   const all = resolve().settings;
-  assert.deepEqual(Object.keys(pick(all, SHARED)), ["clocks", "day", "work", "apps", "dimStrength", "barPosition", "watched", "defaultMode", "modes", "standing", "homeApps", "workspaceSettings"]);
+  assert.deepEqual(Object.keys(pick(all, SHARED)), ["clocks", "day", "work", "apps", "dimStrength", "barPosition", "watched", "defaultMode", "modes", "standing", "homeApps", "workspaceSettings", "floating"]);
   assert.deepEqual(Object.keys(pick(all, PER_MACHINE)), ["singleRules", "ultrawideAspect", "wheelStep", "startup"]);
 });
 
@@ -271,4 +271,47 @@ test("a clock can be out of the bar, and bar must be true or false", () => {
   const { settings } = resolve({ clocks: [{ zone: "Asia/Tokyo", label: "TYO", bar: false }, { zone: "UTC", label: "UTC", bar: true }] });
   assert.deepEqual(settings.clocks, [{ zone: "Asia/Tokyo", label: "TYO", bar: false }, { zone: "UTC", label: "UTC" }]);
   assert.deepEqual(resolve({ clocks: [{ zone: "UTC", label: "UTC", bar: "no" }] }).errors, ["clocks: clock 1's bar must be true or false"]);
+});
+
+test("the float rules are shared, and a bad one fails at load naming the setting", () => {
+  assert.equal(SHARED.includes("floating"), true);
+  assert.deepEqual(resolve().settings.floating, []);
+  assert.deepEqual(resolve({ floating: [{ site: "meet.google.com" }] }).settings.floating, [{ site: "https://meet.google.com" }]);
+  const { settings, errors } = resolve({ floating: [{ site: "https://meet.google.com" }, { site: "ftp://x" }] });
+  assert.deepEqual(errors, ['floating: rule 2: "ftp://x" isn\'t a website']);
+  assert.deepEqual(settings.floating, [], "it keeps its default");
+});
+
+// storage.sync alone, as editShared uses it.
+function syncStore(stored) {
+  const box = { stored };
+  return {
+    box,
+    sync: {
+      get: async (key) => (box.stored === undefined ? {} : { [key]: structuredClone(box.stored) }),
+      set: async (items) => {
+        box.stored = structuredClone(items[SETTINGS_KEY]);
+      },
+    },
+  };
+}
+
+test("one shared setting is changed as stored, keeping the rest as they are", async () => {
+  const storage = syncStore({ clocks: "a hand edit gone wrong", floating: [{ site: "https://chat.google.com" }] });
+  await editShared(storage, "floating", (rules) => ({ value: [...rules, { site: "https://meet.google.com" }] }));
+  assert.deepEqual(storage.box.stored, { clocks: "a hand edit gone wrong", floating: [{ site: "https://chat.google.com" }, { site: "https://meet.google.com" }] });
+  const empty = syncStore(undefined);
+  await editShared(empty, "floating", () => ({ value: [{ site: "https://meet.google.com" }] }));
+  assert.deepEqual(empty.box.stored, { floating: [{ site: "https://meet.google.com" }] });
+});
+
+test("a shared setting that doesn't load, or wouldn't, isn't overwritten", async () => {
+  const storage = syncStore({ floating: "junk" });
+  await assert.rejects(editShared(storage, "floating", () => ({ value: [] })), /^Error: floating: must be a list/);
+  assert.deepEqual(storage.box.stored, { floating: "junk" });
+  const good = syncStore({});
+  await assert.rejects(editShared(good, "floating", () => ({ error: "nope" })), /floating: nope/);
+  await assert.rejects(editShared(good, "floating", () => ({ value: [{ site: "ftp://x" }] })), /floating: rule 1/);
+  assert.deepEqual(good.box.stored, {});
+  await assert.rejects(editShared(syncStore([]), "floating", () => ({ value: [] })), /settings must be an object/);
 });

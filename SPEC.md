@@ -479,10 +479,55 @@ tide for Linux's Lua layout is the reference; the two share test fixtures (§15)
 - **Except Secure Shell**: its terminals open as `popup` windows, so tide for Chrome
   tiles popups whose tab is on Secure Shell's extension origin, like its own
   app popups (§6.4).
-- **Chrome Remote Desktop** and the other URL rules chrometile ships, as a
-  user-editable list.
+- **Your float rules**, on the Floating settings page (§13), as tide for
+  Linux's Floating page (its §6.4, §16). Each rule names a site, and that
+  site's app windows open floating.
+  - Chrome shows an extension no window class. A window's site, the
+    origin of its active tab, is the nearest thing: the app keys and
+    unread counts know a site the same way (§9.1, §10.3), and §3.5 keeps
+    one web app per site. An installed web app's own ID would need the
+    `management` permission, and Chrome doesn't say which window is
+    whose.
+  - A rule covers app windows alone: an installed web app's (`type:
+    "app"`) or an app popup tide opened (§9.1). A tab window's site
+    changes with its tabs, and popups and devtools float already.
+  - A rule floats a window when tide first knows its site: as it opens,
+    from where it's going if it's still loading. Chrome hides a tab's
+    address without tab search (§14.1), so without it no rule applies.
+  - A rule added floats the app windows it covers that are open now, on
+    any workspace, unless maximized or full screen. A window you tiled by
+    hand under a rule that covered it already stays tiled. Taking a rule
+    out, or moving one, tiles nothing.
+  - The rules are `floating` in the shared settings: `[{"site":
+    "https://meet.google.com"}]`, each saved as its origin, at most 64. A
+    bad one fails at load, naming the setting, and the list keeps its
+    last good value.
+  - chrometile's URL rules (Chrome Remote Desktop's among them) aren't
+    built in; a site of theirs is one rule away.
 - Anything you float with `Search+Shift+F`, remembered by window ID and
   persisted.
+  - **Asking to always float.** Floating an app window by hand, when no
+    rule covers its site, asks once: *Always float meet.google.com?*,
+    with **Always float**, which adds the rule at once, **Edit rule…**,
+    which opens the Floating page with the site in its field, and **Not
+    now**.
+  - tide for Linux asks with a notification. `chrome.notifications` is a
+    permission Chrome warns about, and adding one disables an installed
+    extension until you accept it, so tide for Chrome asks in a small
+    popup window of its own instead, in the bottom-right corner of the
+    window's display, opened without focus *(unverified on a device)*.
+    Like any popup, it floats untracked.
+  - Esc, Not now or 30 seconds unanswered close it. Whatever the answer,
+    the site isn't asked about again until the browser restarts: the
+    sites asked about are kept in `storage.session` (`floatAsked`).
+  - Only `Search+Shift+F` asks. A window a rule floats, or one dragged to
+    native float, never does.
+- The Floating page's **Floating now** lists the app windows floating
+  that no rule covers, one per site, each with **Always float**. It reads
+  tide for Chrome's stored state and Chrome's windows. A window whose
+  site Chrome hides can't be named, so it isn't listed. tide for Linux's
+  *Also floating* and *More about this window* aren't ported: Chrome
+  says little more of a window than its type and its tabs.
 
 Native dialogs (file chooser, print) aren't Chrome windows. The OS places
 them over their parent, which is what tide for Linux's §6.4 asks for.
@@ -1404,7 +1449,8 @@ Crostini runs kitty, the shell config and the terminal tools, so `conf` and
   and General, and the page chosen shows beside it, one at a time, under
   its title and what to know first. Each scrolls on its own. A page has
   tide for Linux's name where it's the same page: Mouse and Keyboard (the
-  keys checklist) under Hardware; Layouts and Workspaces under Windows;
+  keys checklist) under Hardware; Layouts, Workspaces and Floating
+  (§5.4) under Windows;
   Appearance (the dim's strength), Bar (where the bar sits, §8.1),
   Notifications (unread counts), Clocks and Start at login under
   General. Chrome's own pages follow tide's in
@@ -1420,7 +1466,8 @@ Crostini runs kitty, the shell config and the terminal tools, so `conf` and
   once in a page already open.
 - Every change applies live; no reload.
 - **Shared vs per-machine**, as tide for Linux's §16.1: `chrome.storage.sync` holds
-  the shared settings (apps, clocks, keys, layouts, the bar's place), and
+  the shared settings (apps, clocks, keys, layouts, float rules, the bar's
+  place), and
   `chrome.storage.local` holds per-machine overrides (lone-window width per
   display, ultrawide threshold), which Layouts lists below the shared
   layouts, saying they stay on this Chromebook. Objects merge key by key; lists replace
@@ -1463,8 +1510,9 @@ Crostini runs kitty, the shell config and the terminal tools, so `conf` and
   (§8.1), this Chromebook's
   layouts (the ultrawide threshold and the lone-window widths, kept in
   `storage.local`), this Chromebook's mouse wheel step, for the login
-  reminder (§19.2), this Chromebook's Start at login list (below), and
-  import, export and reset of the shared settings.
+  reminder (§19.2), this Chromebook's Start at login list (below), the
+  float rules and Floating now (§5.4), and import, export and reset of
+  the shared settings.
   `src/settings.js` checks every value, and the dashboard and home page pick
   up a change at once through `storage.onChanged`; tide for Chrome reads its settings
   on each step. The Layouts page sets the layout a workspace starts in,
@@ -1500,6 +1548,12 @@ Crostini runs kitty, the shell config and the terminal tools, so `conf` and
     writes that default out with the change, so home keeps asking. A
     standing workspace added or renamed gets its own boxes; settings kept
     under a name taken out stay, for the JSON to show.
+  The Floating page lists the float rules (§5.4) by site, as tide for
+  Linux's does by class: arrows move one and × takes it out. A site typed
+  at the foot ("meet.google.com", or any address on it) is added with
+  Enter. One listed already is refused, saying why, and stays in the
+  field to fix. A move or removal names its rule by place and site, so one
+  from a page showing rules since changed elsewhere is refused.
 
 ### 13.1 Start at login
 
@@ -1736,7 +1790,8 @@ each event, since Chrome answers at once.
   results don't stand in for M2's device checks.
   - `test/smoke.js`, run by `make smoke` and CI's `smoke` job, checks that
     the worker starts, that the options page lists every page and
-    saves a setting and a checklist tick, that the home page and
+    saves a setting and a checklist tick, that the Floating page and the
+    question after floating a window add a float rule, that the home page and
     dashboard render the bar, clocks, launcher and calendar, and that the
     overview renders, filters and closes and shrinks a picture, all with
     no page errors. Content scripts aren't covered yet.

@@ -112,7 +112,7 @@ test("a settings change applies at once, but tide's own state writes don't count
 
 test("the dim's strength is shared, and checked", () => {
   assert.equal(resolve({ dimStrength: 0.2 }).settings.dimStrength, 0.2);
-  assert.deepEqual(resolve({ dimStrength: 0.9 }).errors, ["dimStrength: 0.9 isn't a strength from 0.02 to 0.5 (2% to 50%), like 0.1"]);
+  assert.deepEqual(resolve({ dimStrength: 0.9 }).errors, ["dimStrength: 0.9 isn't a strength from 0.02 to 0.5 (2% to 50%), like 0.12"]);
   assert.ok(SHARED.includes("dimStrength"));
 });
 

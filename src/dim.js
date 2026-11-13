@@ -1,8 +1,8 @@
 // The dim on unfocused windows (SPEC.md §10.1): a full-page black overlay,
-// 10% by default, that ignores the pointer. `overlay` runs inside the page, through
+// 12% by default, that ignores the pointer. `overlay` runs inside the page, through
 // chrome.scripting, so it uses nothing from this module.
 
-export function overlay(on, strength = 0.1) {
+export function overlay(on, strength = 0.12) {
   // The old name, kept: pages still dimmed when tide updates hold this element.
   const ID = "tico-dim";
   const old = document.getElementById(ID);

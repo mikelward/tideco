@@ -364,7 +364,7 @@ off-ramp.
 | Layout per workspace, on each monitor | tide for Chrome state per workspace and display (§6.1) | **yes** |
 | Named workspaces, home first; go and move by name; the Nth on Search+1…9 / Shift (tide for Linux §6.5, §6.6) | tide for Chrome workspaces by minimize (§3.2), named as tide for Linux's (§6.1) | **partial**: keys need a Chrome window focused; Android/Linux windows on every workspace; the name prompt is the dashboard's, not a window over the app |
 | One workspace spanning every monitor, each with its own part (tide for Linux §6.5) | tide for Chrome: the workspace showing shows on every display, each window in its display's part (§6.1) | **partial**, same caveats |
-| Dim inactive, 0.07 (tide for Linux §6.2; KDE 0.15) | an overlay injected into the page of each unfocused window (§10.1) | **partial**: page only, not tab strip or title bar; not over `chrome://` pages |
+| Dim inactive, 0.12 (tide for Linux §6.2; KDE 0.15) | an overlay injected into the page of each unfocused window (§10.1) | **partial**: page only, not tab strip or title bar; not over `chrome://` pages |
 | No borders, no gaps | chromeOS draws its own frames; tide for Chrome margin 0 | **partial** |
 | Maximize, fullscreen, restore (tide for Linux §6.3) | native Alt+=, fullscreen key, rebound to Search+Up/Shift+Up/Down in the Shortcuts app | **yes** |
 | Dialogs float, centered on parent (tide for Linux §6.4) | popups and dialogs untiled by type and rule (§5.4) | **yes** for Chrome; the OS places native dialogs |
@@ -1273,10 +1273,10 @@ the settings sections shown there.
 ### 10.1 The dim
 
 - tide for Chrome injects a content script into the visible tab of every **unfocused**
-  tiled window. It adds a full-page overlay at 10% black, ignoring the
-  pointer, at the top of the stacking order. That's stronger than tide for Linux's
-  0.07 Hyprland dim, matching the 10–15% of other desktops; the options
-  page sets the strength, from 2% to 50% (§13).
+  tiled window. It adds a full-page overlay at 12% black, ignoring the
+  pointer, at the top of the stacking order: tide for Linux's dim, and
+  within the 10–15% of other desktops. The options page sets the
+  strength, from 2% to 50% (§13).
 - The focused window's overlay goes the instant focus arrives.
 - No dim when the workspace has one visible window, over fullscreen video,
   or in PiP, as in tide for Linux §6.2.

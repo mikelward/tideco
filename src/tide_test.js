@@ -1401,7 +1401,7 @@ test("the dim's strength comes from settings, and a change repaints what's dimme
   ]);
   chrome.granted = true;
   await tide.setDim(true);
-  assert.equal(chrome.strength.get(20), 0.1, "10% by default");
+  assert.equal(chrome.strength.get(20), 0.12, "12% by default, as tide for Linux");
   chrome.syncStore.settings = { dimStrength: 0.25 };
   await tide.event();
   assert.equal(chrome.strength.get(20), 0.25, "the dimmed page took the new strength");

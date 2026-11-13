@@ -53,6 +53,9 @@ FakeChrome and the smoke test.
 
 Guesses made on autopilot (2026-10-24), each cheap to undo.
 
+- **The dim defaults to 12%, as tide for Linux's** (2026-11-13), up from
+  10%. A strength you set yourself stays. Reversible: `dimStrength` in
+  `src/settings.js`.
 - **The settings page's sidebar names and groups Chrome's own pages**
   (2026-11-08). tide for Linux's names where the page is the same: Keys
   is Keyboard, Dim is Appearance, Unread counts is Notifications, and the

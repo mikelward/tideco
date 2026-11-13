@@ -16,11 +16,11 @@ function fakePage() {
   return els;
 }
 
-test("the overlay is 10% black, ignores the pointer, and sits on top", () => {
+test("the overlay is 12% black, ignores the pointer, and sits on top", () => {
   const els = fakePage();
   overlay(true);
   const css = els.get("tico-dim").style.cssText;
-  assert.match(css, /background:rgba\(0,0,0,0\.1\)/);
+  assert.match(css, /background:rgba\(0,0,0,0\.12\)/);
   assert.match(css, /pointer-events:none/);
   assert.match(css, /z-index:2147483647/);
 });

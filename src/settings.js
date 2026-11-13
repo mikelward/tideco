@@ -23,7 +23,7 @@ export const DEFAULT_SETTINGS = {
   day: DAY,
   work: WORK,
   apps: DEFAULT_APPS,
-  dimStrength: 0.1,
+  dimStrength: 0.12,
   // Where the dashboard's and home page's bar sits (§8.1), as tide's
   // appearance.json has it.
   barPosition: "top",
@@ -141,7 +141,7 @@ function checkSingleRules(rules) {
 
 function checkStrength(strength) {
   if (typeof strength !== "number" || !(strength >= 0.02 && strength <= 0.5)) {
-    throw new Error(`${strength} isn't a strength from 0.02 to 0.5 (2% to 50%), like 0.1`);
+    throw new Error(`${strength} isn't a strength from 0.02 to 0.5 (2% to 50%), like 0.12`);
   }
   return strength;
 }

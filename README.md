@@ -18,9 +18,11 @@ toolbar and its own pages; tideco is the name of this repository.
 explains what chromeOS lets an extension do, and what it doesn't: Android
 and Linux windows, global keys and a top bar are out of reach.
 
-It isn't on the Chrome Web Store yet. Once it's published, it will be at
+It's on the Chrome Web Store, at
 <https://chromewebstore.google.com/detail/ajcfbfgjfglgofbepnkiimmmnaidfedl>.
-Until then, load it unpacked, as [PUBLISHING.md](PUBLISHING.md) §2 says.
+The store's copy can be behind `main`: every merge is a release on GitHub,
+which reaches the store once it's uploaded, as [PUBLISHING.md](PUBLISHING.md)
+§5 says. For `main` itself, load it unpacked, as §2 says.
 
 Thanks to [chrometile](https://github.com/brockgr/chrometile), which showed
 the way.

@@ -370,7 +370,7 @@ off-ramp.
 | Dialogs float, centered on parent (tide for Linux §6.4) | popups and dialogs untiled by type and rule (§5.4) | **yes** for Chrome; the OS places native dialogs |
 | Focus follows mouse (KDE `FocusFollowsMouse`) | chromeOS's `chrome://flags/#focus-follows-cursor`, from the setup checklist (§10.2) | **partial**: a flag, off by default, which Chrome can drop |
 | Nothing steals focus (tide for Linux §14) | chromeOS activation rules; tide for Chrome never focuses unasked | **partial**: the OS decides for apps |
-| Super+A for the windows wanting attention (tide for Linux §14.4) | tide for Chrome's marks from title-count watchers, on Search+A (§10.3) | **partial**: chosen sites only, and Search+A goes to the newest mark rather than listing them |
+| Super+A for the windows wanting attention (tide for Linux §14.4) | tide for Chrome's marks from title-count watchers, on Search+A (§10.3) | **partial**: chosen sites only |
 | Full-width bar, workspaces, urgency (tide for Linux §7) | no top bar on busy workspaces; shelf + toolbar badge + full-screen dashboard and home page with tide for Linux's bar (§6.2, §8) | **partial** |
 | Tray, network, volume, Bluetooth, battery | chromeOS status area on the shelf | **yes**, native |
 | SF, NYC and LON clocks beside local (tide for Linux §7.3) | dashboard and home page: zones, strips, DST, scrubbing (§8.2) | **partial**: one key away, not always on screen |
@@ -771,7 +771,7 @@ workspace is showing on some display and you haven't minimized it.
 |---|---|---|
 | **Show** workspace W: `Search+W`'s prompt, the Workspaces scope, `Search+Home`, `Search+End`, `Search+1…9`, `Search+0`, `Search+Page Up` and `Page Down`, a click on the bar | Every display shows its part of W, making W if it's new. | W's window on your display (above) |
 | **Move** a window to W: `Search+Shift+W`'s prompt, which then shows W; `Search+Shift+1…9`, `Search+Shift+0` and `Search+Shift+Page Up` and `Page Down`, which stay put | The window moves to the end of W's stack, keeping its display, a new name making W first, at the end of the list. If W is showing, the window stays; if not, it's hidden. | the prompt: that window, as tide for Linux's move; the keys: stays put, as tide for Linux's `Super+Shift+1…9` |
-| **Activate** a window: a tab from the launcher (§9.4), `Search+A` (§10.3) | If its workspace isn't showing, show it, as Show W. Clear the window's minimized-by-you flag. | that window |
+| **Activate** a window: a tab from the launcher (§9.4), a window on its Attention scope (§10.3), a card in the overview (§6.5) | If its workspace isn't showing, show it, as Show W. Clear the window's minimized-by-you flag and its attention mark. | that window |
 | **Moved to another display** by you: the native `Search+Alt+M`, or a drag ending with the window's center on another display, seen as an `onBoundsChanged` tide for Chrome didn't cause | The window belongs to that display from now on, at the end of its part, in the same workspace. A window chromeOS moves off a display that went, or tide for Chrome hands back, isn't one. | that window |
 | **Minimize** by you | Set the flag. | chromeOS picks |
 | **Restore** by you: any un-minimize tide for Chrome didn't cause, from the shelf or Alt+Tab | Clear the window's minimized-by-you flag. If its workspace is hidden, this is Activate, so the workspace comes with it. | that window |
@@ -937,7 +937,7 @@ Bound by tide for Chrome, unless the column says the Shortcuts app:
 | `Search+Up` / `Search+Shift+Up` / `Search+Down` (tide for Linux: `Super+X` / `Super+Shift+X`) | maximize / fullscreen / restore | Shortcuts app, if it can take them *(unverified)*: Search+Up and Down are Page Up and Down, which it doesn't list (§7.2). Alt+= maximizes meanwhile. |
 | `Search+Shift+F` | toggle floating | tide for Chrome |
 | `Ctrl+Shift+W` (tide for Linux: `Super+Backspace`) | close window | native Chrome |
-| `Search+A` (tide for Linux: `Super+A`) | the newest window wanting attention, then the next; with none, the last window (§10.3) | tide for Chrome |
+| `Search+A` (tide for Linux: `Super+A`) | the dashboard on its Attention scope: every window wanting attention, most recent first (§10.3) | tide for Chrome |
 | `Search+Shift+N` | notification center | Shortcuts app, if the action is editable *(unverified)* |
 | `Search+S` | toggle keep awake (§11), as the bar's cup does | tide for Chrome, once select to speak is removed (§7.2) |
 | `Search+Alt+M` | move to other display | native |
@@ -1269,15 +1269,19 @@ tide for Chrome adds its own launcher on top, on the home page (§6.2) and the
 dashboard (§8.1), for what the native one doesn't do: switching among open
 tabs and running tide for Chrome's commands.
 
-- **Four scopes**, in this order, switched by their chips, or Tab and
+- **Five scopes**, in this order, switched by their chips, or Tab and
   Shift+Tab: **Launch** (the app keys' apps, each with its key, and Tide
   Settings), **Tabs** (every open tab but tide for Chrome's own, with its
-  workspace), **Workspaces** (the name prompt, §6.1) and **Actions**
-  (tide for Chrome's actions, then its commands). The home page
-  opens on Launch, the dashboard on Tabs, and `Search+W` and
-  `Search+Shift+W` open it on Workspaces. Without the `tabs` permission
+  workspace), **Workspaces** (the name prompt, §6.1), **Attention** (the
+  windows wanting attention, §10.3) and **Actions** (tide for Chrome's
+  actions, then its commands). That's tide for Linux's switcher's order
+  (tide for Linux §8.1), with Tabs for its Windows. The home page
+  opens on Launch, the dashboard on Tabs, `Search+W` and
+  `Search+Shift+W` open it on Workspaces, and `Search+A` on Attention.
+  Without the `tabs` permission
   (§14.1) the dashboard opens on Launch too, and Tabs offers "Allow tab
-  search". The page learns which from its address: `scope=workspaces`, and
+  search". The page learns which from its address: `scope=workspaces` or
+  `scope=attention`, and
   `move=1` for `Search+Shift+W`, with `allowHome=1` for a window of one
   of home's apps and `name=`, URL-encoded, for a new window's short name.
 - **Tide Settings** is listed on Launch as an app, and opens the options
@@ -1301,13 +1305,25 @@ tabs and running tide for Chrome's commands.
   many windows; home's starts "home · ". Enter shows the one chosen, as a
   click on the bar does. Its "Go to a workspace by name" command, chosen
   on Launch, goes to this scope.
+- **Attention** lists every window wanting attention (§10.3), on any
+  workspace, most recent first, each with its title and, after "window
+  on", its workspace and its unread count. The title is its active tab's,
+  else another of its tabs' that Chrome shows: without tab search, only
+  the watched sites' titles show. Typing filters by title, or for less
+  by workspace. Enter goes there (§6.1 Activate), which clears its mark;
+  the others keep theirs. With none it says "No window wants attention",
+  as tide for Linux's does. It has a chip only where the page is given
+  tide for Chrome's marks, so a copy of the page on another host that
+  gives none has no Attention scope. Its "Go to a window wanting
+  attention" command, chosen on Launch, goes to this scope.
 - **Fuzzy matching:** every query letter in order, with word starts and runs
   scoring higher, so "gc" finds Google Calendar. A tab matches by title,
   by the name of the app whose site it's on (so "calendar" finds Calendar's
   tabs), and, for less, by host. Ties go to the most recently used (`tab.lastAccessed`).
 - **Empty query:** Launch lists only the apps and Tide Settings, as a
-  start menu would; Tabs, tabs most recent first; Actions, the actions
-  before the commands. A settings section shows only for a query.
+  start menu would; Tabs, tabs most recent first; Attention, every mark;
+  Actions, the actions before the commands. A settings section shows
+  only for a query.
 - **Nothing in scope:** a query that matches nothing in its scope searches
   them all, so a tab still turns up from Launch.
 - **Enter** goes there: a tab comes forward with its window and workspace
@@ -1316,7 +1332,7 @@ tabs and running tide for Chrome's commands.
   Esc clears, then closes the dashboard.
 - **The footer** names only the keys that work in the scope you're in, as
   tide for Linux's switcher footer does: Enter to run on Launch and Actions, to go there on
-  Tabs and Workspaces, to move the window there in `Search+Shift+W`'s
+  Tabs, Workspaces and Attention, to move the window there in `Search+Shift+W`'s
   prompt, and to allow tab search on Tabs without it, where there's one row
   and so no arrows; Tab names the scope it switches to.
 
@@ -1374,10 +1390,11 @@ notifications; tide for Chrome derives it from **page titles** instead:
 - tide for Chrome marks the window: the badge goes amber (§8.1), the workspace is
   marked in the bar, and `windows.update({drawAttention: true})` flashes
   its shelf icon.
-- `Search+A` activates the most recent mark (§6.1); again goes to the
-  next. With nothing marked, it goes to the last window you were in.
-  tide for Linux's `Super+A` lists the marks instead (tide for Linux §14.4);
-  this is the cycle its `Super+Tab` had before.
+- `Search+A` opens the dashboard on its Attention scope (§9.4), as tide
+  for Linux's `Super+A` opens its switcher on Attention (tide for Linux
+  §8.1): every marked window, on any workspace, most recent first. Enter
+  activates one (§6.1), which clears its mark. With nothing marked, the
+  list says so. The key again closes it (maintainer, 2026-11-14).
 - A mark clears when the window is focused.
 - **Counting an unread count as attention is deliberate.** tide for Linux
   and tide for macOS don't (tide for Linux §14.4), since a count rises with
@@ -1745,8 +1762,8 @@ each event, since Chrome answers at once.
     app keys still work, and so does keep awake. A window they open goes
     where the desktop puts it.
   - The dashboard's bar shows no workspaces, and says tiling and
-    workspaces work only on chromeOS. Its launcher has no Workspaces
-    scope. Launch and Actions list only the commands that place no
+    workspaces work only on chromeOS. Its launcher has no Workspaces or
+    Attention scope, and `Search+A` does nothing. Launch and Actions list only the commands that place no
     window: the dashboard, the app keys and keep awake. Actions has no
     dimming, and Launch finds only the settings pages shown there.
   - The settings hide what only tiling uses: the setup checklist, Start at
@@ -1805,7 +1822,7 @@ each event, since Chrome answers at once.
 | **M1** | This spec | agreed; open questions answered |
 | **M2** | Device checks + layouts | every *(unverified)* claim in §2, §7.2, §9 and §11 is checked on a Chromebook, with the chromeOS version, and this spec updated. The four layouts and the lone-window rule tile Chrome and web app windows on the laptop panel and on an ultrawide. Frame offsets are measured and tiles meet. State survives the worker sleeping and a browser restart. |
 | **M3** | Workspaces + keys | named workspaces, home first and the standing ones always listed, switch and move by name and by number on one and two displays, with the home page on empty ones. Every key in §7.1 is bound or listed by the keys checklist. App keys open a new window of each web app and profile. |
-| **M4** | Dashboard, clocks, attention | the dashboard shows workspaces and urgency from live state, the clocks follow tide for Linux's rules across a DST fixture, and a Chat message marks its window and `Search+A` goes there. |
+| **M4** | Dashboard, clocks, attention | the dashboard shows workspaces and urgency from live state, the clocks follow tide for Linux's rules across a DST fixture, and a Chat message marks its window and `Search+A` lists it. |
 | **M5** | Dimming + settings | optional dimming works and is off without the permission. The options page edits everything live, syncs, and imports tide for Linux's JSON. |
 | **M6** | Linux | `setup` runs in Crostini; the nested-sway experiment is tried and written up, keep or drop. |
 

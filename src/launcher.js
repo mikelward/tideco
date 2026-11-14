@@ -1,7 +1,8 @@
 // The launcher's matching and ranking (SPEC.md §9.4), free of chrome.* so it
 // tests in Node: tabs, apps and tide's commands, filtered by a fuzzy match
 // and ordered by how well they match, then by how recently you used them;
-// and the workspaces, which double as the name prompt (§6.1).
+// the workspaces, which double as the name prompt (§6.1); and the windows
+// wanting attention (§10.3).
 
 import { worksUntiled } from "./platform.js";
 
@@ -45,17 +46,19 @@ function itemScore(query, item) {
 
 // The scopes rank() ranks: "launch" is apps, Tide Settings and its sections,
 // and, for a query, the actions and commands too; "tabs" is open tabs;
-// "actions" is tide's actions and commands. "workspaces" has rows of its
-// own (workspaceRows).
+// "actions" is tide's actions and commands. "workspaces" and "attention"
+// have rows of their own (workspaceRows, attentionRows).
 export const SCOPES = { launch: ["app", "setting", "action", "command"], tabs: ["tab"], actions: ["action", "command"] };
 
 // What each scope lists with nothing typed (§9.4): Launch only its apps, so
 // it reads as a start menu; a settings section turns up only for a query.
 const EMPTY = { launch: ["app"], tabs: ["tab"], actions: ["action", "command"] };
 
-// The scopes in their chips' order, which Tab steps through.
-export const SCOPE_ORDER = ["launch", "tabs", "workspaces", "actions"];
-const SCOPE_NAMES = { launch: "Launch", tabs: "Tabs", workspaces: "Workspaces", actions: "Actions" };
+// The scopes in their chips' order, which Tab steps through: tide for
+// Linux's switcher's, Apps, Workspaces, Windows, Attention and Actions
+// (tide SPEC.md §8.1), with Tabs for its Windows.
+export const SCOPE_ORDER = ["launch", "tabs", "workspaces", "attention", "actions"];
+const SCOPE_NAMES = { launch: "Launch", tabs: "Tabs", workspaces: "Workspaces", attention: "Attention", actions: "Actions" };
 
 // The name of the options page as an app (§9.4), in the user's words.
 export const SETTINGS_APP = "Tide Settings";
@@ -142,14 +145,15 @@ export function actions({ keepAwake = false, dim = null, key = () => "" } = {}) 
   return out;
 }
 
-// How many rows a scope shows: Actions lists every one with nothing typed,
-// the rest the best eight.
+// How many rows a scope shows: Actions and Attention list every one with
+// nothing typed, the rest the best eight.
 export function limitFor(scope, query) {
-  return scope === "actions" && query.trim() === "" ? Infinity : 8;
+  return (scope === "actions" || scope === "attention") && query.trim() === "" ? Infinity : 8;
 }
 
 // The scope `by` chips from `scope` among those shown, `scopes`, wrapping.
-// Off chromeOS there are no workspaces, so no Workspaces chip (§14.6).
+// Off chromeOS there are no workspaces or marks, so no Workspaces or
+// Attention chip (§14.6).
 export function nextScope(scope, by = 1, scopes = SCOPE_ORDER) {
   const n = scopes.length;
   return scopes[(scopes.indexOf(scope) + by + n) % n];
@@ -157,18 +161,20 @@ export function nextScope(scope, by = 1, scopes = SCOPE_ORDER) {
 
 // How the page was opened, from its address: `mode=home` is an empty
 // workspace's home page (§6.2), on Launch; anything else the dashboard
-// (§8.1), on Tabs, or on Workspaces with `scope=workspaces`, as Search+W
-// opens it. Search+Shift+W adds `move=1`: Enter then moves the window the
-// dashboard opened over. A new window's prompt adds `name`, the field's
-// text to start with (§6.1).
+// (§8.1), on Tabs, on Workspaces with `scope=workspaces`, as Search+W
+// opens it, or on Attention with `scope=attention`, as Search+A does.
+// Search+Shift+W adds `move=1`: Enter then moves the window the dashboard
+// opened over. A new window's prompt adds `name`, the field's text to
+// start with (§6.1).
 export function opening(search) {
   const q = new URLSearchParams(search);
   const home = q.get("mode") === "home";
   const workspaces = !home && q.get("scope") === "workspaces";
+  const attention = !home && q.get("scope") === "attention";
   const move = workspaces && q.get("move") === "1";
   return {
     home,
-    scope: home ? "launch" : workspaces ? "workspaces" : "tabs",
+    scope: home ? "launch" : workspaces ? "workspaces" : attention ? "attention" : "tabs",
     move,
     name: workspaces ? (q.get("name") ?? "") : "",
   };
@@ -215,6 +221,55 @@ export function workspaceRows({ bar = [], counts = {}, made = bar, current = nul
     out.push({ kind: "workspace", title: name, detail: name === home ? `home · ${what}` : what, workspace: name });
   }
   return out;
+}
+
+// The Attention scope's rows (§10.3), as tide for Linux's switcher lists
+// the windows wanting attention: every marked window, the most recent
+// first, on any workspace. From tide's state: `marks`, window IDs, the
+// newest last; `windows`, each one's workspace as `ws`; `unread`, each
+// watched tab's count by tab ID, as {windowId, count}. And Chrome's `tabs`.
+// A row's title is its window's active tab's, else the first title Chrome
+// shows of its other tabs, which without tab search is only a watched
+// site's; its detail names its workspace and, if known, its unread count,
+// summed over its tabs. A mark for a window tide no longer tracks is left
+// out. Typing filters by title, or for less by workspace, best first.
+// Each row is {kind: "window", title, detail, icon, windowId}, and Enter
+// goes to `windowId`. A host that gives no marks lists none.
+export function attentionRows({ marks = [], windows = {}, unread = {}, tabs = [], query = "" }) {
+  const typed = query.trim();
+  const scored = [];
+  [...marks].reverse().forEach((id, i) => {
+    const info = windows[id];
+    if (!info) return;
+    const mine = tabs.filter((t) => t.windowId === id);
+    const titled = [...mine.filter((t) => t.active), ...mine.filter((t) => !t.active)].find((t) => t.title);
+    const icon = (mine.find((t) => t.active) ?? titled)?.favIconUrl ?? null;
+    // Only the tabs in the window now: a closed or moved tab's last count
+    // stays in tide's state until its window goes.
+    let count = 0;
+    for (const t of mine) count += unread[t.id]?.count ?? 0;
+    const row = {
+      kind: "window",
+      title: titled?.title ?? "Untitled",
+      detail: [info.ws != null ? `window on ${info.ws}` : "window", count > 0 ? `${count} unread` : null].filter(Boolean).join(" · "),
+      icon,
+      windowId: id,
+    };
+    const byTitle = typed === "" ? 0 : fuzzyScore(typed, row.title);
+    const byWs = typed === "" || info.ws == null ? null : fuzzyScore(typed, String(info.ws));
+    const found = [byTitle, byWs === null ? null : byWs - 2].filter((x) => x !== null);
+    if (found.length > 0) scored.push({ row, score: Math.max(...found), i });
+  });
+  scored.sort((a, b) => b.score - a.score || a.i - b.i);
+  return scored.map((s) => s.row);
+}
+
+// What the list says when a scope has no rows: Attention says nothing
+// wants it, as tide for Linux's switcher does; the other scopes always
+// have rows, or look in every scope.
+export function emptyText(scope, query) {
+  if (scope !== "attention") return "";
+  return query.trim() === "" ? "No window wants attention" : "Nothing matches";
 }
 
 // Items in `scope` matching `query`, best first; ties go to the most recent.
@@ -302,6 +357,7 @@ export function items({ tabs = [], apps = [], sections = [], actions = [], comma
 export function footerKeys(scope, { home, tabsAllowed, move = false, scopes = SCOPE_ORDER }) {
   const tabs = scope === "tabs";
   const enter = scope === "workspaces" ? (move ? "move the window there" : "go there")
+    : scope === "attention" ? "go there"
     : !tabs ? "run" : tabsAllowed ? "go there" : "allow tab search";
   return [["Enter", enter]]
     .concat(tabs && !tabsAllowed ? [] : [["↑ ↓", "choose"]])

@@ -53,7 +53,7 @@
       "description": "Swap the window with the master (Search+Shift+M)"
     },
     "attention": {
-      "description": "Go to the window wanting attention, else the last window (Search+A)",
+      "description": "Go to a window wanting attention (Search+A)",
       "suggested_key": {
         "chromeos": "Search+A",
         "default": "Alt+Shift+U"

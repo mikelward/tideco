@@ -53,6 +53,13 @@ FakeChrome and the smoke test.
 
 Guesses made on autopilot (2026-10-24), each cheap to undo.
 
+- **Search+. and Search+, step through monocle too** (2026-11-14), where
+  tide for Linux's cycle is tile, three columns and two columns, with
+  monocle on its own key. Found by `make check-tide-defaults`, which
+  allows it as an exception until this is settled. The alternative is
+  tide for Linux's cycle, monocle on `Search+O` alone. Reversible:
+  `layout-next` in `src/tide.js`, and `EXCEPTIONS` in
+  `scripts/check-tide-defaults.mjs`.
 - **Attention moved from `Search+Tab` to `Search+A`** (2026-11-14), as
   tide for Linux's is `Super+A`. What it opens is settled: the launcher's
   Attention list, as tide for Linux's opens its switcher's (maintainer,
@@ -491,12 +498,6 @@ Guesses made on autopilot (2026-10-24), each cheap to undo.
 
 ## Later
 
-- **Test tide for Chrome's defaults against tide for Linux's.** A test
-  that reads a tide for Linux checkout (as tidemo's `make check-tide`
-  does) and compares the layout defaults (`defaultMode`, `modes`,
-  `ultrawideAspect`, `singleRules` with its `single`), `DEFAULT_CLOCKS`
-  with `shell/lib/clocks.mjs`'s labels and zones, and the main share's
-  bounds with `hypr/tide/geometry.lua`'s, so the two can't drift again.
 - **Where a new window goes** (SPEC.md §5.2): tide for Linux's
   `newWindow` setting, the end of the stack, its top, after the focused
   window or in as the master, on the Layouts page.

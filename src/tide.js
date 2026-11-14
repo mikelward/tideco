@@ -938,7 +938,7 @@ export class Tide {
     });
   }
 
-  // Search+Tab (§10.3): the most recent mark, so pressing again goes to the
+  // Search+A (§10.3): the most recent mark, so pressing again goes to the
   // next; with none, the last window you were in.
   attention() {
     const s = this.state;

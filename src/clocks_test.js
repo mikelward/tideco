@@ -107,6 +107,13 @@ test("with no change in three weeks there's no note", () => {
   assert.equal(dstNote(new Date("2026-07-01T12:00:00Z"), "Asia/Tokyo"), null);
 });
 
+test("a sideways scroll, with no step up or down, leaves the time as it is", () => {
+  // A trackpad's horizontal swipe is a wheel event whose deltaY is 0.
+  const at = new Date("2026-10-24T22:37:00Z");
+  assert.equal(scrub(at, 0).getTime(), at.getTime());
+  assert.equal(scrub(at, Math.sign(-0)).getTime(), at.getTime());
+});
+
 test("scrubbing lands on the next quarter hour, then steps by 15 minutes", () => {
   const at = new Date("2026-10-24T22:31:00Z");
   assert.equal(scrub(at, 1).toISOString(), "2026-10-24T22:45:00.000Z");

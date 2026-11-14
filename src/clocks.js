@@ -243,8 +243,10 @@ export function dstNote(date, localZone, clocks = DEFAULT_CLOCKS) {
 }
 
 // Scrolling scrubs time in 15-minute steps (SPEC.md §8.2): the first step
-// from an unscrubbed time lands on the next quarter hour that way.
+// from an unscrubbed time lands on the next quarter hour that way. A scroll
+// with no direction, a trackpad's sideways one, leaves it, as tide's does.
 export function scrub(date, direction) {
+  if (!direction) return date;
   const q = 15 * 60000;
   const t = date.getTime();
   const next = direction > 0 ? Math.floor(t / q) * q + q : Math.ceil(t / q) * q - q;

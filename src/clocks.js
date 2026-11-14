@@ -2,9 +2,10 @@
 // 24-hour times, a zone that is the local zone hidden, and ±1 on a zone
 // whose date differs from local.
 
+// tide for Linux's labels and zones (its shell/lib/clocks.mjs), with the
+// cities the dashboard's clock panel names.
 export const DEFAULT_CLOCKS = [
-  { zone: "Australia/Sydney", label: "SYD", city: "Sydney" },
-  { zone: "America/Los_Angeles", label: "LAX", city: "Los Angeles" },
+  { zone: "America/Los_Angeles", label: "SF", city: "San Francisco" },
   { zone: "America/New_York", label: "NYC", city: "New York" },
   { zone: "Europe/London", label: "LON", city: "London" },
 ];

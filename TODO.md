@@ -61,6 +61,21 @@ Guesses made on autopilot (2026-10-24), each cheap to undo.
   update is unverified; if not, the keys checklist shows attention on
   another key, and `Search+Tab`, which the shortcuts page can't capture,
   can't be bound by hand. Reversible: `attention` in `manifest.json`.
+- **tide for Linux's defaults, adopted as they are** (2026-11-14): clocks
+  SF, NYC and LON (SF's city "San Francisco", for the clock panel and the
+  DST note), the main share from 10% to 90%, and a lone window 60% wide
+  from an aspect of 3.2. Nothing stored is rewritten: a clock list or
+  lone-window rules you saved stay, and a part's share saved outside
+  10–90% lays out as it was until the next grow or shrink brings it
+  inside. Reversible: `DEFAULT_CLOCKS` in `src/clocks.js`, `MFACT_MIN`
+  and `MFACT_MAX` in `src/geometry.js` and `src/workspaces.js`,
+  `singleRules` in `src/settings.js`.
+- **The SPEC calls the missing `newWindow` setting not built yet, rather
+  than left out on purpose** (2026-11-14), as tide for Linux and its other
+  ports have it; so are the margin setting and frame offsets, which it
+  described as built. Open questions 3 (fork chrometile) and 5 (the moved
+  keys) were answered, so they're gone, and the overview's key took their
+  place.
 - **The dim defaults to 12%, as tide for Linux's** (2026-11-13), up from
   10%. A strength you set yourself stays. Reversible: `dimStrength` in
   `src/settings.js`.
@@ -475,6 +490,20 @@ Guesses made on autopilot (2026-10-24), each cheap to undo.
   unchecked).
 
 ## Later
+
+- **Test tide for Chrome's defaults against tide for Linux's.** A test
+  that reads a tide for Linux checkout (as tidemo's `make check-tide`
+  does) and compares the layout defaults (`defaultMode`, `modes`,
+  `ultrawideAspect`, `singleRules` with its `single`), `DEFAULT_CLOCKS`
+  with `shell/lib/clocks.mjs`'s labels and zones, and the main share's
+  bounds with `hypr/tide/geometry.lua`'s, so the two can't drift again.
+- **Where a new window goes** (SPEC.md §5.2): tide for Linux's
+  `newWindow` setting, the end of the stack, its top, after the focused
+  window or in as the master, on the Layouts page.
+- **A margin setting** (SPEC.md §5.3), for chrometile's 2 px between
+  tiles; the margin is 0 today.
+- **Re-render the store screenshot** (`store/screenshot-threecol.html`):
+  it shows the old SYD, LAX, NYC and LON clocks.
 
 - **Choose the bar's items on the Bar page** (SPEC.md §8.1, §13). The
   Bar page has only Position (top or bottom). Next: which items the

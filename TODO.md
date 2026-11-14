@@ -54,9 +54,9 @@ FakeChrome and the smoke test.
 Guesses made on autopilot (2026-10-24), each cheap to undo.
 
 - **Attention moved from `Search+Tab` to `Search+A`** (2026-11-14), as
-  tide for Linux's is `Super+A`. It still goes to the newest mark, then the
-  next, and with none to the last window: tide for Linux's `Super+A` opens a
-  list of marks instead, which tide for Chrome has no page for. Whether
+  tide for Linux's is `Super+A`. What it opens is settled: the launcher's
+  Attention list, as tide for Linux's opens its switcher's (maintainer,
+  2026-11-14). Whether
   Chrome moves an existing install's `Search+Tab` to the new suggestion on
   update is unverified; if not, the keys checklist shows attention on
   another key, and `Search+Tab`, which the shortcuts page can't capture,

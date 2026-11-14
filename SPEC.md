@@ -366,7 +366,7 @@ off-ramp.
 | One workspace spanning every monitor, each with its own part (tide for Linux §6.5) | tide for Chrome: the workspace showing shows on every display, each window in its display's part (§6.1) | **partial**, same caveats |
 | Dim inactive, 0.12 (tide for Linux §6.2; KDE 0.15) | an overlay injected into the page of each unfocused window (§10.1) | **partial**: page only, not tab strip or title bar; not over `chrome://` pages |
 | No borders, no gaps | chromeOS draws its own frames; tide for Chrome margin 0 | **partial** |
-| Maximize, fullscreen, restore (tide for Linux §6.3) | native Alt+= and the fullscreen key; Search+Up, Search+Shift+Up and Search+Down in the Shortcuts app, if it can take them (§7.2) | **partial** *(unverified)*: Search+Up and Down are Page Up and Down below the Shortcuts app, which doesn't list them |
+| Maximize, fullscreen, restore (tide for Linux §6.3) | native Alt+= and the fullscreen key (§7.1) | **partial**: not tide for Linux's keys, and no restore; Search+Up and Down are Page Up and Down below the Shortcuts app (§7.2) |
 | Dialogs float, centered on parent (tide for Linux §6.4) | popups and dialogs untiled by type and rule (§5.4) | **yes** for Chrome; the OS places native dialogs |
 | Focus follows mouse (KDE `FocusFollowsMouse`) | chromeOS's `chrome://flags/#focus-follows-cursor`, from the setup checklist (§10.2) | **partial**: a flag, off by default, which Chrome can drop |
 | Nothing steals focus (tide for Linux §14) | chromeOS activation rules; tide for Chrome never focuses unasked | **partial**: the OS decides for apps |
@@ -914,53 +914,52 @@ every workspace's windows mixed together, the parked ones among them
 
 ### 7.1 The map
 
-Bound by tide for Chrome, unless the column says the Shortcuts app:
+tide for Linux's keys, with Search for Super, are in one table with every
+platform's: tide for Linux's SPEC.md §6.6, whose chromeOS column is this
+extension's. This section keeps what's tide for Chrome's alone: how each
+key is bound, and the keys that differ, with why.
 
-| Keys | Action | Bound by |
-|---|---|---|
-| tap Search | launcher | native |
-| `Search+L` | lock | native |
-| `Search+W` / `Search+Shift+W` (tide for Linux: `Super+Return` / `Super+Shift+Return`) | go to a workspace / move the window to one, by name: the name prompt (§6.1) | tide for Chrome |
-| `Search+Home` / `Search+End` | home / the last workspace other than home | tide for Chrome |
-| `Search+1…9` / `Search+Shift+1…9` | go to / move the window to the Nth workspace in bar order, home first | tide for Chrome |
-| `Search+0` / `Search+Shift+0` | go to / move the window to the last workspace in bar order | tide for Chrome |
-| `Search+Page Up` / `Page Down` (tide for Linux: `Super+PgUp` / `PgDn`) | previous / next workspace with a window | tide for Chrome (Search+arrows are Home/End and Page Up/Down; §7.2) |
-| `Search+Shift+Page Up` / `Page Down` | send to previous / next workspace | tide for Chrome |
-| `Search+J` / `K`, with Shift | focus / move down and up the stack | tide for Chrome |
-| `Search+Space` | the dashboard: tide for Chrome's bar and launcher, full screen (§8.1) | tide for Chrome |
-| none yet (tide for Linux: none yet; tide for macOS: `Ctrl+Up`) | the overview of every workspace's windows (§6.5); its key isn't settled | tide for Chrome, bound by hand |
-| `Search+Shift+M` (tide for Linux: `Alt+Tab`) | swap with master | tide for Chrome |
-| `Search+N` / `Search+H` (tide for Linux: `Super+\` / `Super+/`) | grow / shrink master | tide for Chrome |
-| `Search+I` / `Search+D` (tide for Linux: `Super+=` / `Super+-`) | add / remove a master, dwm's letters | tide for Chrome (Search+D after removing dictation's shortcut; §7.2) |
-| `Search+.` / `Search+,` | next / previous layout | tide for Chrome |
-| `Search+O` (tide for Linux: ``Super+` ``) | toggle monocle | tide for Chrome |
-| `Search+Up` / `Search+Shift+Up` / `Search+Down` (tide for Linux: `Super+X` / `Super+Shift+X`) | maximize / fullscreen / restore | Shortcuts app, if it can take them *(unverified)*: Search+Up and Down are Page Up and Down, which it doesn't list (§7.2). Alt+= maximizes meanwhile. |
-| `Search+Shift+F` | toggle floating | tide for Chrome |
-| `Ctrl+Shift+W` (tide for Linux: `Super+Backspace`) | close window | native Chrome |
-| `Search+A` (tide for Linux: `Super+A`) | the dashboard on its Attention scope: every window wanting attention, most recent first (§10.3) | tide for Chrome |
-| `Search+Shift+N` | notification center | Shortcuts app, if the action is editable *(unverified)* |
-| `Search+S` | toggle keep awake (§11), as the bar's cup does | tide for Chrome, once select to speak is removed (§7.2) |
-| `Search+Alt+M` | move to other display | native |
-| app letters (§9) | open or focus the app | tide for Chrome |
+**How they're bound:**
+- **tide for Chrome's commands**, about 50, are in `manifest.json`. Four
+  ship with suggested keys: `Search+A` for attention, as tide for Linux's
+  `Super+A` is bound from the start, and the three used most, `Search+J`,
+  `Search+K` and `Search+Space` for the dashboard. Off chromeOS they're
+  `Alt+Shift+U`, `J`, `K` and `Space`. Attention was `Search+Tab` until
+  2026-11-14; whether Chrome moves an install's binding to the new
+  suggestion on update is *(unverified)*. You bind the rest once at
+  `chrome://extensions/shortcuts`. The keys checklist (§7.4, on the
+  Keyboard page) lists every unbound command and opens that page.
+- **chromeOS's own:** tap Search for the launcher, `Search+L` to lock,
+  `Search+Alt+M` to move the window to the other display, `Alt+=` to
+  maximize, the fullscreen key, and screen capture (§2.4, §11).
+- **The Shortcuts app:** `Search+Shift+N` for the notification center, if
+  the action is editable *(unverified)*.
+- **Chrome's own:** `Ctrl+Shift+W` closes the window.
+- **App letters** (§9) open or focus an app; they're commands too.
 
-That's about 50 tide for Chrome commands. Four ship with suggested keys:
-`Search+A` for attention, as tide for Linux's `Super+A` is bound from the
-start, and the three used most, `Search+J`, `Search+K` and `Search+Space`
-for the dashboard. Attention was `Search+Tab` until 2026-11-14; whether
-Chrome moves an install's binding to the new suggestion on update is
-*(unverified)*. You bind the rest once at
-`chrome://extensions/shortcuts`. The keys checklist (§7.4, on the Keyboard
-page) lists every unbound command and opens that page.
+**Keys that differ** from tide for Linux's:
 
-The seven keys the Commands API can't carry (§2.2) move, by §7.3's
-rule: `\` and `/` (grow and shrink) to `Search+N` and `H`, `=` and
-`-` (add and remove a master) to `Search+I` and `D`, `` ` `` (monocle) to
-`Search+O`, Return (the name prompt) to `Search+W`, and Backspace (close)
-to Chrome's own close. Swap with master is tide for Linux's `Alt+Tab`,
-which chromeOS keeps for cycling windows, so it's `Search+Shift+M`, M for
-master. tide for Linux's `Super+Shift+M` is mic mute, which has no tide for
+| Action | tide for Chrome | tide for Linux | Why |
+|---|---|---|---|
+| go to a workspace / move the window to one, by name (§6.1) | `Search+W` / `Search+Shift+W` | `Super+Return` / `Super+Shift+Return` | Chrome can't bind Return (§7.3) |
+| grow / shrink the master | `Search+N` / `Search+H` | `Super+\` / `Super+/` | Chrome can't bind `\` or `/` |
+| add / remove a master | `Search+I` / `Search+D`, dwm's letters | `Super+=` / `Super+-` | Chrome can't bind `=` or `-`; `Search+D` once dictation's shortcut is removed (§7.2) |
+| monocle | `Search+O` alone | ``Super+` `` or `Super+O` | Chrome can't bind a backtick |
+| close the window | Chrome's `Ctrl+Shift+W` | `Super+Backspace` | Chrome can't bind Backspace |
+| swap with the master | `Search+Shift+M`, M for master | `Alt+Tab` | chromeOS keeps `Alt+Tab` for cycling windows |
+| maximize / fullscreen | chromeOS's `Alt+=` / the fullscreen key | `Super+X` / `Super+Shift+X` | no command here; chromeOS's own work |
+| focus / move the window that way | none | `Super` and an arrow, with Shift | chromeOS keeps `Search` and an arrow (§7.2) |
+| the dashboard: tide for Chrome's bar and launcher, full screen (§8.1) | `Search+Space` | `Super+Space`, the launcher | tide for Chrome's launcher is the dashboard's |
+| the overview of every workspace's windows (§6.5) | none yet, bound by hand | none yet; tide for macOS: `Ctrl+Up` | its key isn't settled |
+| keep awake (§11), as the bar's cup does | `Search+S` | `Super+S` | the same key, once select to speak is removed (§7.2) |
+
+The seven keys the Commands API can't carry (§2.2) move by §7.3's rule.
+tide for Linux's `Super+Shift+M` is mic mute, which has no tide for
 Chrome key. Chrome's close is one no extension can refuse, so a
 workspace's pinned apps (§6.1) close as any window does, then reopen.
+Maximize, fullscreen and restore were to go on `Search+Up`,
+`Search+Shift+Up` and `Search+Down` in the Shortcuts app, but chromeOS
+turns those into Page Up and Page Down below it (§7.2, §7.3).
 
 ### 7.2 Conflicts to settle in M2
 
@@ -1044,7 +1043,7 @@ Search+Alt and Search+Ctrl are allowed too, and untried unless listed.
 | Y | tide for Chrome: app 4 (YouTube Music) | | |
 | Z | OS: window layout menu | | |
 | 1–9 | tide for Chrome: go to the Nth workspace | tide for Chrome: move the window to the Nth workspace | |
-| 0 | | | |
+| 0 | tide for Chrome: go to the last workspace | tide for Chrome: move the window to the last workspace | |
 | Comma | tide for Chrome: previous layout | | |
 | Period | tide for Chrome: next layout | | |
 | Space | tide for Chrome: dashboard | OS: emoji picker, removable | |
@@ -1078,7 +1077,7 @@ bound the key suggested, as with tide's own.
 - Each of tide for Linux's binding names maps to the command here that does
   the same (`launcher` to the dashboard, `focus_down` to focus next, and so
   on). One with no command here is dropped: the terminal, close (Chrome's
-  own), quit, fullscreen (the Shortcuts app's), focus and move left and
+  own), quit, reload, fullscreen (chromeOS's), focus and move left and
   right, resize mode, and `home_or_back` and `last_layout` (dwm's
   Super+Space, the layout used last), which no command here does.
 - Of a binding's keys, the first Chrome can bind (§7.3) is suggested. If it

@@ -1280,7 +1280,7 @@ test("a state stored with a workspace per display keeps the first's showing", as
   assert.equal(chrome.box(2).x >= 1920, true, "on its own display");
 });
 
-test("a rising unread count marks its window, and Search+Tab goes there", async () => {
+test("a rising unread count marks its window, and Search+A goes there", async () => {
   const { chrome, tide } = await setup([HD], [
     on(HD, 1, { focused: true }),
     on(HD, 2, { type: "app", url: "https://chat.google.com/" }),
@@ -1327,7 +1327,7 @@ test("a tab loading another page sets a new baseline", async () => {
   assert.deepEqual(tide.state.marks, [2], "a rise after that still marks");
 });
 
-test("Search+Tab goes to the newest mark, then the next", async () => {
+test("Search+A goes to the newest mark, then the next", async () => {
   const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true }), on(HD, 2), on(HD, 3)]);
   await tide.title(20, 2, "Chat");
   await tide.title(30, 3, "Inbox - Gmail");
@@ -1350,7 +1350,7 @@ test("going to a marked window yourself clears its mark", async () => {
   assert.deepEqual(tide.state.marks, []);
 });
 
-test("with nothing marked, Search+Tab goes back to the last window", async () => {
+test("with nothing marked, Search+A goes back to the last window", async () => {
   const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true }), on(HD, 2), on(HD, 3)]);
   chrome.focus(2);
   await tide.event();

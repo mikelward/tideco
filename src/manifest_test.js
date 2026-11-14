@@ -96,6 +96,14 @@ test("every suggested key is one Chromium can bind, on every platform", () => {
   }
 });
 
+// tide for Linux's attention key is Super+A, so this one is Search+A, bound
+// at install as tide for Linux's is from the start.
+test("attention is on Search+A, as tide for Linux's is on Super+A", () => {
+  const c = manifest.commands.attention;
+  assert.match(c.description, /\(Search\+A\)$/);
+  assert.equal(c.suggested_key.chromeos, "Search+A");
+});
+
 // chromeOS turns Search+arrows into Home, End, Page Up and Page Down before
 // Chrome sees them, so chrome://extensions/shortcuts refuses them (§7.2).
 test("no command's key is a Search+arrow", () => {
@@ -161,7 +169,7 @@ test("every command in the manifest does something", async () => {
     // home, or back a step, needs to start somewhere else; and going to the
     // last workspace needs one shown before.
     if (name === "master-remove") await tide.command("master-add");
-    // Search+Tab with nothing marked goes back to the last window you were in.
+    // Search+A with nothing marked goes back to the last window you were in.
     if (name === "attention") {
       chrome.focus(2);
       await tide.event();

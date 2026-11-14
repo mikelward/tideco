@@ -231,8 +231,7 @@ query.addEventListener("keydown", (e) => {
     e.preventDefault();
     choose(shown[selected]);
   } else if (e.key === "Tab") {
-    // Tab steps through the scopes, Shift+Tab back; it's Search+Tab, not
-    // Tab, that runs attention.
+    // Tab steps through the scopes, Shift+Tab back.
     e.preventDefault();
     setScope(nextScope(scope, e.shiftKey ? -1 : 1, scopes()));
   }

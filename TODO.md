@@ -53,6 +53,14 @@ FakeChrome and the smoke test.
 
 Guesses made on autopilot (2026-10-24), each cheap to undo.
 
+- **Attention moved from `Search+Tab` to `Search+A`** (2026-11-14), as
+  tide for Linux's is `Super+A`. It still goes to the newest mark, then the
+  next, and with none to the last window: tide for Linux's `Super+A` opens a
+  list of marks instead, which tide for Chrome has no page for. Whether
+  Chrome moves an existing install's `Search+Tab` to the new suggestion on
+  update is unverified; if not, the keys checklist shows attention on
+  another key, and `Search+Tab`, which the shortcuts page can't capture,
+  can't be bound by hand. Reversible: `attention` in `manifest.json`.
 - **The dim defaults to 12%, as tide for Linux's** (2026-11-13), up from
   10%. A strength you set yourself stays. Reversible: `dimStrength` in
   `src/settings.js`.
@@ -84,7 +92,7 @@ Guesses made on autopilot (2026-10-24), each cheap to undo.
   no extension set its keys, so a preset changes only the keys the
   checklist suggests, in `storage.local` beside the setup ticks.
   `home_or_back` (dwm's Super+Tab) is dropped, as no command here toggles
-  home and back; attention keeps Search+Tab. Of a binding's keys the first
+  home and back; attention is Search+A. Of a binding's keys the first
   Chrome can bind is used, so i3's focus up and dwm's and xmonad's grow
   are Search+L, which chromeOS's lock holds until it's removed in the
   Shortcuts app; the checklist doesn't say so. Under a preset the summary
@@ -289,10 +297,12 @@ Guesses made on autopilot (2026-10-24), each cheap to undo.
   is TypeScript or a bundler. Reversible: nothing yet depends on the
   toolchain.
 - **The four suggested keys are `Search+J`, `Search+K`, `Search+Space` (the
-  dashboard) and `Search+Tab`**, each with an `Alt+Shift+` default so the
-  manifest installs off chromeOS too. Attention's default is `Alt+Shift+U`,
-  not `Alt+Shift+Tab`, which Windows and most Linux desktops take for window
-  switching. `Search+.` (next layout) lost its suggestion to make room.
+  dashboard) and `Search+A` (attention)**, each with an `Alt+Shift+` default so the
+  manifest installs off chromeOS too. Attention was `Search+Tab`, the one
+  key the shortcuts page can't capture; it moved to `Search+A` to match
+  tide for Linux's `Super+A` (2026-11-14). Attention's default is `Alt+Shift+U`:
+  Chrome takes `Alt+Shift+A` for focusing a dialog *(unverified)*, and
+  Windows and most Linux desktops take `Alt+Shift+Tab`. `Search+.` (next layout) lost its suggestion to make room.
   Swap-with-master moved off `Search+Space` to `Search+Shift+M`, bound by
   hand; `Search+Z` was the first idea, but it's chromeOS's layout menu.
   Reversible: edit `manifest.json`.

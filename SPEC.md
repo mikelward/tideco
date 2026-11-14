@@ -1,5 +1,5 @@
 ---
-last_modified: 2026-11-12
+last_modified: 2026-11-14
 ---
 
 # tide for Chrome: design spec (milestone 1)
@@ -8,7 +8,7 @@ tide for Chrome is tiling on chromeOS, as close to [tide for Linux](https://gith
 and the KDE setup in `mikelward/scripts` (`setup-kde`) as a Chromebook allows
 without turning off verified boot. It is a **Manifest V3 extension** that tiles
 Chrome and installed web app windows, owns its own workspaces, and dims the
-windows you're not in. A **checklist** sets the native chromeOS shortcuts and
+windows you're not in. A **setup checklist** sets the native chromeOS shortcuts and
 settings to the tide for Linux key map where the OS can do the job better than an
 extension can.
 
@@ -64,8 +64,8 @@ Contents:
 
 - dwm/Krohnkite tiling, never BSP: **tile** (master + stack), **three
   columns**, **two columns + stack**, **monocle**. Layout per workspace, on each display.
-- A lone window centered at **80%** width on an ultrawide, **100%** on 16:9
-  or 16:10.
+- A lone window centered at **80%** width from an aspect of 2.1, **60%** from
+  3.2, and **100%** on 16:9 or 16:10, as tide for Linux's (tide for Linux §6.1).
 - Named **workspaces**, as tide for Linux's (tide for Linux §6.5): a home workspace and the
   standing ones always listed, others named as you make them; going to
   one or moving a window there by name, `Search+1…9` for the Nth in
@@ -91,7 +91,7 @@ Contents:
 
 1. **One owner per job.** Where chromeOS already does a job (lock, launcher,
    notifications, screenshots, theme), tide for Chrome configures it and stays out.
-   tide for Chrome owns only what the OS lacks: tiling, workspaces, the dim and clocks.
+   tide for Chrome owns only what the OS lacks: tiling, workspaces, dimming inactive windows and clocks.
 2. **Every requirement names its mechanism** (§4), and each is checked on a
    device before it's relied on.
 3. **State survives the service worker.** MV3 kills an idle worker, so
@@ -154,7 +154,7 @@ Contents:
 - **Only some keys can be bound**: A–Z, 0–9, Comma, Period, the arrows,
   Insert, Delete, Home, End, Page Up, Page Down, Space, Tab and the media
   keys (`ui/base/accelerators/command.cc`, `ParseImpl`). Return, Backspace,
-  `\`, `/`, `=`, `-` and `` ` `` are rejected, so five tide for Linux keys need new
+  `\`, `/`, `=`, `-` and `` ` `` are rejected, so those seven tide for Linux keys need new
   combos (§7.1). The shortcuts page enforces the same set
   *(unverified)*.
 - An IME extension (`chrome.input.ime`) is not a way round this. It sees
@@ -227,7 +227,7 @@ From `ash/public/cpp/accelerators.h` and
   Split in 5% steps, a main-window count and a margin, all per display.
 - **Permissions**: `storage`, `system.display`, `tabs` (for a URL deny list).
 - **Keys**: 20 commands, only 2 with suggested keys, none global.
-- **No workspaces, no dim, no clocks.**
+- **No workspaces, no dimming, no clocks.**
 - **Code issues, found by reading it**:
   - Window order and the float list live only in memory, so they're lost when
     the service worker sleeps.
@@ -249,8 +249,8 @@ and later.
 
 chrometile proves the mechanism, but it isn't a base to build on:
 
-- **Most of tide for Chrome is what chrometile lacks**: workspaces, saved state, the
-  dim, clocks, attention and app keys. The workspace state machine (§6.1)
+- **Most of tide for Chrome is what chrometile lacks**: workspaces, saved state,
+  dimming inactive windows, clocks, attention and app keys. The workspace state machine (§6.1)
   is a different core from chrometile's one window list per display.
   chrometile is about 600 lines, 496 of them in `src/background.js`, so a
   fork would keep the idea and little of the code.
@@ -320,7 +320,7 @@ tapping Search opens the launcher). The rest of the conflicts are in §7.2.
 **Alt+Shift** is the fallback modifier for anything Search can't carry,
 which is chrometile's choice too.
 
-### 3.4 Native features, configured from a checklist
+### 3.4 Native features, configured from a setup checklist
 
 The lock, launcher, notifications, screenshots, screen-share picker, dark
 mode, keyboard layout and idle policy are chromeOS's, and no extension can
@@ -360,20 +360,20 @@ off-ramp.
 | tide for Linux / KDE | On chromeOS | Status |
 |---|---|---|
 | Tile, three-column, two columns + stack, monocle (tide for Linux §6.1) | tide for Chrome layouts over Chrome and web app windows (§5) | **partial**: not Android or Linux windows |
-| Lone window 80% on ultrawide, 100% otherwise | tide for Chrome, per display, from `workArea` aspect | **yes** |
+| Lone window 80% from an aspect of 2.1, 60% from 3.2, 100% otherwise (tide for Linux §6.1) | tide for Chrome, from each display's `workArea` aspect (§5.2) | **yes** |
 | Layout per workspace, on each monitor | tide for Chrome state per workspace and display (§6.1) | **yes** |
 | Named workspaces, home first; go and move by name; the Nth on Search+1…9 / Shift (tide for Linux §6.5, §6.6) | tide for Chrome workspaces by minimize (§3.2), named as tide for Linux's (§6.1) | **partial**: keys need a Chrome window focused; Android/Linux windows on every workspace; the name prompt is the dashboard's, not a window over the app |
 | One workspace spanning every monitor, each with its own part (tide for Linux §6.5) | tide for Chrome: the workspace showing shows on every display, each window in its display's part (§6.1) | **partial**, same caveats |
 | Dim inactive, 0.12 (tide for Linux §6.2; KDE 0.15) | an overlay injected into the page of each unfocused window (§10.1) | **partial**: page only, not tab strip or title bar; not over `chrome://` pages |
 | No borders, no gaps | chromeOS draws its own frames; tide for Chrome margin 0 | **partial** |
-| Maximize, fullscreen, restore (tide for Linux §6.3) | native Alt+=, fullscreen key, rebound to Search+Up/Shift+Up/Down in the Shortcuts app | **yes** |
+| Maximize, fullscreen, restore (tide for Linux §6.3) | native Alt+= and the fullscreen key; Search+Up, Search+Shift+Up and Search+Down in the Shortcuts app, if it can take them (§7.2) | **partial** *(unverified)*: Search+Up and Down are Page Up and Down below the Shortcuts app, which doesn't list them |
 | Dialogs float, centered on parent (tide for Linux §6.4) | popups and dialogs untiled by type and rule (§5.4) | **yes** for Chrome; the OS places native dialogs |
 | Focus follows mouse (KDE `FocusFollowsMouse`) | chromeOS's `chrome://flags/#focus-follows-cursor`, from the setup checklist (§10.2) | **partial**: a flag, off by default, which Chrome can drop |
 | Nothing steals focus (tide for Linux §14) | chromeOS activation rules; tide for Chrome never focuses unasked | **partial**: the OS decides for apps |
-| Super+Tab to the window wanting attention (tide for Linux §14.3) | tide for Chrome's attention list from title-count watchers (§10.3) | **partial**: chosen sites only |
+| Super+A for the windows wanting attention (tide for Linux §14.4) | tide for Chrome's marks from title-count watchers, on Search+A (§10.3) | **partial**: chosen sites only, and Search+A goes to the newest mark rather than listing them |
 | Full-width bar, workspaces, urgency (tide for Linux §7) | no top bar on busy workspaces; shelf + toolbar badge + full-screen dashboard and home page with tide for Linux's bar (§6.2, §8) | **partial** |
 | Tray, network, volume, Bluetooth, battery | chromeOS status area on the shelf | **yes**, native |
-| SYD / LAX / NYC / LON clocks beside local (tide for Linux §7.3) | dashboard and home page: zones, strips, DST, scrubbing (§8.2) | **partial**: one key away, not always on screen |
+| SF, NYC and LON clocks beside local (tide for Linux §7.3) | dashboard and home page: zones, strips, DST, scrubbing (§8.2) | **partial**: one key away, not always on screen |
 | Launcher on a Super tap (tide for Linux §8) | chromeOS launcher on a Search tap | **yes**, native, without quick actions |
 | App keys (KDE `setup-kde`, tide for Linux `hyprland.lua`) | tide for Chrome commands that open or focus web apps and profiles (§9) | **partial**: from a Chrome window only; Linux apps by shelf slot |
 | Two and three Chrome profiles (`browser2`, `browser3`) | a second chromeOS account, or a Chrome profile if the build has them (§9.2) | **partial** |
@@ -401,7 +401,7 @@ A window tiles when **all** of these hold:
 - it doesn't match a float rule (§5.4).
 
 Maximized, fullscreen and minimized windows are left alone and don't count
-toward the lone-window rule, as in tide.
+toward the lone-window rule, as in tide for Linux.
 
 ### 5.2 Layouts
 
@@ -417,12 +417,16 @@ The four tide for Linux layouts, with tide for Linux's numbers:
 
 The rest is tide for Linux's §6.1:
 
-- `mfact` moves ±0.025 per key.
-- The master count is per workspace and per layout.
-- New windows join the end of the stack.
-- A lone window is 80% wide and centered at aspect 2.1 and over, 100%
-  otherwise; both numbers are per-display settings.
-  Dragging a lone window's edge sets its width for that workspace (§5.3).
+- `mfact` moves ±0.025 per key, from 0.1 to 0.9.
+- The layout, `mfact` and master count are per part (§6.1), and the
+  latter two per layout.
+- New windows join the end of the stack. tide for Linux's `newWindow`
+  setting, which can put them at the top, after the focused window or in
+  as the master, isn't here yet (TODO.md).
+- A lone window is centered, 80% wide from an aspect of 2.1, 60% from
+  3.2, and 100% otherwise. The rules are a setting for each Chromebook,
+  since they follow its displays (`singleRules`, §13).
+  Dragging a lone window's edge sets its width for that part (§5.3).
 
 Geometry is a pure function from (work area, layout, settings, window
 count) to rectangles, kept free of `chrome.*` so it tests in Node (§17).
@@ -432,11 +436,13 @@ tide for Linux's Lua layout is the reference; the two share test fixtures (§15)
 
 - tide for Chrome retiles on `onCreated`, `onRemoved`, `onFocusChanged`,
   `onBoundsChanged`, `system.display.onDisplayChanged` and every layout key.
-  It debounces 50 ms after the last event, since one window open fires
-  several.
-- After `windows.update`, tide for Chrome reads the bounds back and stores the
-  difference per window type: the frame's offset. The next layout subtracts
-  it, so tiles meet without gaps or overlaps.
+  Each event's sync and retile wait in a queue and run one at a time, in
+  order (`Tide.run`), so the several events of one window opening each
+  start from the last one's result. There's no debounce.
+- **Planned for M2:** after `windows.update`, read the bounds back and store
+  the difference per window type, the frame's offset, for the next layout
+  to subtract, so tiles meet without gaps or overlaps. Today tiles use the
+  bounds as given (TODO.md).
 - **A drag is a request.** When `onBoundsChanged` reports a move tide for Chrome didn't
   make, the window takes the tile nearest its center (swapping with that
   tile's window). If the center is on another display, the window first
@@ -444,9 +450,10 @@ tide for Linux's Lua layout is the reference; the two share test fixtures (§15)
   Krohnkite's behavior. A lone window's resize sets its width, as tide for macOS's does.
   - **Built:** the resize. tide for Chrome keeps where it put each tiled window.
     When a tiled window's width has changed on the same display and work
-    area, the edge that moved sets the workspace's `mfact`, for the
+    area, the edge that moved sets the part's `mfact`, for the
     layout it's in: the share that puts that edge where you left it,
-    between 5% and 95%, as the keys keep it. The rest retile to match.
+    between 10% and 90%, as the keys keep it and tide for Linux does. The
+    rest retile to match.
   - Tile and two columns: the master/stack border, from either side.
     Three columns: either edge of the master, or a stack's inner edge.
   - A lone window stays centered, so the edge that moved sets its width:
@@ -462,14 +469,16 @@ tide for Linux's Lua layout is the reference; the two share test fixtures (§15)
     floating window, or a window back from maximized isn't read as a
     drag.
   - The move-to-swap above isn't built: a window dragged within its
-    display goes back to its tile. A window dragged to native snap or float is left
-  floating until it's tiled again with `Search+Shift+F`.
-- Margin is 0, per tide. A setting allows chrometile's 2 px.
+    display goes back to its tile.
+  - A window dragged to native snap or float is left floating until it's
+    tiled again with `Search+Shift+F`.
+- Margin is 0, as in tide for Linux. A setting for chrometile's 2 px is
+  planned (TODO.md).
 
 ### 5.4 What floats
 
 - `popup` windows: OAuth sign-ins, Chrome's "Save as" sheets, extension
-  popups, and tide for Chrome's home window (§6.2). tide for Chrome's own app popups (§9.1) are
+  popups, and tide for Chrome's home page (§6.2). tide for Chrome's own app popups (§9.1) are
   the one exception.
 - `devtools`.
 - **Always-on-top windows**: Document picture-in-picture and always-on-top
@@ -478,7 +487,7 @@ tide for Linux's Lua layout is the reference; the two share test fixtures (§15)
   on every workspace. Chrometile's Meet PiP URL rule covers any that don't.
 - **Except Secure Shell**: its terminals open as `popup` windows, so tide for Chrome
   tiles popups whose tab is on Secure Shell's extension origin, like its own
-  app popups (§6.4).
+  app popups (§9.1).
 - **Your float rules**, on the Floating settings page (§13), as tide for
   Linux's Floating page (its §6.4, §16). Each rule names a site, and that
   site's app windows open floating.
@@ -492,8 +501,8 @@ tide for Linux's Lua layout is the reference; the two share test fixtures (§15)
     "app"`) or an app popup tide opened (§9.1). A tab window's site
     changes with its tabs, and popups and devtools float already.
   - A rule floats a window when tide first knows its site: as it opens,
-    from where it's going if it's still loading. Chrome hides a tab's
-    address without tab search (§14.1), so without it no rule applies.
+    from where it's going if it's still loading. Without tab search, it
+    never does (§14.1).
   - A rule added floats the app windows it covers that are open now, on
     any workspace, unless maximized or full screen. A window you tiled by
     hand under a rule that covered it already stays tiled. Taking a rule
@@ -548,9 +557,10 @@ them over their parent, which is what tide for Linux's §6.4 asks for.
     show it or move a window to it, and never removed, even when empty.
   - An empty list, or a name listed twice, ignoring case, is refused on
     the options page, naming it.
-- **The first is the home workspace,** "in" by default, whatever the list
-  names first. tide for Chrome makes it at start. It can't be removed or renamed.
-  It holds the apps you keep open all day, and only theirs (below).
+- **The first in the list is home** ("in" by default). tide for Chrome makes
+  it at start. It can't be removed; putting another name first makes that
+  one home. It holds the apps you keep open all day, and only theirs
+  (below).
 - **The others are made by naming them** (the name prompt, below) and
   follow the standing ones, in the order they were made. An empty one is
   removed once it isn't showing. One holding only windows you
@@ -564,7 +574,7 @@ them over their parent, which is what tide for Linux's §6.4 asks for.
   after the standing ones, in number order *(a guess)*. The empty hidden
   ones go.
 - **A name** is one line, trimmed, at most 32 characters, with no quotes
-  (`"`, `'`, `` ` ``), backslashes, `@` or control characters, as on tide. It
+  (`"`, `'`, `` ` ``), backslashes, `@` or control characters, as on tide for Linux. It
   reaches storage, the badge, the pages and logs, so nothing needs quoting,
   and tide for Linux keeps `@` for a monitor's part of a workspace, with the standing
   list shared.
@@ -610,8 +620,8 @@ them over their parent, which is what tide for Linux's §6.4 asks for.
 app keys' Calendar, Chat and YouTube Music by default. §9.1 has no mail
 key, so mail is one only once an app key is given its site. A window is
 one of them when its active tab's URL is on that app's site, as the app
-keys find an existing window (§9.1). Without tab search (§14.1) Chrome
-hides tabs' addresses, so no window is one. The list is a setting beside
+keys find an existing window (§9.1). Without tab search, none is
+(§14.1). The list is a setting beside
 the standing workspaces, `homeApps`, naming app keys
 (`["app-calendar", "app-chat", "app-music"]`). A name that isn't one of
 the four keys, or one listed twice, is refused, naming the setting.
@@ -654,7 +664,7 @@ theirs:
   - It doesn't reopen when the workspace still has a window of that app,
     or when the pin came out meanwhile. Nor when the close isn't yours to
     undo: while a restart brings windows back (§14.2), when no window but
-    tide for Chrome's own (home windows, the dashboard) is left by the time it's
+    tide for Chrome's own (home pages, the dashboard) is left by the time it's
     due (the browser closing, which also ends the worker first), or when a
     display went in that sync. A browser window with the settings in a
     tab is a browser window.
@@ -701,8 +711,7 @@ an extension page is the only place tide for Chrome can take typing:
     dialog, an app key's window, chromeOS's system apps (Settings, Files,
     Camera) and anything tide for Chrome doesn't manage never do. A system app
     reports as an app too, so an app window asks only when its page is a
-    website; without tab search (§14.1) Chrome hides the page, and no app
-    window asks. Nor do the windows open when tide for Chrome starts, or those a
+    website, and without tab search none does (§14.1). Nor do the windows open when tide for Chrome starts, or those a
     restart brings back (§14.2), which aren't new.
   - A window that left for a workspace that doesn't ask before it was
     focused doesn't ask.
@@ -742,7 +751,8 @@ workspace in bar order that has a window, as tide for Linux's `Super+PgUp` and
 minimized, is passed over. They stop at either end, where tide for Linux's and
 tide for macOS's wrap round, and with no workspace that way with a window they do
 nothing. **`Search+Shift+Page Up`** and **`Page Down`** send the focused
-window to the very next, empty or not.
+window to the very next, empty or not, and stay put. They stop at either
+end too, where tide for Linux's wrap round and follow the window.
 
 **One rule decides what's on screen.** A window is shown if and only if its
 workspace is showing on some display and you haven't minimized it.
@@ -759,9 +769,9 @@ workspace is showing on some display and you haven't minimized it.
 
 | Operation | State change | Focus |
 |---|---|---|
-| **Show** workspace W: `Search+W`'s prompt, the Workspaces scope, `Search+Home`, `Search+End`, `Search+1…9`, a click on the bar | Every display shows its part of W, making W if it's new. | W's window on your display (above) |
-| **Move** a window to W: `Search+Shift+W`'s prompt, which then shows W; `Search+Shift+1…9` and `Search+Shift+Page Up/Down`, which stay put | The window moves to the end of W's stack, keeping its display, a new name making W first, at the end of the list. If W is showing, the window stays; if not, it's hidden. | the prompt: that window, as tide for Linux's move; the keys: stays put, as tide for Linux's `Super+Shift+1…9` |
-| **Activate** a window: a tab from the launcher (§9.4), `Search+Tab` (§10.3) | If its workspace isn't showing, show it, as Show W. Clear the window's minimized-by-you flag. | that window |
+| **Show** workspace W: `Search+W`'s prompt, the Workspaces scope, `Search+Home`, `Search+End`, `Search+1…9`, `Search+0`, `Search+Page Up` and `Page Down`, a click on the bar | Every display shows its part of W, making W if it's new. | W's window on your display (above) |
+| **Move** a window to W: `Search+Shift+W`'s prompt, which then shows W; `Search+Shift+1…9`, `Search+Shift+0` and `Search+Shift+Page Up` and `Page Down`, which stay put | The window moves to the end of W's stack, keeping its display, a new name making W first, at the end of the list. If W is showing, the window stays; if not, it's hidden. | the prompt: that window, as tide for Linux's move; the keys: stays put, as tide for Linux's `Super+Shift+1…9` |
+| **Activate** a window: a tab from the launcher (§9.4), `Search+A` (§10.3) | If its workspace isn't showing, show it, as Show W. Clear the window's minimized-by-you flag. | that window |
 | **Moved to another display** by you: the native `Search+Alt+M`, or a drag ending with the window's center on another display, seen as an `onBoundsChanged` tide for Chrome didn't cause | The window belongs to that display from now on, at the end of its part, in the same workspace. A window chromeOS moves off a display that went, or tide for Chrome hands back, isn't one. | that window |
 | **Minimize** by you | Set the flag. | chromeOS picks |
 | **Restore** by you: any un-minimize tide for Chrome didn't cause, from the shelf or Alt+Tab | Clear the window's minimized-by-you flag. If its workspace is hidden, this is Activate, so the workspace comes with it. | that window |
@@ -774,8 +784,7 @@ workspace, or a display with nothing in its part of the workspace showing
 page** there instead: an extension page in a `popup` window, opened on that
 display and then made full screen. It shows:
 
-- tide for Linux's bar across the top, or the bottom with the setting: tide for Linux's wave logo, workspaces, layout, the
-  workspace's name and the clocks (§8.1);
+- the bar (§8.1), across the top or the bottom;
 - the launcher (§9.4), focused on its **Launch** scope, ready to type;
 - every zone's day, the next clock change and a month calendar (§8.2).
 
@@ -803,7 +812,7 @@ is *(unverified)*.
   tiled. tide for Chrome's work area is still the display's, so they overlap tiles.
   Most people will keep them on the native snap keys.
 - **Overview** shows every window, minimized ones included *(unverified)*.
-- **Native desks**: the checklist removes all but one, so a stray
+- **Native desks**: the setup checklist removes all but one, so a stray
   `Search+]` has nowhere to go. A desk-aware design is open question 1.
 
 ### 6.4 What won't play nice
@@ -865,7 +874,7 @@ every workspace's windows mixed together, the parked ones among them
     `storage.session` by window, and dropped when the window closes.
   A capture needs all-sites access or activeTab
   (`PermissionsData::CanCaptureVisiblePage`). activeTab lasts only for a
-  tab you clicked tide's button in, so pictures use the dim's optional
+  tab you clicked tide's button in, so pictures use dimming's optional
   `<all_urls>` (§10.1); tide asks for nothing more. Without it the cards
   show favicons, and the footer says so, linking to Extras. `chrome://`
   pages and the Web Store can't be captured, so those windows show their
@@ -882,10 +891,11 @@ every workspace's windows mixed together, the parked ones among them
     match (§9.4). Backspace takes a letter back.
 - **Closing:** Esc, its key again, a click on empty space, or a click on
   another window. The dashboard's key swaps it for the dashboard, and back.
-- **Its key isn't settled.** tide for Linux and macOS put the overview on
-  `Super+W` for now. Here `Search+W` is the name prompt (§6.1), so the
-  `overview` command has no default key, and Chrome's four suggested keys
-  are taken anyway (§7.1). Bind one at `chrome://extensions/shortcuts`,
+- **Its key isn't settled** (open question 5). tide for Linux has no
+  overview key yet (tide for Linux §8.7), and tide for macOS's is Ctrl+Up.
+  Here `Search+W` is the name prompt (§6.1), so the `overview` command has
+  no default key, and Chrome's four suggested keys are taken anyway
+  (§7.1). Bind one at `chrome://extensions/shortcuts`,
   or open it from the dashboard: Launch and Actions find "Overview of
   every workspace's windows".
 - **The page talks to tide** as the dashboard does: it reads `state` from
@@ -898,7 +908,7 @@ every workspace's windows mixed together, the parked ones among them
   shows the window as it was, not mid-animation; whether a window partly
   under another captures its own contents; the page's look; and whether
   chromeOS's full-screen bubble shows as it opens, as for the dashboard.
-  Each unfocused window's picture carries the dim, if it's on.
+  Each unfocused window's picture is dimmed, if dimming is on.
 
 ## 7. Keys
 
@@ -918,37 +928,39 @@ Bound by tide for Chrome, unless the column says the Shortcuts app:
 | `Search+Shift+Page Up` / `Page Down` | send to previous / next workspace | tide for Chrome |
 | `Search+J` / `K`, with Shift | focus / move down and up the stack | tide for Chrome |
 | `Search+Space` | the dashboard: tide for Chrome's bar and launcher, full screen (§8.1) | tide for Chrome |
-| none yet (tide for Linux and macOS: `Super+W`, for now) | the overview of every workspace's windows (§6.5); here `Search+W` is the name prompt, so it has no default key, and its key isn't settled | tide for Chrome, bound by hand |
-| `Search+Shift+M` (tide for Linux: `Super+Return`) | swap with master | tide for Chrome |
+| none yet (tide for Linux: none yet; tide for macOS: `Ctrl+Up`) | the overview of every workspace's windows (§6.5); its key isn't settled | tide for Chrome, bound by hand |
+| `Search+Shift+M` (tide for Linux: `Alt+Tab`) | swap with master | tide for Chrome |
 | `Search+N` / `Search+H` (tide for Linux: `Super+\` / `Super+/`) | grow / shrink master | tide for Chrome |
 | `Search+I` / `Search+D` (tide for Linux: `Super+=` / `Super+-`) | add / remove a master, dwm's letters | tide for Chrome (Search+D after removing dictation's shortcut; §7.2) |
 | `Search+.` / `Search+,` | next / previous layout | tide for Chrome |
 | `Search+O` (tide for Linux: ``Super+` ``) | toggle monocle | tide for Chrome |
-| `Search+Up` / `Search+Shift+Up` / `Search+Down` | maximize / fullscreen / restore | Shortcuts app (Search+Up is Page Up today; §7.2) |
+| `Search+Up` / `Search+Shift+Up` / `Search+Down` (tide for Linux: `Super+X` / `Super+Shift+X`) | maximize / fullscreen / restore | Shortcuts app, if it can take them *(unverified)*: Search+Up and Down are Page Up and Down, which it doesn't list (§7.2). Alt+= maximizes meanwhile. |
 | `Search+Shift+F` | toggle floating | tide for Chrome |
 | `Ctrl+Shift+W` (tide for Linux: `Super+Backspace`) | close window | native Chrome |
-| `Search+Tab` | next window wanting attention, else the last window | tide for Chrome |
+| `Search+A` (tide for Linux: `Super+A`) | the newest window wanting attention, then the next; with none, the last window (§10.3) | tide for Chrome |
 | `Search+Shift+N` | notification center | Shortcuts app, if the action is editable *(unverified)* |
 | `Search+S` | toggle keep awake (§11), as the bar's cup does | tide for Chrome, once select to speak is removed (§7.2) |
 | `Search+Alt+M` | move to other display | native |
 | app letters (§9) | open or focus the app | tide for Chrome |
 
-That's about 50 tide for Chrome commands. Four ship with suggested keys: `Search+Tab`,
-because the shortcuts page can't capture Tab (§19.1), so a manifest
-suggestion is the only way to bind it, and then the three used most,
-`Search+J`, `Search+K` and `Search+Space` for the dashboard. If chromeOS already owns
-`Search+Tab`, the suggestion is dropped at install *(unverified)*, and
-attention moves to a key the page can capture. You bind the rest once at
-`chrome://extensions/shortcuts`. The checklist (§3.4)
-lists every unbound command and opens that page.
+That's about 50 tide for Chrome commands. Four ship with suggested keys:
+`Search+A` for attention, as tide for Linux's `Super+A` is bound from the
+start, and the three used most, `Search+J`, `Search+K` and `Search+Space`
+for the dashboard. Attention was `Search+Tab` until 2026-11-14; whether
+Chrome moves an install's binding to the new suggestion on update is
+*(unverified)*. You bind the rest once at
+`chrome://extensions/shortcuts`. The keys checklist (§7.4, on the Keyboard
+page) lists every unbound command and opens that page.
 
-The five keys the Commands API can't carry (§2.2) move to the nearest
-supported combo. Shift with `.` and `,` reads as `>` and `<` for grow and
-shrink. `Search+Space` opens the dashboard, tide for Chrome's own launcher, as it
-opens a launcher on other desktops, so swap-with-master moves from Return
-to `Search+Shift+M`, M for master. Close falls back to Chrome's own window
-close, which no extension can refuse, so a workspace's pinned apps (§6.1)
-close as any window does, then reopen.
+The seven keys the Commands API can't carry (§2.2) move, by §7.3's
+rule: `\` and `/` (grow and shrink) to `Search+N` and `H`, `=` and
+`-` (add and remove a master) to `Search+I` and `D`, `` ` `` (monocle) to
+`Search+O`, Return (the name prompt) to `Search+W`, and Backspace (close)
+to Chrome's own close. Swap with master is tide for Linux's `Alt+Tab`,
+which chromeOS keeps for cycling windows, so it's `Search+Shift+M`, M for
+master. tide for Linux's `Super+Shift+M` is mic mute, which has no tide for
+Chrome key. Chrome's close is one no extension can refuse, so a
+workspace's pinned apps (§6.1) close as any window does, then reopen.
 
 ### 7.2 Conflicts to settle in M2
 
@@ -968,7 +980,7 @@ table:
 | Search+C | calendar panel | remove it in the Shortcuts app (Device), freeing it for app 1 |
 | Search+M | microphone mute | remove it in the Shortcuts app (Device), freeing it for app 3 |
 | Search+X | picture-in-picture | keep; tide for Chrome doesn't use it |
-| Search+F | Quick Insert | remove it in the Shortcuts app, freeing it for the second profile (§9.1) |
+| Search+F | Quick Insert | remove it in the Shortcuts app, freeing it for the second profile (§9.2) |
 | Search+V | clipboard history | keep; tide for Chrome doesn't use it |
 | Search+Backspace | Delete, locked | keep; tide for Chrome doesn't use it |
 | Search+Z, Search+Alt+F | layout menu, float | keep; they don't clash |
@@ -991,7 +1003,7 @@ Whatever moves to Alt+Shift moves as a set, so the map stays learnable.
 Chrome binds an extension command only to a letter, a digit, Comma, Period,
 Space, Tab, an arrow, Insert, Delete, Home, End, Page Up or Page Down, with
 Search, Ctrl or Alt, and optionally Shift (`ui/base/accelerators/command.cc`).
-So tide for Linux's `\` `/` `=` `-` `` ` `` and Return can't be tide for Chrome keys at all.
+So tide for Linux's `\` `/` `=` `-` `` ` ``, Return and Backspace can't be tide for Chrome keys at all.
 
 The rule for choosing (maintainer, 2026-10-24): an action used often gets
 Search and one key, no other modifier; Shift means moving the window (to a
@@ -1005,12 +1017,12 @@ Search+Alt and Search+Ctrl are allowed too, and untried unless listed.
 
 | Key | Search+key | Search+Shift+key | Search+Alt+key |
 |---|---|---|---|
-| A | | OS: assign to all desks | |
+| A | tide for Chrome: attention | OS: assign to all desks | |
 | B | | | |
 | C | tide for Chrome: app 1 (Calendar); OS calendar panel, removable | tide for Chrome: app 2 (Chat) | |
 | D | tide for Chrome: remove a master; OS dictation, removable (Accessibility) | OS: minimize Snap Group (§7.2) | |
 | E | | | |
-| F | OS: Quick Insert, removable; tide for Chrome planned: second profile (§9.1) | tide for Chrome: toggle floating | OS: float |
+| F | OS: Quick Insert, removable; tide for Chrome planned: second profile (§9.2) | tide for Chrome: toggle floating | OS: float |
 | G | tide for Chrome: browser | OS: Snap Group; tide for Chrome planned: third profile | |
 | H | tide for Chrome: shrink master; OS Explore app, removable | | |
 | I | tide for Chrome: add a master | | |
@@ -1027,7 +1039,7 @@ Search+Alt and Search+Ctrl are allowed too, and untried unless listed.
 | T | reserved: the terminal (§1) | | |
 | U | | | |
 | V | OS: clipboard history | | |
-| W | tide for Chrome: go to a workspace by name (tide for Linux and macOS: the overview, for now; §6.5) | tide for Chrome: move the window to a workspace by name | |
+| W | tide for Chrome: go to a workspace by name | tide for Chrome: move the window to a workspace by name | |
 | X | OS: picture-in-picture | | |
 | Y | tide for Chrome: app 4 (YouTube Music) | | |
 | Z | OS: window layout menu | | |
@@ -1036,7 +1048,7 @@ Search+Alt and Search+Ctrl are allowed too, and untried unless listed.
 | Comma | tide for Chrome: previous layout | | |
 | Period | tide for Chrome: next layout | | |
 | Space | tide for Chrome: dashboard | OS: emoji picker, removable | |
-| Tab | tide for Chrome: attention | | |
+| Tab | free; only a manifest suggestion can bind it (§19.1) | | |
 | Left / Right | OS, locked: Home / End | OS, locked: select to line start / end | |
 | Up / Down | OS, locked: Page Up / Page Down | OS, locked | |
 | Page Up / Down | tide for Chrome: previous / next workspace | tide for Chrome: send to previous / next workspace | |
@@ -1049,7 +1061,7 @@ Shortcuts app shows them with a padlock is untried.
 `commands.getAll` names a bound key as Chrome's menus do, not as a
 manifest does: `Page Up`, `Page Down`, `Period`, `Comma`, `Left Arrow` and
 the other arrows, `Ins` and `Del` (tried in Chromium 153 on Linux; on
-chromeOS *(unverified)*). The keys checklist (§3.4) reads each as the
+chromeOS *(unverified)*). The keys checklist (§7.4) reads each as the
 `PageUp`, `PageDown`, `.`, `,`, `Left`, `Insert` or `Delete` it suggests,
 so a command on its suggested key shows as done.
 
@@ -1071,7 +1083,7 @@ bound the key suggested, as with tide's own.
   Super+Space, the layout used last), which no command here does.
 - Of a binding's keys, the first Chrome can bind (§7.3) is suggested. If it
   has none, as with Return, `[` or a Search+arrow chromeOS keeps (§7.2),
-  the command keeps this spec's key, and the checklist says why.
+  the command keeps this spec's key, and the keys checklist says why.
 - No two commands are suggested one key: the preset's wins, and a command
   whose key it takes is suggested none, for you to choose. With i3,
   Search+D is the dashboard, so remove a master is yours to place.
@@ -1100,10 +1112,8 @@ Instead:
   is on every browser window's toolbar and pinned, and is absent in web app
   windows, which have no toolbar.
 - **tide for Chrome's dashboard**, from `Search+Space` or the toolbar icon, is the home
-  page's sibling (§6.2), full screen over the focused display: tide for Linux's bar on
-  top (tide for Linux's wave logo, workspaces in tide for Linux's style — current, occupied,
-  urgent, empty — the layout symbol, keep awake's cup (§11) and the
-  clocks), or along the bottom with the setting (below), and the launcher
+  page's sibling (§6.2), full screen over the focused display: the bar on
+  top, or along the bottom with the setting (below), and the launcher
   (§9.4), opening on its
   **Tabs** scope for switching. It closes once you choose, on Esc, when you
   click away, or on its key again. It doesn't use Chrome's action popup,
@@ -1112,6 +1122,10 @@ Instead:
   `extension_action_api.cc` `OpenPopupInBrowser`). If chromeOS's full-screen
   bubble shows on every open, the dashboard falls back to a large centered
   window *(unverified)*.
+- **The bar**, on the dashboard and the home page alike, is tide for
+  Linux's: its wave logo, the workspaces in its style (current, occupied,
+  urgent, empty), the layout symbol, the workspace's name, keep awake's
+  cup (§11) and the clocks (§8.2).
 - **The logo** is first on the left, as on tide for Linux's bar: tide for Linux's two waves
   in the accent blue, the icon 12px from the bar's edge and 8px from the
   first workspace. A tap on the dashboard's closes it, as its key does,
@@ -1155,7 +1169,8 @@ Instead:
 
 tide for Linux's clock rules, in the bar of the dashboard and the home page, with the detail under it (over it with the bar at the bottom, §8.1):
 
-- `SF`, `NYC`, `LON` and local, 24-hour, tabular figures.
+- `SF`, `NYC`, `LON` and local, 24-hour, tabular figures, as tide for
+  Linux's `shell/lib/clocks.mjs` has them.
 - Labels are fixed place names, not CLDR names.
 - A zone matching the local zone ID is hidden.
 - A different day shows `−1` / `+1`.
@@ -1181,7 +1196,7 @@ tide for Linux's clock rules, in the bar of the dashboard and the home page, wit
 Each letter **opens a new window** of its app on the current workspace,
 even when one is already open, as tide for Linux's and KDE's keys launch the app
 (maintainer, 2026-10-24). Getting back to an open window is the launcher's
-Tabs scope (§9.4) or `Search+Tab` (§10.3):
+Tabs scope (§9.4) or `Search+A` (§10.3):
 
 | Key | App | How |
 |---|---|---|
@@ -1201,14 +1216,16 @@ Tabs scope (§9.4) or `Search+Tab` (§10.3):
 - **Browser windows**, for `Search+G`: a new `type: "normal"` window, with
   `windows.create({})`. Profiles (`Search+F`, `Search+Shift+G`) follow
   §9.2.
-- **Open**: `chrome.management.launchApp(id)` with the installed app's ID.
-  Whether it opens web apps, rather than only legacy Chrome Apps, is
-  *(unverified)*. If it doesn't, tide for Chrome opens the URL with
-  `windows.create({url, type: "popup"})`, which is a frameless-ish app
-  window, but not the installed app. tide for Chrome records that window's ID (in
-  `chrome.storage`, §14.2) as the app's, so it tiles like an app window
-  (§5.1). Other popups still float.
-- The app list is a setting: letter, name, URL, app ID.
+- **Open**: tide for Chrome opens the address with
+  `windows.create({url, type: "popup"})`, an app-like window without the
+  browser's toolbar, but not the installed app. It records that window's
+  ID (in `chrome.storage`, §14.2) as the app's, so it tiles like an app
+  window (§5.1). Other popups still float.
+- Opening the installed app itself, with `chrome.management.launchApp(id)`,
+  would need the `management` permission and each app's ID. Whether it
+  opens web apps, rather than only legacy Chrome Apps, is *(unverified)*,
+  so it waits for M2.
+- The app list is a setting: each key's name and address.
 
 ### 9.2 Profiles
 
@@ -1232,7 +1249,7 @@ tide for Chrome binds the keys to whichever works, decided in M3.
 An extension can't start a Linux app. The keys that run Linux apps (`T`
 terminal, `W` terminal on the workstation, `E` files, `N` notepad, `R`
 remote desktop, `B` headphones) use the **shelf**: pinned
-in a fixed order, by hand (not a checklist item, as it's personal), and **Alt+1…8** launches shelf item N *(unverified on
+in a fixed order, by hand (not a setup checklist item, as it's personal), and **Alt+1…8** launches shelf item N *(unverified on
 current builds)*. If the Shortcuts app lets "launch shelf item N" take an
 extra combo, `Search+T` and the rest map there; that's
 *(unverified)* and is checked in M2.
@@ -1273,9 +1290,9 @@ tabs and running tide for Chrome's commands.
   scrolls to and clears; an address's `#anchor` works too.
 - **Actions** lists, with nothing typed, every action and then every
   command, not just the best eight: **Keep awake**, saying whether it's
-  on; on chromeOS **Dim inactive windows**, on or off, which turns the
-  dim over, or, without its access, asks Chrome for it first; and
-  **Reload tide for Linux**, which restarts the extension. Keep awake's command is
+  on; on chromeOS **Dim inactive windows**, on or off, which turns
+  dimming on or off, or, without its access, asks Chrome for it first; and
+  **Reload tide**, which restarts the extension. Keep awake's command is
   this action, so it isn't listed twice. A query in Launch finds actions
   and commands too.
 - **Workspaces** lists every workspace in bar order, the standing ones
@@ -1306,31 +1323,27 @@ tabs and running tide for Chrome's commands.
 It only opens from a Chrome window or an empty workspace (§2.2): over an
 Android or Linux app, tap Search for the native launcher instead.
 
-Off chromeOS (§14.6) the dashboard and its launcher work the same, with
-two differences. The bar shows no workspaces, and says tiling and
-workspaces work only on chromeOS, and there's no Workspaces scope. Launch
-and Actions list only the commands that place no window: the dashboard,
-the app keys and keep awake. Actions has no dim, and Launch finds only
-the settings sections shown there.
+Off chromeOS the dashboard and its launcher work too, with less in them
+(§14.6).
 
 ## 10. Focus cue, focus and attention
 
-### 10.1 The dim
+### 10.1 Dimming inactive windows
 
 - tide for Chrome injects a content script into the visible tab of every **unfocused**
   tiled window. It adds a full-page overlay at 12% black, ignoring the
-  pointer, at the top of the stacking order: tide for Linux's dim, and
+  pointer, at the top of the stacking order: tide for Linux's dimming strength, and
   within the 10–15% of other desktops. The options page sets the
   strength, from 2% to 50% (§13).
 - The focused window's overlay goes the instant focus arrives.
-- No dim when the workspace has one visible window, over fullscreen video,
+- No dimming when the workspace has one visible window, over fullscreen video,
   or in PiP, as in tide for Linux §6.2.
 - **It covers the page only.** The tab strip, toolbar and the web app title
   bar stay undimmed. `chrome://` pages, the Web Store and the PDF viewer
   can't be injected, so they never dim.
 - **It costs the "read and change all your data on all websites" permission**
   (`<all_urls>` host access plus `scripting`). That's the warning users
-  rightly fear. So the dim is **optional**, off by default, and requested
+  rightly fear. So dimming is **optional**, off by default, and requested
   at runtime when you turn it on under Extras in the settings (§13).
 
 ### 10.2 Focus
@@ -1361,9 +1374,16 @@ notifications; tide for Chrome derives it from **page titles** instead:
 - tide for Chrome marks the window: the badge goes amber (§8.1), the workspace is
   marked in the bar, and `windows.update({drawAttention: true})` flashes
   its shelf icon.
-- `Search+Tab` activates the most recent mark (§6.1); again goes to the next, as in
-  tide for Linux §14.3. With nothing marked, it goes to the last window you were in.
+- `Search+A` activates the most recent mark (§6.1); again goes to the
+  next. With nothing marked, it goes to the last window you were in.
+  tide for Linux's `Super+A` lists the marks instead (tide for Linux §14.4);
+  this is the cycle its `Super+Tab` had before.
 - A mark clears when the window is focused.
+- **Counting an unread count as attention is deliberate.** tide for Linux
+  and tide for macOS don't (tide for Linux §14.4), since a count rises with
+  every message, wanted or not. tide for Chrome can't see a page's
+  notifications, so a rising count is the one signal it has. TODO.md has
+  a way to try notifications.
 - The sites are a setting, **Unread counts**, with Gmail, Chat and
   Calendar to start with. Each needs its own access, asked for on the
   options page, without the all-sites warning. tide for Chrome registers the title
@@ -1373,7 +1393,7 @@ notifications; tide for Chrome derives it from **page titles** instead:
 
 ## 11. The rest of the desktop
 
-All native, set from the checklist (§3.4). tide for Chrome owns none of it.
+All native, set from the setup checklist (§3.4). tide for Chrome owns none of it.
 
 - **Notifications**: the chromeOS notification center keeps history and has
   Do Not Disturb. Chrome web notifications show there with the site.
@@ -1386,8 +1406,8 @@ All native, set from the checklist (§3.4). tide for Chrome owns none of it.
     timeline is approximated, not matched.
   - "Lock when sleeping" on, as tide for Linux locks before sleep.
   - **Keep awake** is tide for Chrome's: `Search+S`, a click on the cup on the
-    bar of the dashboard and the home page, or the launcher's Toggle keep
-    awake, calls `chrome.power.requestKeepAwake("display")` until you turn
+    bar of the dashboard and the home page, or the launcher's Keep awake,
+    calls `chrome.power.requestKeepAwake("display")` until you turn
     it off, as tide for Linux's does. Meet already keeps the screen on by itself.
     - The cup is a cup of coffee, tide for Linux's and tide for macOS's icon: faint while
       off, in the accent color while on. Hovering it says "Keeping awake"
@@ -1398,7 +1418,7 @@ All native, set from the checklist (§3.4). tide for Chrome owns none of it.
       `notifications` permission's install warning.
     - It lasts the browser session, in `storage.session`. A browser
       restart, a login, drops Chrome's request and empties that store
-      together, so it's never left on across a login, as in tide.
+      together, so it's never left on across a login, as in tide for Linux.
       Reloading or updating tide for Chrome does both too.
     - tide for Linux's **presenter mode** (`Super+P`) isn't here: it's keep awake
       plus Do not disturb, and an extension can't reach chromeOS's Do not
@@ -1451,9 +1471,9 @@ Crostini runs kitty, the shell config and the terminal tools, so `conf` and
   tide for Linux's name where it's the same page: Mouse and Keyboard (the
   keys checklist) under Hardware; Layouts, Workspaces and Floating
   (§5.4) under Windows;
-  Appearance (the dim's strength), Bar (where the bar sits, §8.1),
+  Appearance (dimming strength), Bar (where the bar sits, §8.1),
   Notifications (unread counts), Clocks and Start at login under
-  General. Chrome's own pages follow tide's in
+  General. Chrome's own pages follow tide for Linux's in
   their group: Apps under Windows; Extras, Tabs in tide's switcher (Linux
   only), the Setup checklist, and Import and export at the end of General
   *(a guess)*. A page the platform hides (§14.6) isn't in the sidebar,
@@ -1466,12 +1486,20 @@ Crostini runs kitty, the shell config and the terminal tools, so `conf` and
   once in a page already open.
 - Every change applies live; no reload.
 - **Shared vs per-machine**, as tide for Linux's §16.1: `chrome.storage.sync` holds
-  the shared settings (apps, clocks, keys, layouts, float rules, the bar's
-  place), and
-  `chrome.storage.local` holds per-machine overrides (lone-window width per
-  display, ultrawide threshold), which Layouts lists below the shared
-  layouts, saying they stay on this Chromebook. Objects merge key by key; lists replace
-  whole.
+  the shared settings, such as the apps, clocks, layouts, workspaces,
+  float rules and the bar's place (`SHARED` in `src/settings.js` lists
+  them). `chrome.storage.local` holds per-machine overrides
+  (`PER_MACHINE`): the lone-window widths by aspect, the ultrawide
+  threshold, the wheel step and Start at login. Layouts lists its two
+  below the shared layouts, saying they stay on this Chromebook. Chrome's
+  key bindings, the keys preset and the setup checklist's ticks are this
+  Chromebook's too (§7.4). Objects merge key by key; lists replace whole.
+- **Setting names** are tide for Linux's where the setting is the same
+  (`clocks`, `standing`, `workspaceSettings`, `defaultMode`, `modes`,
+  `ultrawideAspect`, `dimStrength`, `barPosition`). Two differ:
+  `homeApps` is tide for Linux's `inApps`, naming app keys rather than
+  programs, and `singleRules` is its `single`, the same list of
+  `{minAspect, width}`. "Mode" in a name means the layout.
 - A bad value is an error on the options page naming the setting, and the
   last good value stays.
 - Import and export as JSON, in the same shape as tide for Linux's
@@ -1489,7 +1517,7 @@ Crostini runs kitty, the shell config and the terminal tools, so `conf` and
   shows in the sidebar and the page showing stays. Up and Down in the
   field move among the pages kept. Esc clears the query, listing every
   page again and keeping the one showing; with the field empty, Esc
-  closes the settings tab, as tide's panel closes, since an extension
+  closes the settings tab, as tide for Linux's panel closes, since an extension
   page may close its own tab with `window.close()`. A page an address,
   Launch or the bar asks for clears the search. tide for Linux opens a
   page found only by a part of it (Keyboard's shortcuts) scrolled there;
@@ -1505,7 +1533,7 @@ Crostini runs kitty, the shell config and the terminal tools, so `conf` and
   one, a button to its `chrome://os-settings` page; you tick them off, as
   chromeOS can't be read, and the ticks stay in `storage.local`), the
   extra sites watched for
-  attention (§10.3), the dim's strength (2% to 50%,
+  attention (§10.3), dimming strength (2% to 50%,
   repainting what's already dimmed), the bar at the top or the bottom
   (§8.1), this Chromebook's
   layouts (the ultrawide threshold and the lone-window widths, kept in
@@ -1517,10 +1545,10 @@ Crostini runs kitty, the shell config and the terminal tools, so `conf` and
   up a change at once through `storage.onChanged`; tide for Chrome reads its settings
   on each step. The Layouts page sets the layout a workspace starts in,
   on an ultrawide and on any other display, and each layout's main share
-  and main-window count, under tide for Linux's names (`defaultMode`, `modes`), as
+  and master count, under tide for Linux's names (`defaultMode`, `modes`), as
   tide for Linux's Layouts page does. A
   change reaches every workspace and replaces what the keys set there, as
-  in tide.
+  in tide for Linux.
   As on tide for Linux's Workspaces page, the Workspaces page lists the
   **standing workspaces** (`standing`, §6.1) and **home's apps**
   (`homeApps`), both shared:
@@ -1593,17 +1621,20 @@ program, so tide for Chrome's list is web addresses alone.
   device's.
 - Permissions: `storage`, `system.display`, `scripting` and `power` (keep
   awake, §11), none with an install warning, so tiling and workspaces need
-  nothing sensitive. (`management` for installed apps, if §9.1 holds,
-  would join them.)
-- Optional, each asked for from a click under **Extras** at the top of the
-  settings, which a new install opens once. The dashboard also shows a
+  nothing sensitive. (`management`, for opening the installed apps, would
+  join them if M2 finds it opens web apps, §9.1.)
+- Optional, each asked for from a click under **Extras**, at the end of
+  General in the settings (§13), which a new install opens once. The dashboard also shows a
   card offering the extras still off, with an Allow button each, until
   you dismiss it (kept in `storage.local`). Turning unread counts for
   Gmail, Chat and Calendar off takes them out of the list, since
   all-sites access for dimming keeps their access:
   - `tabs`, for tab search (§9.4), matching windows after a restart
     (§14.2) and recognizing Secure Shell's popups (§6.4). Without it,
-    those popups float and a restart loses workspaces.
+    Chrome hides each tab's address and title from tide for Chrome. So no
+    float rule (§5.4) or home app (§6.1) finds its window, no app window
+    asks for a workspace (§6.1), those popups float, and a restart loses
+    workspaces.
   - Each unread-count site's own origin (§10.3). Gmail, Chat and Calendar
     are one Allow.
   - `<all_urls>`, for dimming inactive windows (§10.1). The overview's
@@ -1669,7 +1700,7 @@ against the policy list yet *(unverified)*; M2 reads the machine's
 - **Installing tide for Chrome**: it comes from the Web Store (§14.5), so what matters
   is whether policy blocks Web Store extensions, or allows only a list. If
   so, the admin has to add tide for Chrome's ID.
-- **The dim** (§10.1) needs all-sites access, which policy can withhold from
+- **Dimming inactive windows** (§10.1) needs all-sites access, which policy can withhold from
   extensions.
 - **Linux** (§12, Appendix A) can be turned off by policy, and so can USB
   passthrough and port forwarding.
@@ -1706,17 +1737,22 @@ each event, since Chrome answers at once.
 
 - **chromeOS** (`cros`): everything in this spec.
 - **Anywhere else**: tiling, workspaces and everything that places a window
-  are off: no layout, no workspace keys, no home page, no dim and no unread
+  are off: no layout, no workspace keys, no home page, no dimming and no unread
   marks.
   - Every tiling, focus and workspace command does nothing. The toolbar's
     tooltip says tiling and workspaces work only on chromeOS.
   - The dashboard, from its key or the toolbar button, its launcher and the
     app keys still work, and so does keep awake. A window they open goes
     where the desktop puts it.
-  - The settings hide what only tiling uses: the setup checklist, start at
-    login, unread counts, the dim, workspaces, layouts and the mouse.
-    Extras offers tab search alone, and Keys lists only the commands that
-    work.
+  - The dashboard's bar shows no workspaces, and says tiling and
+    workspaces work only on chromeOS. Its launcher has no Workspaces
+    scope. Launch and Actions list only the commands that place no
+    window: the dashboard, the app keys and keep awake. Actions has no
+    dimming, and Launch finds only the settings pages shown there.
+  - The settings hide what only tiling uses: the setup checklist, Start at
+    login, Notifications (unread counts), Appearance (dimming),
+    Workspaces, Layouts, Floating and Mouse. Extras offers tab search
+    alone, and Keyboard lists only the commands that work.
   - The manifest's suggested keys stay. Each needs a default for the
     extension to install off chromeOS, and the tiling ones there do
     nothing; unbind them at `chrome://extensions/shortcuts`.
@@ -1757,7 +1793,7 @@ each event, since Chrome answers at once.
 
 | Repo | Gets |
 |---|---|
-| **tide for Chrome** (this) | The spec. The extension: worker, layout geometry, workspaces, the full-screen dashboard and home page with the launcher, the overview, options page with the checklist, attention and dim content scripts. Its tests. |
+| **tide for Chrome** (this) | The spec. The extension: worker, layout geometry, workspaces, the full-screen dashboard and home page with the launcher, the overview, options page with the keys and setup checklists, attention and dimming content scripts. Its tests. |
 | **tide for Linux** | Its layout fixtures (window counts → rectangles) are the reference tide for Chrome's geometry tests are checked against, copied with a note of the commit. Its settings matcher, copied unchanged for the options page's search (§13). `tide-tabs`, the native-messaging host and relay tide for Chrome's Linux tab list talks to, and the switcher's side of it (§14.6). |
 | **conf** | The shared `clocks.json` and layouts settings, if tide for Chrome imports them (§13). Crostini needs nothing new: the Debian path already covers it. |
 | **scripts** | `setup` installs `tide-tabs`'s host manifest for Chrome and Brave, naming tide for Chrome's extension ID (§14.6). `setup` detects Crostini (`/dev/.cros_milestone` or `/opt/google/cros-containers`, *(unverified on a device)*) and skips the desktop: no KDE, no tide for Linux, no display manager (A.5). |
@@ -1768,9 +1804,9 @@ each event, since Chrome answers at once.
 |---|---|---|
 | **M1** | This spec | agreed; open questions answered |
 | **M2** | Device checks + layouts | every *(unverified)* claim in §2, §7.2, §9 and §11 is checked on a Chromebook, with the chromeOS version, and this spec updated. The four layouts and the lone-window rule tile Chrome and web app windows on the laptop panel and on an ultrawide. Frame offsets are measured and tiles meet. State survives the worker sleeping and a browser restart. |
-| **M3** | Workspaces + keys | named workspaces, home first and the standing ones always listed, switch and move by name and by number on one and two displays, with the home window on empty ones. Every key in §7.1 is bound or listed by the checklist. App keys open a new window of each web app and profile. |
-| **M4** | Dashboard, clocks, attention | the dashboard shows workspaces and urgency from live state, the clocks follow tide for Linux's rules across a DST fixture, and a Chat message marks its window and `Search+Tab` goes there. |
-| **M5** | Dim + settings | the optional dim works and is off without the permission. The options page edits everything live, syncs, and imports tide for Linux's JSON. |
+| **M3** | Workspaces + keys | named workspaces, home first and the standing ones always listed, switch and move by name and by number on one and two displays, with the home page on empty ones. Every key in §7.1 is bound or listed by the keys checklist. App keys open a new window of each web app and profile. |
+| **M4** | Dashboard, clocks, attention | the dashboard shows workspaces and urgency from live state, the clocks follow tide for Linux's rules across a DST fixture, and a Chat message marks its window and `Search+A` goes there. |
+| **M5** | Dimming + settings | optional dimming works and is off without the permission. The options page edits everything live, syncs, and imports tide for Linux's JSON. |
 | **M6** | Linux | `setup` runs in Crostini; the nested-sway experiment is tried and written up, keep or drop. |
 
 ## 17. Testing
@@ -1783,14 +1819,15 @@ each event, since Chrome answers at once.
 - **A `chrome.*` fake** for the worker: windows with IDs, types, states and
   bounds, and events, so switching, sending, reconciliation after a
   restart, and a worker woken by a command are tested without a browser.
-  The fake's bounds can be off by a frame, to test the offset correction.
+  Bounds off by a frame, to test the offset correction, are planned with
+  it (§5.3).
 - **Playwright with Chromium** loads the unpacked extension on Linux for
   what the fake can't show: the dashboard and home page, options page and content scripts.
   Window management on Linux Chromium differs from chromeOS, so those
   results don't stand in for M2's device checks.
   - `test/smoke.js`, run by `make smoke` and CI's `smoke` job, checks that
     the worker starts, that the options page lists every page and
-    saves a setting and a checklist tick, that the Floating page and the
+    saves a setting and a setup checklist tick, that the Floating page and the
     question after floating a window add a float rule, that the home page and
     dashboard render the bar, clocks, launcher and calendar, and that the
     overview renders, filters and closes and shrinks a picture, all with
@@ -1813,20 +1850,17 @@ each event, since Chrome answers at once.
    desk from focus changes would go wrong on any native desk move, with
    nothing to correct it. So it's tide for Chrome's own workspaces, unless M2 shows the
    minimize animation can't be lived with.
-2. **Is the dim worth the all-sites permission?** §10.1 makes it optional,
+2. **Is dimming inactive windows worth the all-sites permission?** §10.1 makes it optional,
    off by default.
-3. **Fork chrometile or start fresh?** §3.1 recommends fresh, using
-   chrometile until M3 and sending it two fixes.
-4. **How much of the off-ramp (§3.6) should this repo document**, given the
+3. **How much of the off-ramp (§3.6) should this repo document**, given the
    tide for Linux spec already covers the desktop it would run?
-5. **The moved keys** (§7.1): settled on a Chromebook (maintainer,
-   2026-10-24) as Search+H / N, Search+I / D and Search+O, by §7.3's rule.
-   `Search+Space` for the dashboard is the one left from the first guess.
-   An upstream patch could restore `Search+Return` only (§19.1).
-6. **Googlebook**: the target is a work machine. Accessibility services
+4. **Googlebook**: the target is a work machine. Accessibility services
    and sideloading aren't ruled out; adb is unknown. That decides whether
    tidal (§20.4) could re-tile, or only place apps at launch. The same
    machine's chromeOS policy (§14.4) decides whether tide for Chrome loads at all.
+5. **The overview's key** (§6.5). `Search+W` is the name prompt, and tide
+   for Linux has no overview key yet. Until it's settled, you bind the
+   command by hand.
 
 ## 19. Upstream patches and workarounds
 
@@ -1933,8 +1967,8 @@ found *(the tracker was unreachable, so this is weak evidence)*.
 **Recommendation.** Not on tide for Chrome's critical path. If anything, file a
 Chromium issue for Enter and Backspace with tide for Chrome as the use case, and offer
 the CL if a reviewer in `ui/base/accelerators/OWNERS` is open to it. Don't
-attempt the punctuation keys. Meanwhile §7.1's combos stand, and the key
-map is open to better choices (open question 5).
+attempt the punctuation keys. Meanwhile §7.1's combos stand, settled on
+a Chromebook by §7.3's rule (maintainer, 2026-10-24).
 
 ### 19.2 Mouse speed, acceleration and scroll speed
 

@@ -51,8 +51,12 @@ export const DEFAULT_SETTINGS = {
   // The float rules (§5.4): the sites whose app windows open floating, as
   // tide's floating.json, and shared as it is.
   floating: [],
-  // Per machine, as they depend on its displays (§5.2).
-  singleRules: [{ minAspect: 2.1, width: 0.8 }],
+  // Per machine, as they depend on its displays (§5.2). The lone-window
+  // rules are tide for Linux's: 80% from an aspect of 2.1, 60% from 3.2.
+  singleRules: [
+    { minAspect: 2.1, width: 0.8 },
+    { minAspect: 3.2, width: 0.6 },
+  ],
   ultrawideAspect: 2.1,
   // The mouse wheel's step per click, re-applied from crosh at each login
   // (§19.2); null for no reminder.

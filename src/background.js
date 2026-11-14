@@ -159,7 +159,8 @@ function handle(message, sender, respond) {
   const valid = (name) => typeof name === "string" && checkName(name).name === name;
   if (fromTide && valid(message?.workspace)) return done(tide.workspace(message.workspace));
   if (fromTide && valid(message?.moveTo)) return done(tide.moveTo(message.moveTo));
-  // The overview goes to a window by its ID (§6.5).
+  // The overview and the launcher's Attention scope go to a window by its
+  // ID (§6.5, §10.3).
   if (fromTide && Number.isInteger(message?.activate)) return done(tide.activateWindow(message.activate));
   if (fromTide && Number.isInteger(message?.tabId) && Number.isInteger(message?.windowId)) {
     return done(tide.activateTab(message.tabId, message.windowId));

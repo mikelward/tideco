@@ -4,14 +4,15 @@
 // on the launch scope and stays; as the dashboard, from its key or the
 // toolbar button, it opens on open tabs and closes once you choose. Search+W
 // opens the dashboard on its workspaces, the name prompt (§6.1), and
-// Search+Shift+W the same for moving the window it opened over.
+// Search+Shift+W the same for moving the window it opened over. Search+A
+// opens it on the windows wanting attention (§10.3).
 
 import { scrub } from "./clocks.js";
 import { stepMonth } from "./calendar.js";
 import { renderClocks, renderDetail, today } from "./clockview.js";
 import { addDefaultSites, DISMISSED_KEY, extrasFor, isOn } from "./extras.js";
 import { KEEP_AWAKE_KEY, isOn as keepingAwake, words as awakeWords } from "./keepawake.js";
-import { actions, arrowStep, barAtBottom, BAR_SECTIONS, footerKeys, footerText, items, limitFor, logoTapped, nextScope, opening, rank, SCOPE_ORDER, SECTION_KEY, settingsSections, workspaceRows } from "./launcher.js";
+import { actions, arrowStep, attentionRows, barAtBottom, BAR_SECTIONS, emptyText, footerKeys, footerText, items, limitFor, logoTapped, nextScope, opening, rank, SCOPE_ORDER, SECTION_KEY, settingsSections, workspaceRows } from "./launcher.js";
 import { load as loadSettings, SETTINGS_KEY } from "./settings.js";
 import { platform, TABS, TILE } from "./platform.js";
 
@@ -32,6 +33,9 @@ let scope = opened.scope;
 let tabsAllowed = true;
 const ALLOW_TABS = { kind: "allow", title: "Allow tab search", detail: "Chrome asks first" };
 let all = [];
+// Every open tab, for the Attention rows' titles, which Chrome shows for
+// the watched sites even without tab search.
+let openTabs = [];
 let shown = [];
 let selected = 0;
 let state = null;
@@ -61,11 +65,13 @@ function hereDisplay() {
   return home ? Object.entries(state?.homes ?? {}).find(([, id]) => id === me?.id)?.[0] : view?.focusedDisplay;
 }
 
-// The scopes with a chip: no workspaces off chromeOS (§14.6), and only
-// them in Search+Shift+W's prompt.
+// The scopes with a chip: no workspaces or attention off chromeOS (§14.6),
+// and only workspaces in Search+Shift+W's prompt. Attention needs tide's
+// marks, so a page given none, such as another host's copy, has no chip.
 function scopes() {
-  if (!tiling) return SCOPE_ORDER.filter((s) => s !== "workspaces");
-  return move ? ["workspaces"] : SCOPE_ORDER;
+  if (!tiling) return SCOPE_ORDER.filter((s) => s !== "workspaces" && s !== "attention");
+  if (move) return ["workspaces"];
+  return Array.isArray(state?.marks) ? SCOPE_ORDER : SCOPE_ORDER.filter((s) => s !== "attention");
 }
 
 function renderBar() {
@@ -109,14 +115,13 @@ cup.addEventListener("click", () =>
 
 async function refresh() {
   tiling = await tiles;
-  if (!scopes().includes(scope)) scope = "launch";
   me = await chrome.windows.getCurrent();
   const wasAllowed = tabsAllowed;
   tabsAllowed = await chrome.permissions.contains({ permissions: ["tabs"] });
   // The dashboard opens on tabs only when it can show them.
   if (!home && !tabsAllowed && wasAllowed && scope === "tabs" && query.value === "") scope = "launch";
   const [tabs, stored, { settings: current }, awake, dimGranted, { role }] = await Promise.all([
-    tabsAllowed ? chrome.tabs.query({}) : [],
+    chrome.tabs.query({}),
     chrome.storage.local.get(["state", "view"]),
     loadSettings(chrome.storage),
     keepingAwake(chrome.storage),
@@ -125,6 +130,9 @@ async function refresh() {
   ]);
   state = stored.state ?? null;
   view = stored.view ?? null;
+  // After the state, which says whether there's an Attention scope.
+  if (!scopes().includes(scope)) scope = "launch";
+  openTabs = tabs;
   const commands = chrome.runtime.getManifest().commands;
   // Each app key's name comes from settings; its key, from the manifest.
   const keyOf = (command) => /\(([^)]*)\)$/.exec(commands[command]?.description ?? "")?.[1] ?? "";
@@ -133,7 +141,7 @@ async function refresh() {
     ...current.apps.map((a) => ({ name: a.name, url: a.url, command: a.command, key: keyOf(a.command) })),
   ];
   all = items({
-    tabs,
+    tabs: tabsAllowed ? tabs : [],
     apps,
     sections: settingsSections({ tiling, linux: role === TABS }),
     actions: actions({ keepAwake: awake, dim: tiling ? { granted: dimGranted, on: view?.dim === true } : null, key: keyOf }),
@@ -149,6 +157,7 @@ async function refresh() {
 // What the field asks for in each scope; the workspaces' words are tide's
 // name prompt's.
 function placeholder() {
+  if (scope === "attention") return "Go to a window that wants attention";
   if (scope !== "workspaces") return "Type to search";
   return move ? "Move this window to the workspace named" : "Go to the workspace named";
 }
@@ -159,6 +168,9 @@ function update() {
     // Until you type, a new window's short name lists every workspace.
     const suggested = opened.name !== "" && query.value === opened.name;
     shown = workspaceRows({ bar: view?.bar, counts: view?.counts, made: view?.made, current, query: query.value, suggested });
+  } else if (scope === "attention") {
+    const rows = attentionRows({ marks: state?.marks, windows: state?.windows, unread: state?.unread, tabs: openTabs, query: query.value });
+    shown = rows.slice(0, limitFor(scope, query.value));
   } else shown = scope === "tabs" && !tabsAllowed ? [ALLOW_TABS] : rank(query.value, all, { scope, limit: limitFor(scope, query.value) });
   selected = Math.min(selected, Math.max(shown.length - 1, 0));
   for (const b of document.querySelectorAll(".scopes button")) {
@@ -168,6 +180,14 @@ function update() {
   query.placeholder = placeholder();
   $("keys").textContent = footerText(footerKeys(scope, { home, tabsAllowed, move, scopes: scopes() }));
   results.replaceChildren();
+  // An empty Attention scope says so, as a line nothing can choose.
+  if (shown.length === 0 && scope === "attention") {
+    const li = document.createElement("li");
+    li.className = "empty";
+    li.setAttribute("role", "presentation");
+    li.textContent = emptyText(scope, query.value);
+    results.append(li);
+  }
   shown.forEach((item, i) => {
     const li = document.createElement("li");
     li.setAttribute("role", "option");
@@ -193,8 +213,13 @@ function update() {
   results.children[selected]?.scrollIntoView({ block: "nearest" });
 }
 
+// The commands whose page is one of this page's scopes.
+const OWN_SCOPES = { "workspace-go": "workspaces", attention: "attention" };
+
 // A workspace, new or not, shows; in Search+Shift+W's prompt the window
-// moves there first. A refused name is only there to say why.
+// moves there first. A refused name is only there to say why. A window
+// wanting attention comes forward with its workspace, which clears its
+// mark (§10.3).
 function choose(item) {
   if (!item || item.kind === "refused") return;
   if (item.kind === "allow") allowTabs();
@@ -202,11 +227,12 @@ function choose(item) {
   else if (item.act === "dim") toggleDim(item.on);
   else if (item.act === "reload") chrome.runtime.reload();
   else if (item.kind === "tab") send({ tabId: item.tabId, windowId: item.windowId });
+  else if (item.kind === "window") send({ activate: item.windowId });
   else if (item.kind === "workspace" || item.kind === "new") send(move ? { moveTo: item.workspace } : { workspace: item.workspace });
-  // Search+W's prompt is this page's own scope.
-  else if (item.command === "workspace-go" && scopes().includes("workspaces")) {
+  // Search+W's prompt and Search+A's list are this page's own scopes.
+  else if (OWN_SCOPES[item.command] && scopes().includes(OWN_SCOPES[item.command])) {
     query.value = "";
-    setScope("workspaces");
+    setScope(OWN_SCOPES[item.command]);
   } else send({ command: item.command });
 }
 

@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { actions, arrowStep, barAtBottom, BAR_SECTIONS, footerKeys, footerText, fuzzyScore, items, limitFor, logoTapped, nextScope, opening, rank, sectionToShow, settingsSections, SETTINGS_SECTIONS, TOP, workspaceRows } from "./launcher.js";
+import { actions, arrowStep, attentionRows, barAtBottom, BAR_SECTIONS, emptyText, footerKeys, footerText, fuzzyScore, items, limitFor, logoTapped, nextScope, opening, rank, sectionToShow, settingsSections, SETTINGS_SECTIONS, TOP, workspaceRows } from "./launcher.js";
 
 test("a fuzzy match needs every query letter in order", () => {
   assert.equal(fuzzyScore("cal", "Google Calendar") > 0, true);
@@ -171,6 +171,9 @@ test("the page's address says how it opened: home, the dashboard, or a name prom
   assert.deepEqual(opening("?mode=dashboard&scope=workspaces"), how(false, "workspaces"));
   assert.deepEqual(opening("?mode=dashboard&scope=workspaces&move=1"), how(false, "workspaces", true));
   assert.deepEqual(opening("?mode=home&scope=workspaces&move=1"), how(true, "launch"), "home's page moves nothing");
+  assert.deepEqual(opening("?mode=dashboard&scope=attention"), how(false, "attention"), "Search+A's");
+  assert.deepEqual(opening("?mode=dashboard&scope=attention&move=1&name=x"), how(false, "attention"), "only the name prompt moves or has a name");
+  assert.deepEqual(opening("?mode=home&scope=attention"), how(true, "launch"));
   // A new window's prompt starts with its name.
   assert.deepEqual(opening(`?mode=dashboard&scope=workspaces&move=1&name=${encodeURIComponent("PR-12 & co")}`), how(false, "workspaces", true, "PR-12 & co"));
   assert.deepEqual(opening("?mode=dashboard&name=x"), how(false, "tabs"), "only the prompt has a field to fill");
@@ -179,7 +182,8 @@ test("the page's address says how it opened: home, the dashboard, or a name prom
 test("Tab steps through the scopes, Shift+Tab back, skipping those not shown", () => {
   assert.equal(nextScope("launch"), "tabs");
   assert.equal(nextScope("tabs"), "workspaces");
-  assert.equal(nextScope("workspaces"), "actions");
+  assert.equal(nextScope("workspaces"), "attention", "as tide for Linux's switcher: Attention before Actions");
+  assert.equal(nextScope("attention"), "actions");
   assert.equal(nextScope("actions"), "launch");
   assert.equal(nextScope("launch", -1), "actions");
   assert.equal(nextScope("tabs", 1, ["launch", "tabs", "actions"]), "actions", "off chromeOS, past the missing Workspaces");
@@ -190,7 +194,7 @@ test("Tab steps through the scopes, Shift+Tab back, skipping those not shown", (
 test("the Workspaces footer says where Enter goes, and the move prompt has no Tab", () => {
   assert.equal(
     footerText(footerKeys("workspaces", { home: false, tabsAllowed: true })),
-    "Enter to go there · ↑ ↓ to choose · Tab to switch to Actions · Esc to clear or close",
+    "Enter to go there · ↑ ↓ to choose · Tab to switch to Attention · Esc to clear or close",
   );
   assert.equal(
     footerText(footerKeys("workspaces", { home: false, tabsAllowed: false, move: true, scopes: ["workspaces"] })),
@@ -255,6 +259,70 @@ test("Actions lists every action and command with nothing typed; keep awake once
   assert.equal(limitFor("launch", ""), 8);
   // Launch finds an action by name too.
   assert.equal(rank("reload", list, { scope: "launch" })[0].title, "Reload tide");
+});
+
+// Search+A's list (§10.3): the marked windows, from tide's state, with
+// their tabs' titles from Chrome.
+const marked = {
+  marks: [2, 9, 3, 4],
+  windows: { 2: { ws: "me" }, 3: { ws: "in" }, 4: { ws: "oc" } },
+  unread: { 20: { windowId: 2, count: 3 }, 21: { windowId: 2, count: 1 }, 30: { windowId: 3, count: 0 } },
+  tabs: [
+    { id: 20, windowId: 2, title: "Chat (3)", active: false, favIconUrl: "chat.png" },
+    { id: 22, windowId: 2, title: "Spaces", active: true, favIconUrl: "spaces.png" },
+    { id: 30, windowId: 3, title: "Inbox - Gmail", active: true },
+    { id: 40, windowId: 4, active: true },
+    { id: 41, windowId: 4, title: "Calendar - Week", active: false },
+  ],
+};
+const attention = (query = "", more = {}) => attentionRows({ ...marked, query, ...more }).map((r) => [r.title, r.detail, r.windowId]);
+
+test("Attention lists every marked window, most recent first, on any workspace", () => {
+  // Window 4's active tab has no title Chrome shows, so another tab's stands in.
+  assert.deepEqual(attention(), [
+    ["Calendar - Week", "window on oc", 4],
+    ["Inbox - Gmail", "window on in", 3],
+    ["Spaces", "window on me · 3 unread", 2],
+  ], "a closed window's mark (9) is left out, a closed tab's count (21) too, and a count of 0 isn't said");
+  assert.equal(attentionRows({ ...marked, query: "" })[2].icon, "spaces.png", "the active tab's icon");
+});
+
+test("an Attention row counts only the unread of tabs still in its window", () => {
+  // Tab 20 moved to window 3: its count goes with it, not with window 2.
+  const tabs = marked.tabs.map((t) => (t.id === 20 ? { ...t, windowId: 3 } : t));
+  const rows = attention("", { tabs });
+  assert.deepEqual(rows.find((r) => r[2] === 2)[1], "window on me");
+  assert.deepEqual(rows.find((r) => r[2] === 3)[1], "window on in · 3 unread");
+});
+
+test("an Attention row's title is its active tab's, else another of its tabs' Chrome shows", () => {
+  // Without tab search Chrome shows only the watched sites' titles.
+  const tabs = marked.tabs.map((t) => (t.id === 22 ? { ...t, title: undefined } : t));
+  assert.equal(attentionRows({ ...marked, tabs, query: "" })[2].title, "Chat (3)", "the watched tab's");
+  assert.equal(attentionRows({ ...marked, tabs: [], query: "" })[2].title, "Untitled");
+});
+
+test("typing filters Attention by title or workspace, best first", () => {
+  assert.deepEqual(attention("inbox").map(([title]) => title), ["Inbox - Gmail"]);
+  assert.deepEqual(attention("me").map(([title]) => title), ["Spaces"], "by its workspace too");
+  assert.deepEqual(attention("zzz"), []);
+});
+
+test("Attention is empty without marks, and says so", () => {
+  assert.deepEqual(attentionRows({ query: "" }), [], "a host with no marks to give lists none");
+  assert.deepEqual(attentionRows({ marks: [], windows: {}, query: "" }), []);
+  assert.equal(emptyText("attention", ""), "No window wants attention");
+  assert.equal(emptyText("attention", " x "), "Nothing matches");
+  assert.equal(emptyText("tabs", ""), "");
+});
+
+test("Attention lists every mark with nothing typed, goes there on Enter, and Tab goes on to Actions", () => {
+  assert.equal(limitFor("attention", ""), Infinity);
+  assert.equal(limitFor("attention", "c"), 8);
+  assert.equal(
+    footerText(footerKeys("attention", { home: false, tabsAllowed: true })),
+    "Enter to go there · ↑ ↓ to choose · Tab to switch to Actions · Esc to clear or close",
+  );
 });
 
 test("the Actions footer runs, and Tab goes round to Launch", () => {

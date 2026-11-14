@@ -1280,7 +1280,11 @@ test("a state stored with a workspace per display keeps the first's showing", as
   assert.equal(chrome.box(2).x >= 1920, true, "on its own display");
 });
 
-test("a rising unread count marks its window, and Search+A goes there", async () => {
+// Search+A's list of windows wanting attention (§10.3) is the dashboard on
+// its Attention scope.
+const ATTENTION = `${DASHBOARD}&scope=attention`;
+
+test("a rising unread count marks its window, and Search+A's list goes there", async () => {
   const { chrome, tide } = await setup([HD], [
     on(HD, 1, { focused: true }),
     on(HD, 2, { type: "app", url: "https://chat.google.com/" }),
@@ -1300,9 +1304,13 @@ test("a rising unread count marks its window, and Search+A goes there", async ()
   assert.equal(chrome.badgeColor, "#e5a50a", "the badge turns amber");
   assert.deepEqual(chrome.store.view.urgent, ["me"]);
   await tide.command("attention");
+  assert.ok(chrome.wins.find((w) => w.url === ATTENTION)?.focused, "the list opened");
+  assert.deepEqual(tide.state.marks, [2], "opening it clears nothing");
+  // Enter on its row.
+  await tide.activateWindow(2);
   assert.equal(tide.state.current, "me", "its workspace comes up");
   assert.equal(chrome.win(2).focused, true);
-  assert.deepEqual(tide.state.marks, []);
+  assert.deepEqual(tide.state.marks, [], "going there clears its mark");
   assert.equal(chrome.badgeColor, "#3584e4");
 });
 
@@ -1327,17 +1335,17 @@ test("a tab loading another page sets a new baseline", async () => {
   assert.deepEqual(tide.state.marks, [2], "a rise after that still marks");
 });
 
-test("Search+A goes to the newest mark, then the next", async () => {
+test("going to one window from Search+A's list leaves the others marked, newest last", async () => {
   const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true }), on(HD, 2), on(HD, 3)]);
   await tide.title(20, 2, "Chat");
   await tide.title(30, 3, "Inbox - Gmail");
   await tide.title(20, 2, "Chat (1)");
   await tide.title(30, 3, "Inbox (1) - Gmail");
+  assert.deepEqual(tide.state.marks, [2, 3]);
   await tide.command("attention");
+  await tide.activateWindow(3);
   assert.equal(chrome.win(3).focused, true);
-  await tide.command("attention");
-  assert.equal(chrome.win(2).focused, true);
-  assert.deepEqual(tide.state.marks, []);
+  assert.deepEqual(tide.state.marks, [2]);
 });
 
 test("going to a marked window yourself clears its mark", async () => {
@@ -1350,16 +1358,23 @@ test("going to a marked window yourself clears its mark", async () => {
   assert.deepEqual(tide.state.marks, []);
 });
 
-test("with nothing marked, Search+A goes back to the last window", async () => {
+test("with nothing marked, Search+A opens its empty list, and the key again closes it", async () => {
   const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true }), on(HD, 2), on(HD, 3)]);
   chrome.focus(2);
   await tide.event();
   chrome.focus(3);
   await tide.event();
   await tide.command("attention");
-  assert.equal(chrome.win(2).focused, true);
+  const [d] = chrome.wins.filter((w) => w.url === ATTENTION);
+  assert.ok(d, "the list opened, not the last window");
+  assert.equal(d.state, "fullscreen");
+  assert.equal(chrome.win(2).focused, false);
   await tide.command("attention");
-  assert.equal(chrome.win(3).focused, true, "again goes back");
+  assert.equal(chrome.wins.some((w) => w.url?.startsWith(DASHBOARD)), false);
+  // Another key's dashboard takes its place.
+  await tide.command("attention");
+  await tide.command("workspace-go");
+  assert.deepEqual(chrome.wins.filter((w) => w.url?.startsWith(DASHBOARD)).map((w) => w.url), [PROMPT]);
 });
 
 test("a closed window's mark and counts go with it", async () => {

@@ -773,7 +773,7 @@ export class Tide {
     if (name === "workspace-go") return this.dashboard(display, "go");
     if (name === "overview") return this.dashboard(display, "overview");
     if (name === "app-browser") return this.browser(display);
-    if (name === "attention") return this.attention();
+    if (name === "attention") return this.dashboard(display, "attention");
     if (name === "keep-awake") {
       await toggleKeepAwake(this.api);
       return null;
@@ -887,7 +887,8 @@ export class Tide {
   // screen over the focused display. The key again closes it (§8.1).
   // `how` is "tabs" for that, "go" for Search+W's name prompt, on the
   // Workspaces scope, and "move" for Search+Shift+W's, which moves window
-  // `moving` (§6.1), offering home if that's one of home's apps'; and
+  // `moving` (§6.1), offering home if that's one of home's apps';
+  // "attention" for Search+A's list, on the Attention scope (§10.3); and
   // "overview" for the overview (§6.5), its own page, which first takes
   // the picture of the window you're in. A new window's prompt starts its
   // field as `name`. A different one's key swaps it for that one.
@@ -903,7 +904,7 @@ export class Tide {
       if (was === how) return null;
     }
     const d = this.displays.find((x) => x.id === display) ?? this.displays[0];
-    let page = `launcher.html?mode=dashboard${{ tabs: "", go: "&scope=workspaces", move: "&scope=workspaces&move=1" }[how] ?? ""}`;
+    let page = `launcher.html?mode=dashboard${{ tabs: "", go: "&scope=workspaces", move: "&scope=workspaces&move=1", attention: "&scope=attention" }[how] ?? ""}`;
     if (name) page += `&name=${encodeURIComponent(name)}`;
     if (how === "overview") {
       const f = this.focusedWindow();
@@ -938,24 +939,11 @@ export class Tide {
     });
   }
 
-  // Search+A (§10.3): the most recent mark, so pressing again goes to the
-  // next; with none, the last window you were in.
-  attention() {
-    const s = this.state;
-    if (s.marks.length > 0) return this.activate(s.marks.pop());
-    const current = this.focusedWindow();
-    let last = null;
-    for (const [key, info] of Object.entries(s.windows)) {
-      const id = Number(key);
-      if (id === current || !info.lastFocused) continue;
-      if (last === null || info.lastFocused > s.windows[last].lastFocused) last = id;
-    }
-    return last === null ? null : this.activate(last);
-  }
-
-  // Bring up a window, with its workspace (§6.1 Activate).
+  // Bring up a window, with its workspace (§6.1 Activate). Going there
+  // clears its mark (§10.3), as Search+A's list expects.
   activate(id) {
     this.state = ws.activate(this.state, id);
+    this.state.marks = this.state.marks.filter((m) => m !== id);
     return id;
   }
 

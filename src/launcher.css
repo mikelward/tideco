@@ -376,6 +376,11 @@ body.bar-bottom {
   color: var(--muted);
   cursor: default;
 }
+/* An empty list's line, such as Attention's with nothing marked. */
+#results li.empty {
+  color: var(--muted);
+  cursor: default;
+}
 #results .title {
   overflow: hidden;
   white-space: nowrap;

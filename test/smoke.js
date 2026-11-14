@@ -708,8 +708,11 @@ test("the Workspaces scope lists the workspaces, and Enter on a new name shows i
   assert.equal(await page.locator('#results li[aria-selected="true"] .kind').innerText(), "new workspace");
   await page.locator("#query").press("Enter");
   await page.waitForFunction(() => [...document.querySelectorAll("#workspaces button")].some((b) => b.textContent === "notes"));
-  // Tab steps on to Actions, every action and command, then round to Launch.
+  // Tab steps on to Attention, then Actions, every action and command, then
+  // round to Launch.
   await page.locator("#query").fill("");
+  await page.locator("#query").press("Tab");
+  assert.equal(await page.locator('.scopes [aria-selected="true"]').innerText(), "Attention");
   await page.locator("#query").press("Tab");
   assert.equal(await page.locator('.scopes [aria-selected="true"]').innerText(), "Actions");
   const acts = await page.locator("#results .title").allInnerTexts();
@@ -720,6 +723,56 @@ test("the Workspaces scope lists the workspaces, and Enter on a new name shows i
   // Back home, so the next tests see the standing workspaces alone.
   await page.locator("#workspaces button", { hasText: /^in$/ }).click();
   await page.waitForFunction(() => ![...document.querySelectorAll("#workspaces button")].some((b) => b.textContent === "notes"));
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
+// Search+A's list (§10.3): the dashboard on its Attention scope, empty
+// until a window wants attention, then listing it; Enter goes there and
+// clears its mark.
+test("the Attention scope says when nothing wants attention, and lists a marked window", async () => {
+  const { page, errors } = await open("src/launcher.html?mode=dashboard&scope=attention");
+  await page.evaluate(() => (window.close = () => {}));
+  await page.waitForSelector("#workspaces button");
+  assert.equal(await page.locator('.scopes [aria-selected="true"]').innerText(), "Attention");
+  assert.deepEqual(await page.locator(".scopes button:visible").allInnerTexts(), ["Launch", "Tabs", "Workspaces", "Attention", "Actions"]);
+  assert.equal(await page.locator("#query").getAttribute("placeholder"), "Go to a window that wants attention");
+  await page.waitForSelector("#results li.empty");
+  assert.deepEqual(await page.locator("#results li").allInnerTexts(), ["No window wants attention"]);
+  assert.equal(await page.locator("#keys").innerText(), "Enter to go there · ↑ ↓ to choose · Tab to switch to Actions · Esc to clear or close");
+  // A mark on this page's own window, as a rising unread count makes.
+  const id = await page.evaluate(async () => {
+    const { id } = await chrome.windows.getCurrent();
+    const { state } = await chrome.storage.local.get("state");
+    await chrome.storage.local.set({ state: { ...state, marks: [id] } });
+    return id;
+  });
+  await page.waitForSelector("#results li[role=option]");
+  assert.match(await page.locator("#results li .kind").innerText(), /^window on /);
+  await page.locator("#query").press("Enter");
+  await page.waitForFunction(async (w) => !(await chrome.storage.local.get("state")).state.marks.includes(w), id);
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
+// Another host's copy of the page, such as tide for macOS's, may give no
+// marks: it has no Attention chip, and Search+A's address opens on Launch.
+test("without marks to list, there's no Attention scope", async () => {
+  const page = await context.newPage();
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.addInitScript(() => {
+    const get = chrome.storage.local.get.bind(chrome.storage.local);
+    chrome.storage.local.get = async (keys) => {
+      const got = await get(keys);
+      if (got.state) delete got.state.marks;
+      return got;
+    };
+  });
+  await page.goto(base + "src/launcher.html?mode=dashboard&scope=attention");
+  await page.waitForSelector("#workspaces button");
+  await page.waitForFunction(() => document.querySelector('.scopes [aria-selected="true"]')?.textContent === "Launch");
+  assert.deepEqual(await page.locator(".scopes button:visible").allInnerTexts(), ["Launch", "Tabs", "Workspaces", "Actions"]);
   assert.deepEqual(errors, []);
   await page.close();
 });

@@ -169,13 +169,6 @@ test("every command in the manifest does something", async () => {
     // home, or back a step, needs to start somewhere else; and going to the
     // last workspace needs one shown before.
     if (name === "master-remove") await tide.command("master-add");
-    // Search+A with nothing marked goes back to the last window you were in.
-    if (name === "attention") {
-      chrome.focus(2);
-      await tide.event();
-      chrome.focus(1);
-      await tide.event();
-    }
     if (name === "workspace-last") {
       await tide.command("workspace-2");
       await tide.command("workspace-1");

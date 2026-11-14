@@ -167,8 +167,8 @@ test("a lone window's dragged edge sets its width, centered", () => {
   assert.equal(geometry.singleWidthFor(AREA, was, { x: 100, w: 800 }), null, "no edge moved");
 });
 
-test("a share dragged past its bounds stops at them", () => {
+test("a share dragged past its bounds stops at 10% and 90%, as in tide for Linux", () => {
   const o = { mfact: 0.55, nmaster: 1 };
-  assert.equal(geometry.mfactFor("tile", AREA, 2, o, [], 0, "right", 990), 0.95);
-  assert.equal(geometry.mfactFor("tile", AREA, 2, o, [], 1, "left", 5), 0.05);
+  assert.equal(geometry.mfactFor("tile", AREA, 2, o, [], 0, "right", 990), 0.9);
+  assert.equal(geometry.mfactFor("tile", AREA, 2, o, [], 1, "left", 5), 0.1);
 });

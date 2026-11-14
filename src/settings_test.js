@@ -1,9 +1,18 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { singleWidth } from "./geometry.js";
 import { DEFAULT_SETTINGS, editShared, load, PER_MACHINE, pick, resolve, SETTINGS_KEY, settingsChanged, SHARED, standingProblems, withWorkspaceSetting, workspaceSetting } from "./settings.js";
 
 test("nothing stored means the defaults", () => {
   assert.deepEqual(resolve(undefined, undefined), { settings: DEFAULT_SETTINGS, errors: [] });
+});
+
+test("by default a lone window is 80% wide from an aspect of 2.1 and 60% from 3.2, as in tide for Linux", () => {
+  const width = (w, h) => singleWidth({ x: 0, y: 0, w, h }, DEFAULT_SETTINGS.singleRules);
+  assert.equal(width(1920, 1080), 1.0, "16:9");
+  assert.equal(width(3440, 1440), 0.8, "21:9");
+  assert.equal(width(3300, 1000), 0.6, "an aspect of 3.3");
+  assert.equal(width(5120, 1440), 0.6, "32:9");
 });
 
 test("stored settings replace the defaults, and this machine's win", () => {

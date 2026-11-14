@@ -15,9 +15,10 @@ make test    # the node tests, with a fake chrome.* (SPEC.md §17)
 npm ci       # once, for the smoke test
 npx playwright install chromium   # once
 make smoke   # loads the extension in Chromium and opens its pages
+make check-tide-defaults TIDE=../tide   # the defaults are tide for Linux's
 ```
 
-CI runs the same three on every pull request. The smoke test can't show
+CI runs the same four on every pull request. The smoke test can't show
 tiling, workspaces or keys: desktop Chromium has no chromeOS window
 manager. Those need a Chromebook.
 

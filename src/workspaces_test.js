@@ -1,6 +1,7 @@
 // Tests for workspaces.js: the cases SPEC.md §6.1 and its reviews named.
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { MFACT_MAX, MFACT_MIN } from "./geometry.js";
 import * as ws from "./workspaces.js";
 
 // Two displays, "a" and "b", both showing home ("in"): windows 10 and 11
@@ -460,9 +461,9 @@ test("stack moves leave minimized and floating windows in their places", () => {
 test("mfact and the master count stay in range", () => {
   let s = ws.show(ws.show(ws.create(["a", "b"]), "re"), "in");
   for (let i = 0; i < 40; i++) s = ws.adjust(s, "in", "a", "tile", { mfact: 0.025, nmaster: -1 });
-  assert.equal(ws.layoutOf(s, "in", "a").modes.tile.mfact, 0.9, "90% at most, as in tide for Linux");
+  assert.equal(ws.layoutOf(s, "in", "a").modes.tile.mfact, MFACT_MAX, "90% at most, as in tide for Linux");
   for (let i = 0; i < 40; i++) s = ws.adjust(s, "in", "a", "tile", { mfact: -0.025 });
-  assert.equal(ws.layoutOf(s, "in", "a").modes.tile.mfact, 0.1, "and 10% at least");
+  assert.equal(ws.layoutOf(s, "in", "a").modes.tile.mfact, MFACT_MIN, "and 10% at least");
   assert.equal(ws.layoutOf(s, "in", "a").modes.tile.nmaster, 0, "tile can have no main window");
   for (let i = 0; i < 5; i++) s = ws.adjust(s, "in", "a", "threecol", { nmaster: -1 });
   assert.equal(ws.layoutOf(s, "in", "a").modes.threecol.nmaster, 1, "the columns keep one");
@@ -471,8 +472,8 @@ test("mfact and the master count stay in range", () => {
 
 test("a dragged share stays from 10% to 90%, as the keys keep it", () => {
   const s = ws.create(["a"]);
-  assert.equal(ws.layoutOf(ws.setMfact(s, "in", "a", "tile", 0.97), "in", "a").modes.tile.mfact, 0.9);
-  assert.equal(ws.layoutOf(ws.setMfact(s, "in", "a", "tile", 0.02), "in", "a").modes.tile.mfact, 0.1);
+  assert.equal(ws.layoutOf(ws.setMfact(s, "in", "a", "tile", 0.97), "in", "a").modes.tile.mfact, MFACT_MAX);
+  assert.equal(ws.layoutOf(ws.setMfact(s, "in", "a", "tile", 0.02), "in", "a").modes.tile.mfact, MFACT_MIN);
   assert.equal(ws.layoutOf(ws.setMfact(s, "in", "a", "tile", 0.3), "in", "a").modes.tile.mfact, 0.3);
 });
 

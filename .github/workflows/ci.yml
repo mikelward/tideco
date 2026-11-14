@@ -28,11 +28,19 @@ jobs:
           persist-credentials: false
           # make zip versions from the commit count, so needs all of it.
           fetch-depth: 0
+      # tide for Linux, whose defaults make check-tide-defaults compares
+      # tide for Chrome's with.
+      - uses: actions/checkout@v5
+        with:
+          repository: mikelward/tide
+          path: tide
+          persist-credentials: false
       - uses: actions/setup-node@v5
         with:
           node-version: "22"
       - run: make lint
       - run: make test
+      - run: make check-tide-defaults TIDE=tide
 
   # Loads the extension in Chromium and opens its pages (SPEC.md §17).
   smoke:

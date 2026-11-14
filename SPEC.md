@@ -1854,6 +1854,12 @@ each event, since Chrome answers at once.
     Chromium, and mikelward/npm-update batches its updates weekly.
 - `make lint` checks that every script parses, the pages' own included,
   which no node test imports.
+- `make check-tide-defaults`, run by CI against a tide for Linux checkout,
+  fails when a default tide for Chrome restates drifts from tide for
+  Linux's: the layouts' main shares and counts, the cycle, the ultrawide
+  aspect, the lone-window rules, the main share's bounds, the clocks and the
+  standing workspaces. A deliberate difference is listed, with its reason,
+  in `scripts/check-tide-defaults.mjs`.
 - No test sleeps; events are driven in order by the fake.
 
 ## 18. Open questions

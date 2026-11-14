@@ -1,5 +1,5 @@
 # Every test file runs from here. `make test` fails if a *_test.js under
-# src/ isn't listed, since an unlisted test never runs.
+# src/ or scripts/ isn't listed, since an unlisted test never runs.
 TESTS = \
 	src/apps_test.js \
 	src/calendar_test.js \
@@ -27,18 +27,26 @@ TESTS = \
 	src/workspaces_test.js \
 	src/tide_test.js \
 	src/manifest_test.js \
-	src/package_test.js
+	src/package_test.js \
+	scripts/tidedefaults_test.mjs
 
-.PHONY: test lint smoke icons promo zip
+.PHONY: test lint smoke icons promo zip check-tide-defaults
 test:
-	@unlisted=$$(find src -name '*_test.js' | sort | while read -r f; do \
+	@unlisted=$$(find src scripts -name '*_test.*js' | sort | while read -r f; do \
 		case " $(TESTS) " in *" $$f "*) ;; *) echo "$$f";; esac; done); \
 	if test -n "$$unlisted"; then echo "not in the Makefile's TESTS: $$unlisted" >&2; exit 1; fi
 	node --test $(TESTS)
 
 # Every script parses, including the pages' own, which no test imports.
 lint:
-	@for f in src/*.js src/*.mjs test/*.js scripts/*.js; do node --check "$$f" || exit 1; done
+	@for f in src/*.js src/*.mjs test/*.js scripts/*.js scripts/*.mjs; do node --check "$$f" || exit 1; done
+
+# The defaults that restate tide for Linux's (the layouts, the main share's
+# bounds, the clocks, the standing workspaces) are still its, read from a
+# tide checkout. Deliberate differences are listed in the script.
+TIDE ?= ../tide
+check-tide-defaults:
+	node scripts/check-tide-defaults.mjs $(TIDE)
 
 # Needs `npm ci` and Playwright's Chromium (`npx playwright install chromium`).
 smoke:

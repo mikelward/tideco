@@ -40,8 +40,8 @@ FakeChrome and the smoke test.
       `overview` command, which the dashboard finds too.
 - [x] Pictures of windows, taken while they show (`src/pictures.js`), with
       all-sites access; icons otherwise, and the page says why.
-- [ ] Its key. tide for Linux and macOS put it on `Super+W` for now, but
-      here `Search+W` is the name prompt (§6.1), so it has none: bind one
+- [ ] Its key. tide for Linux has none yet, and tide for macOS's is
+      `Ctrl+Up`; `Search+W` is the name prompt here (§6.1), so it has none: bind one
       at `chrome://extensions/shortcuts`. Not settled; see *Decisions
       needing review*.
 - [ ] Try it on a Chromebook: the captures, their timing and look (§6.5's
@@ -60,6 +60,12 @@ Guesses made on autopilot (2026-10-24), each cheap to undo.
   tide for Linux's cycle, monocle on `Search+O` alone. Reversible:
   `layout-next` in `src/tide.js`, and `EXCEPTIONS` in
   `scripts/check-tide-defaults.mjs`.
+- **tide for Linux's SPEC.md §6.6 holds the one key table** (2026-11-14),
+  with a chromeOS column, so §7.1 keeps only how each key is bound and
+  the keys that differ. Maximize, fullscreen and restore are chromeOS's
+  own `Alt+=` and fullscreen key: the plan to put them on `Search+Up`,
+  `Search+Shift+Up` and `Search+Down` in the Shortcuts app is dropped, as
+  §7.2 and §7.3 found those keys below it. Reversible: §7.1.
 - **Attention moved from `Search+Tab` to `Search+A`** (2026-11-14), as
   tide for Linux's is `Super+A`. What it opens is settled: the launcher's
   Attention list, as tide for Linux's opens its switcher's (maintainer,

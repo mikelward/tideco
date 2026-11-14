@@ -130,6 +130,15 @@ test("a default tide doesn't have fails, so a rename in tide is seen", async () 
   });
 });
 
+test("a table's fields compare in any order, a list's items in theirs", () => {
+  const tide = { single: [{ minAspect: 2.1, width: 0.8 }], cycle: ["tile", "twocol"] };
+  const ours = (values) => [{ from: "src/x.js", values }];
+  assert.deepEqual(compare("tide for Chrome", ours({ single: [{ width: 0.8, minAspect: 2.1 }] }), tide), []);
+  assert.equal(compare("tide for Chrome", ours({ cycle: ["twocol", "tile"] }), tide).length, 1, "a list's order matters");
+  const exceptions = { single: { ours: [{ width: 0.6, minAspect: 2.1 }], tide: [{ width: 0.8, minAspect: 2.1 }] } };
+  assert.deepEqual(compare("tide for Chrome", ours({ single: [{ minAspect: 2.1, width: 0.6 }] }), tide, exceptions), [], "in an exception too");
+});
+
 test("an exception allows the difference it names, and fails once either side moves", () => {
   const tide = { cycle: ["tile", "twocol"] };
   const exceptions = { cycle: { ours: ["tile", "twocol", "monocle"], tide: ["tile", "twocol"] } };

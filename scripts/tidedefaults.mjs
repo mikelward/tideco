@@ -140,6 +140,14 @@ export function flatten(v, prefix = "", out = {}) {
 
 const show = (v) => JSON.stringify(v);
 
+// v with each table's fields sorted, so tables compare in any field
+// order while lists keep theirs.
+const canon = (v) =>
+  Array.isArray(v) ? v.map(canon)
+  : v && typeof v === "object" ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, canon(v[k])]))
+  : v;
+const same = (a, b) => show(canon(a)) === show(canon(b));
+
 // Where `name`'s defaults differ from tide for Linux's `tide`, as messages
 // naming the setting and both values. `sources` is the port's defaults as
 // [{ from, values }], `from` saying where they're kept; every setting in
@@ -161,10 +169,10 @@ export function compare(name, sources, tide, exceptions = {}) {
       const want = theirs[path];
       const ex = exceptions[path];
       if (!ex) {
-        if (show(value) !== show(want)) problems.push(`${at}, ${TIDE} ${show(want)}`);
-      } else if (show(value) === show(want)) {
+        if (!same(value, want)) problems.push(`${at}, ${TIDE} ${show(want)}`);
+      } else if (same(value, want)) {
         problems.push(`${at} now matches ${TIDE}'s: take it out of the exceptions`);
-      } else if (show(value) !== show(ex.ours) || show(want) !== show(ex.tide)) {
+      } else if (!same(value, ex.ours) || !same(want, ex.tide)) {
         problems.push(`${at}, ${TIDE} ${show(want)}, but the exception allows ${name} ${show(ex.ours)} and ${TIDE} ${show(ex.tide)}`);
       }
     }

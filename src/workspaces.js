@@ -493,10 +493,16 @@ export function setModes(state, modes) {
   return s;
 }
 
+// The main share's range, geometry.js's MFACT_MIN and MFACT_MAX, as tide for
+// Linux's: not imported, since tide for macOS copies this file alone.
+const MFACT_MIN = 0.1;
+const MFACT_MAX = 0.9;
+const clampMfact = (mfact) => Math.min(MFACT_MAX, Math.max(MFACT_MIN, mfact));
+
 export function adjust(state, name, displayId, mode, change) {
   const s = clone(state);
   const m = settingsOf(s, name, displayId).modes[mode];
-  if ("mfact" in change) m.mfact = Math.min(0.95, Math.max(0.05, m.mfact + change.mfact));
+  if ("mfact" in change) m.mfact = clampMfact(m.mfact + change.mfact);
   // Tile alone works with no main window, as in tide.
   if ("nmaster" in change) m.nmaster = Math.max(mode === "tile" ? 0 : 1, m.nmaster + change.nmaster);
   return s;
@@ -506,7 +512,7 @@ export function adjust(state, name, displayId, mode, change) {
 // bounds the keys keep to.
 export function setMfact(state, name, displayId, mode, mfact) {
   const s = clone(state);
-  settingsOf(s, name, displayId).modes[mode].mfact = Math.min(0.95, Math.max(0.05, mfact));
+  settingsOf(s, name, displayId).modes[mode].mfact = clampMfact(mfact);
   return s;
 }
 

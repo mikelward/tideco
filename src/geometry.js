@@ -146,6 +146,12 @@ export function singleWidthFor(area, was, now) {
   return Math.round(clamp(f, 0.1, 1.0) * 1000) / 1000;
 }
 
+// The main share's range, as tide for Linux's geometry.lua has it. The keys
+// keep to it too (workspaces.js, which tide for macOS copies without this
+// file, so it has its own).
+export const MFACT_MIN = 0.1;
+export const MFACT_MAX = 0.9;
+
 // The main share that puts window `i`'s `edge` ("left" or "right") at `x`,
 // for a window you resized by dragging that edge (§5.3), or null if that
 // edge doesn't move with the share: a screen edge, a lone window, monocle.
@@ -158,7 +164,7 @@ export function mfactFor(mode, area, n, o, singleRules, i, edge, x) {
     const b = arrange(mode, area, n, Object.assign({}, o, { mfact }), singleRules)[i];
     return edge === "left" ? b.x : b.x + b.w;
   };
-  const [lo, hi] = [0.05, 0.95];
+  const [lo, hi] = [MFACT_MIN, MFACT_MAX];
   if (at(lo) === at(hi)) return null;
   const sign = at(hi) > at(lo) ? 1 : -1;
   // The least share whose edge is at or past `target`, in the edge's

@@ -53,6 +53,13 @@ FakeChrome and the smoke test.
 
 Guesses made on autopilot (2026-10-24), each cheap to undo.
 
+- **App 5 is Secure Shell's terminal, for Search+T** (2026-11-15), since
+  Chrome refuses an extension `chrome-untrusted://` pages such as
+  chromeOS's Terminal app (unverified on a device). Apps 6 to 8 start
+  off. Settings saved before keep their four apps, so app 5 is off for
+  them until set on the Apps page. Reversible: `DEFAULT_APPS` in
+  `src/apps.js`.
+
 - **chromeOS's Settings floats by default** (2026-11-15), by its
   `chrome://os-settings` address in a built-in list, since a float rule
   names only a website. Files, Camera and the rest still tile. The

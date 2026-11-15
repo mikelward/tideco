@@ -193,6 +193,18 @@
     },
     "app-music": {
       "description": "Open app 4, YouTube Music unless changed in tide's options (Search+Y)"
+    },
+    "app-5": {
+      "description": "Open app 5, Secure Shell unless changed in tide's options (Search+T)"
+    },
+    "app-6": {
+      "description": "Open app 6, set in tide's options"
+    },
+    "app-7": {
+      "description": "Open app 7, set in tide's options"
+    },
+    "app-8": {
+      "description": "Open app 8, set in tide's options"
     }
   },
   "icons": {

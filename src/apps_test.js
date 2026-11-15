@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { appLabel, appOf, homeAppOf, withHomeApp } from "./apps.js";
+import { appKeyTitle, appLabel, appOf, appOfUrl, appOrigin, DEFAULT_APPS, homeAppOf, SECURE_SHELL, withHomeApp } from "./apps.js";
 
 test("a window belongs to the app whose origin its tab is on", () => {
   assert.equal(appOf({ tabs: [{ url: "https://meet.google.com/abc-defg-hij" }] }).command, "app-meet");
@@ -43,4 +43,14 @@ test("ticking one of home's apps adds it last, and unticking keeps the rest's or
   assert.deepEqual(withHomeApp(["app-music", "app-calendar"], "app-music", false), ["app-calendar"]);
   assert.deepEqual(withHomeApp(["app-chat"], "app-chat", true), ["app-chat"], "never twice");
   assert.deepEqual(withHomeApp([], "app-chat", false), []);
+});
+
+test("an extension's page belongs to its app, and pages on no site to none", () => {
+  assert.equal(appOrigin(SECURE_SHELL), "chrome-extension://iodihamcpbpeioajjeobimgagajmlibd");
+  assert.equal(appOfUrl(`${SECURE_SHELL}#user@host`, DEFAULT_APPS)?.command, "app-5");
+  assert.equal(appOrigin("chrome://os-settings/"), null);
+  assert.equal(appOrigin("about:blank"), null);
+  assert.equal(appOfUrl("chrome://newtab/", [{ command: "app-6", name: "X", url: "chrome://settings/" }]), null, "no app on a chrome:// page");
+  assert.equal(appKeyTitle("app-5"), "Open Secure Shell");
+  assert.equal(appKeyTitle("app-7"), "App 7, off");
 });

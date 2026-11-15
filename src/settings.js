@@ -2,7 +2,7 @@
 // overrides in chrome.storage.local, merged key by key. A bad value is an
 // error naming the setting, and that setting keeps its default.
 
-import { APP_COMMANDS, DEFAULT_APPS, DEFAULT_HOME_APPS } from "./apps.js";
+import { APP_COMMANDS, APP_SCHEMES, appOrigin, DEFAULT_APPS, DEFAULT_HOME_APPS } from "./apps.js";
 import { checkZone, DAY, DEFAULT_CLOCKS, WORK } from "./clocks.js";
 import { checkFloating } from "./floating.js";
 import { DEFAULT_SITES } from "./unread.js";
@@ -119,9 +119,10 @@ function checkApps(apps) {
     } catch {
       throw new Error(`${at}'s address "${a.url ?? ""}" isn't a URL`);
     }
-    if (url.protocol !== "https:" && url.protocol !== "http:") throw new Error(`${at}'s address must be a website`);
-    if (origins.has(url.origin)) throw new Error(`${at}: ${url.origin} is already ${origins.get(url.origin)}'s site`);
-    origins.set(url.origin, at);
+    const site = APP_SCHEMES.includes(url.protocol) ? appOrigin(url.href) : null;
+    if (site === null) throw new Error(`${at}'s address must be a website or an extension's page`);
+    if (origins.has(site)) throw new Error(`${at}: ${site} is already ${origins.get(site)}'s site`);
+    origins.set(site, at);
     return { command: a.command, name, url: url.href };
   });
 }

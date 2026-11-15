@@ -1054,7 +1054,7 @@ Search+Alt and Search+Ctrl are allowed too, and untried unless listed.
 | Q | | | |
 | R | | | |
 | S | tide for Chrome: keep awake; OS select to speak, removable *(untried)* | | |
-| T | reserved: the terminal (§1) | | |
+| T | tide for Chrome: app 5 (Secure Shell, the terminal) | | |
 | U | | | |
 | V | OS: clipboard history | | |
 | W | tide for Chrome: go to a workspace by name | tide for Chrome: move the window to a workspace by name | |
@@ -1225,12 +1225,22 @@ Tabs scope (§9.4) or `Search+A` (§10.3):
 | `Search+Shift+C` | Google Calendar | installed web app |
 | `Search+M` | Google Meet | installed web app |
 | `Search+Y` | YouTube Music | installed web app |
+| `Search+T` | Secure Shell, as the terminal | its extension page, app 5 |
+| *unbound* | apps 6 to 8 | off until you give each an app |
 | *unassigned* | IRC | installed web app, or the Linux client by shelf slot; Search+I went to add a master (§7.1) |
 
-- **The four app keys are slots.** Chrome fixes an extension's commands in
+- **The eight app keys are slots.** Chrome fixes an extension's commands in
   its manifest, so `app-calendar`, `app-chat`, `app-meet` and `app-music`
-  are named for their defaults, and the options page gives each any website
-  (a name and an address), or none, which turns the key off. Their
+  are named for their defaults, then `app-5` to `app-8`. The options page
+  gives each any website or extension page (a name and an address), or
+  none, which turns the key off. A site, or an extension, is one app's
+  alone. Chrome binds no key to the new four: each is bound at
+  `chrome://extensions/shortcuts`, Search+T suggested for app 5.
+- **The terminal.** chromeOS's Terminal app is a `chrome-untrusted://`
+  page, which Chrome won't let an extension open *(unverified on a
+  device)*, so app 5 starts as Secure Shell's terminal page, which tiles
+  like any app window. Settings saved before app 5 existed keep their
+  four apps, and app 5 off. Their
   descriptions on `chrome://extensions/shortcuts` stay the manifest's, but
   the options page's keys checklist names each by its app ("Open Slack"),
   or "App 3, off".

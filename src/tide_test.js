@@ -441,6 +441,15 @@ test("an app key opens a new window even when the app has one", async () => {
   assert.deepEqual(tide.state.workspaces.in.windows, [id]);
 });
 
+test("app 5 opens Secure Shell's terminal as an app window", async () => {
+  const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true })]);
+  await tide.command("app-5");
+  assert.deepEqual(opened(chrome), [{ url: "chrome-extension://iodihamcpbpeioajjeobimgagajmlibd/html/nassh.html", type: "popup" }]);
+  const [{ id }] = chrome.created.filter((c) => c.type === "popup" && c.url.includes("nassh"));
+  assert.equal(tide.state.windows[id].app, "app-5");
+  assert.equal(tide.state.windows[id].floating, false, "it tiles");
+});
+
 test("an app key's popup tiles like an app, and each press opens another", async () => {
   const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true })]);
   await tide.command("app-chat");

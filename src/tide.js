@@ -322,7 +322,7 @@ export class Tide {
   }
 
   // Whether a new window on workspace `n` asks for a workspace, by its
-  // askForName (§6.1): home alone, unless workspaceSettings says otherwise.
+  // askForName (§6.1): none, unless workspaceSettings turns it on.
   asksOn(n) {
     return workspaceSetting(this.settings, n).askForName;
   }
@@ -1052,7 +1052,7 @@ export class Tide {
 
   // The browser key: always a new browser window on this workspace, as
   // tide's and KDE's keys launch one (§9.1). On a workspace that asks for
-  // a name, home by default, it asks, as any new window there does (§6.1).
+  // a name, it asks, as any new window there does (§6.1).
   async browser(display) {
     return (await this.open({}, display, { ask: true })).id;
   }

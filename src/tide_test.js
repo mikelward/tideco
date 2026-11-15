@@ -26,8 +26,13 @@ async function floatAt(chrome, tide, id, x, y) {
   await tide.event();
 }
 
-async function setup(displays, windows) {
+// Home asking for a workspace (§6.1), which is off until you turn it on.
+const HOME_ASKS = { workspaceSettings: { in: { askForName: true } } };
+
+// `sync`, if given, is the shared settings tide starts with.
+async function setup(displays, windows, sync = null) {
   const chrome = new FakeChrome({ displays, windows });
+  if (sync) chrome.syncStore.settings = sync;
   const tide = new Tide(chrome);
   await tide.event();
   return { chrome, tide };
@@ -823,7 +828,7 @@ test("Search+Shift+W's prompt takes an existing workspace by name", async () => 
 });
 
 test("a new window on home named home stays there, and asks no more", async () => {
-  const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true })]);
+  const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true })], HOME_ASKS);
   await opens(chrome, tide, 2, { url: "https://mail.example.com/", title: "Inbox" });
   const [p] = prompts(chrome);
   await tide.moveTo("IN");
@@ -859,7 +864,7 @@ async function opens(chrome, tide, id, extra = {}) {
 }
 
 test("a home app's new window joins home from another workspace, hidden there", async () => {
-  const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true })]);
+  const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true })], HOME_ASKS);
   await tide.command("send-2");
   await tide.command("workspace-2");
   await opens(chrome, tide, 2, { type: "app", url: CALENDAR });
@@ -928,8 +933,20 @@ test("Search+Shift+W moves any other window home too", async () => {
   assert.equal(chrome.win(1).focused, true);
 });
 
-test("a new window on home asks for a workspace, starting with its short name", async () => {
+test("unset, no new window asks for a workspace, home's included", async () => {
   const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true })]);
+  await opens(chrome, tide, 2, { url: "https://example.com/", title: "Notes" });
+  await opens(chrome, tide, 3, { url: "https://example.com/", title: "Later", focused: false });
+  chrome.focus(3);
+  await tide.event();
+  await tide.command("app-browser");
+  await tide.event();
+  assert.deepEqual(prompts(chrome), []);
+  assert.equal(tide.state.windows[2].ws, "in", "it stays on home");
+});
+
+test("a new window on home asks for a workspace, starting with its short name", async () => {
+  const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true })], HOME_ASKS);
   assert.deepEqual(prompts(chrome), [], "windows open before tide started don't ask");
   await opens(chrome, tide, 2, { url: "https://example.com/", title: "ABC-123: Fix login & more" });
   const [p] = prompts(chrome);
@@ -947,7 +964,7 @@ test("a new window on home asks for a workspace, starting with its short name", 
 });
 
 test("a short name is sent encoded, and no title or a new tab page starts it empty", async () => {
-  const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true })]);
+  const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true })], HOME_ASKS);
   await opens(chrome, tide, 2, { url: "https://example.com/", title: "Café&co? menu" });
   assert.equal(prompts(chrome)[0]?.url, `${MOVE_PROMPT}&name=Caf%C3%A9%26co`);
   chrome.wins = chrome.wins.filter((w) => !w.url?.startsWith(DASHBOARD));
@@ -962,7 +979,7 @@ test("a short name is sent encoded, and no title or a new tab page starts it emp
 });
 
 test("Esc on a new window's prompt leaves it on home, and it doesn't ask again", async () => {
-  const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true })]);
+  const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true })], HOME_ASKS);
   await opens(chrome, tide, 2, { url: "https://example.com/", title: "Notes" });
   assert.equal(prompts(chrome).length, 1);
   // The page closes itself on Esc, or on a click away.
@@ -979,7 +996,7 @@ test("Esc on a new window's prompt leaves it on home, and it doesn't ask again",
 });
 
 test("a second new window's prompt waits until the first's closes", async () => {
-  const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true })]);
+  const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true })], HOME_ASKS);
   await opens(chrome, tide, 20, { url: "https://example.com/", title: "First" });
   await opens(chrome, tide, 30, { url: "https://example.com/", title: "Second" });
   assert.deepEqual(prompts(chrome).map((w) => w.url), [`${MOVE_PROMPT}&name=First`], "one prompt at a time");
@@ -994,7 +1011,7 @@ test("a second new window's prompt waits until the first's closes", async () => 
 });
 
 test("a waiting prompt whose window closed or left home goes unasked", async () => {
-  const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true })]);
+  const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true })], HOME_ASKS);
   await opens(chrome, tide, 20, { url: "https://example.com/", title: "First" });
   await opens(chrome, tide, 30, { url: "https://example.com/", title: "Second" });
   await opens(chrome, tide, 40, { url: "https://example.com/", title: "Third" });
@@ -1011,7 +1028,7 @@ test("a waiting prompt whose window closed or left home goes unasked", async () 
 });
 
 test("a window that opens on home unfocused asks when it's first focused", async () => {
-  const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true })]);
+  const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true })], HOME_ASKS);
   await opens(chrome, tide, 2, { url: "https://example.com/", title: "Later", focused: false });
   assert.deepEqual(prompts(chrome), [], "it doesn't take focus to ask");
   chrome.focus(2);
@@ -1020,7 +1037,7 @@ test("a window that opens on home unfocused asks when it's first focused", async
 });
 
 test("a new window that left home before it was focused doesn't ask", async () => {
-  const { chrome, tide } = await setup([HD, UW], [on(HD, 1, { focused: true }), on(UW, 3)]);
+  const { chrome, tide } = await setup([HD, UW], [on(HD, 1, { focused: true }), on(UW, 3)], HOME_ASKS);
   await opens(chrome, tide, 20, { focused: false });
   await tide.run(async () => {
     tide.state = ws.send(tide.state, 20, "re");
@@ -1031,7 +1048,7 @@ test("a new window that left home before it was focused doesn't ask", async () =
 });
 
 test("a new window dragged to another display still asks there", async () => {
-  const { chrome, tide } = await setup([HD, UW], [on(HD, 1, { focused: true }), on(UW, 3)]);
+  const { chrome, tide } = await setup([HD, UW], [on(HD, 1, { focused: true }), on(UW, 3)], HOME_ASKS);
   await opens(chrome, tide, 20, { focused: false });
   Object.assign(chrome.win(20), { left: 3000, top: 100 });
   await tide.event();
@@ -1043,7 +1060,7 @@ test("a new window dragged to another display still asks there", async () => {
 });
 
 test("windows a restart brings back don't ask, even one that matches nothing", async () => {
-  const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true, url: "https://github.com/" })]);
+  const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true, url: "https://github.com/" })], HOME_ASKS);
   await tide.event();
   chrome.wins = [];
   chrome.open(on(HD, 11, { url: "https://github.com/" }));
@@ -1059,7 +1076,7 @@ test("windows a restart brings back don't ask, even one that matches nothing", a
 });
 
 test("popups, dialogs and app popups on home never ask, nor home's apps", async () => {
-  const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true })]);
+  const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true })], HOME_ASKS);
   await opens(chrome, tide, 2, { type: "popup", url: "https://example.com/" });
   await opens(chrome, tide, 3, { type: "app", url: "https://chat.google.com/" });
   assert.deepEqual(prompts(chrome), []);
@@ -1074,7 +1091,7 @@ test("popups, dialogs and app popups on home never ask, nor home's apps", async 
 });
 
 test("chromeOS's system apps on home never ask, but an installed web app does", async () => {
-  const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true })]);
+  const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true })], HOME_ASKS);
   await opens(chrome, tide, 2, { type: "app", url: "chrome://os-settings/", title: "Settings" });
   await opens(chrome, tide, 3, { type: "app", url: "chrome://file-manager/", title: "Files" });
   assert.deepEqual(prompts(chrome), [], "Settings and Files are left on home");
@@ -1126,7 +1143,7 @@ test("with askForName off, home included, no new window asks", async () => {
 });
 
 test("a window waiting to ask goes unasked once its workspace stops asking", async () => {
-  const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true })]);
+  const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true })], HOME_ASKS);
   await opens(chrome, tide, 20, { url: "https://example.com/", title: "First" });
   await opens(chrome, tide, 30, { url: "https://example.com/", title: "Second" });
   assert.deepEqual(tide.state.asking, [30]);
@@ -1138,7 +1155,7 @@ test("a window waiting to ask goes unasked once its workspace stops asking", asy
 });
 
 test("a web app still loading its first page asks, by where it's going", async () => {
-  const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true })]);
+  const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true })], HOME_ASKS);
   await opens(chrome, tide, 2, { type: "app", pendingUrl: "https://example.com/", focused: false });
   chrome.focus(2);
   await tide.event();

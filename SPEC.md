@@ -657,9 +657,10 @@ theirs:
   one, one listed twice, a field that isn't `askForName` or `pinnedApps`,
   an `askForName` that isn't true or false, or a `pinnedApps` that
   `homeApps` would refuse is refused, naming the setting.
-- **Unset** (`null`, the default) it's home asking and nothing pinned,
-  whatever home is named. **Set**, a workspace it leaves out, or a field
-  it leaves out, is off: `{}` turns home's asking off too.
+- **Unset** (`null`, the default) no workspace asks and nothing is
+  pinned. **Set**, a workspace it leaves out, or a field it leaves out,
+  is off. Asking stays off until you turn it on, since a prompt over each
+  new window gets in the way.
 - **`askForName`**: a new window on that workspace asks for a workspace
   (the name prompt, below). Home's apps still join home and never ask.
 - **`pinnedApps`**, app keys as `homeApps` names them, matched to windows
@@ -711,8 +712,8 @@ an extension page is the only place tide for Chrome can take typing:
   not, so an app closed there can be put back. This prompt keeps to
   Workspaces: no other chip, and Tab stays. With no window to move, as on
   an empty workspace, the key does nothing.
-- **A new window on a workspace that asks** (`askForName`, above; home
-  alone by default) that isn't one of home's apps opens it too,
+- **A new window on a workspace that asks** (`askForName`, above; none
+  by default) that isn't one of home's apps opens it too,
   once the window is focused, with the field starting as the window's
   short name, selected, so typing replaces it. Until you type, it filters
   nothing: every workspace follows it, in bar order. Enter moves the window
@@ -841,7 +842,7 @@ Beyond Android and Linux apps, from Chromium's and Secure Shell's source
 | **Secure Shell**, from its toolbar popup | A `popup` window. Tiled by tide for Chrome's Secure Shell rule (§5.4); tide for Chrome's keys work. | Fine as is. |
 | **Secure Shell**, from "New session" (Ctrl+Shift+N) | An app popup: tiled, but the terminal swallows every Ctrl, Alt and Search combo, so tide for Chrome's keys go dead while it has focus. | Open connections from the toolbar popup or as tabs, or add pass-through keybindings in Secure Shell's options. |
 | **Secure Shell**, Shift-click or as a tab | A normal window or tab: tiles, keys work. | Fine. |
-| **chromeOS's system apps** (Files, Settings, Camera) | Report as `app`, so they tile like web apps, except Settings, which floats (§5.4), with the page-first keys of §2.2. One opening on home doesn't ask for a workspace (§6.1). | Fine; expect the odd key to be eaten. |
+| **chromeOS's system apps** (Files, Settings, Camera) | Report as `app`, so they tile like web apps, except Settings, which floats (§5.4), with the page-first keys of §2.2. None asks for a workspace (§6.1). | Fine; expect the odd key to be eaten. |
 | **The Terminal system app** | The same terminal as Secure Shell: it tiles, and tide for Chrome's keys go dead in it. | Use Secure Shell from its popup, or Crostini's terminal (§12). |
 | **Document picture-in-picture** (a call's pop-out) | Always on top, refuses minimizing; tide for Chrome leaves it alone on every workspace. | Fine; it floats over everything, as it should. |
 | **Video picture-in-picture** | Invisible to tide for Chrome; floats over everything. | Fine. |
@@ -1612,10 +1613,10 @@ Crostini runs kitty, the shell config and the terminal tools, so `conf` and
     ask for a workspace", and a box for each app key under "Pinned apps",
     as home's apps have, saving `workspaceSettings` (§6.1), with a line
     saying a pinned app's window reopens if you close it. While it's
-    unset the boxes show its default, home asking; the first box changed
-    writes that default out with the change, so home keeps asking. A
-    standing workspace added or renamed gets its own boxes; settings kept
-    under a name taken out stay, for the JSON to show.
+    unset every box is off, and a box changed saves only its own
+    workspace's setting. A standing workspace added or renamed gets its
+    own boxes; settings kept under a name taken out stay, for the JSON to
+    show.
   The Floating page lists the float rules (§5.4) by site, as tide for
   Linux's does by class: arrows move one and × takes it out. A site typed
   at the foot ("meet.google.com", or any address on it) is added with

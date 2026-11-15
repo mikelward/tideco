@@ -45,7 +45,7 @@ export const DEFAULT_SETTINGS = {
   homeApps: DEFAULT_HOME_APPS,
   // Each workspace's own settings, by name (§6.1): whether a new window
   // there asks for a workspace, and the apps whose windows there tide
-  // reopens once closed. null, unset, is home asking and nothing pinned, as
+  // reopens once closed. null, unset, is none asking and nothing pinned, as
   // workspaceSetting reads it.
   workspaceSettings: null,
   // The float rules (§5.4): the sites whose app windows open floating, as
@@ -278,22 +278,20 @@ function checkWorkspaceSettings(value) {
 }
 
 // Workspace `name`'s settings, `settings` being resolve's: {askForName,
-// pinnedApps}. Unset, home asks and nothing is pinned, as before the
-// setting; set, a workspace or field it leaves out is off.
+// pinnedApps}. A workspace or field they leave out, or all of them while
+// unset, is off, so no workspace asks until you turn it on.
 export function workspaceSetting(settings, name) {
-  const all = settings.workspaceSettings;
-  if (all === null || all === undefined) return { askForName: sameName(name, settings.standing[0]), pinnedApps: [] };
+  const all = settings.workspaceSettings ?? {};
   const key = Object.keys(all).find((n) => sameName(n, name));
   const o = key === undefined ? {} : all[key];
   return { askForName: o.askForName ?? false, pinnedApps: o.pinnedApps ?? [] };
 }
 
 // The settings with workspace `name`'s `field` set to `value`, as the
-// options page changes one: the unset default is spelled out first, so
-// changing one workspace keeps home asking. Kept under the name it's listed
-// by, if it's listed.
+// options page changes one. Kept under the name it's listed by, if it's
+// listed.
 export function withWorkspaceSetting(settings, name, field, value) {
-  const all = settings.workspaceSettings ?? { [settings.standing[0]]: { askForName: true } };
+  const all = settings.workspaceSettings ?? {};
   const key = Object.keys(all).find((n) => sameName(n, name)) ?? name;
   return { ...all, [key]: { ...all[key], [field]: value } };
 }

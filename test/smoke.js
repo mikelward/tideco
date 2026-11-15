@@ -394,24 +394,26 @@ test("a standing workspace listed twice is refused, saying why, and isn't saved"
   await page.close();
 });
 
-// Each standing workspace's settings (§6.1, §13): home alone asks while
-// they're unset; a box changed spells the default out, keeping home's.
+// Each standing workspace's settings (§6.1, §13): none asks while they're
+// unset, and a box changed saves only that workspace's.
 test("each standing workspace's asking and pinned apps are edited, saved and kept", async () => {
   const { page, errors } = await open("src/options.html#workspaces");
   await page.waitForSelector("#workspace-settings fieldset");
   const stored = async () => (await worker.evaluate(() => chrome.storage.sync.get("settings"))).settings?.workspaceSettings;
   assert.deepEqual(await page.locator("#workspace-settings legend").allInnerTexts(), ["in", "re", "oc", "me"]);
   const asks = () => page.locator("#workspace-settings input.ask").evaluateAll((l) => l.map((i) => i.checked));
-  assert.deepEqual(await asks(), [true, false, false, false], "home alone asks by default");
+  assert.deepEqual(await asks(), [false, false, false, false], "none asks by default");
   await page.getByLabel("New windows on re ask for a workspace").check();
   await page.waitForFunction(async () => (await chrome.storage.sync.get("settings")).settings?.workspaceSettings?.re?.askForName === true);
-  assert.deepEqual(await stored(), { in: { askForName: true }, re: { askForName: true } });
+  assert.deepEqual(await stored(), { re: { askForName: true } }, "home doesn't start asking");
   await page.getByLabel("Pin Google Chat on in").check();
   await page.getByLabel("Pin Google Calendar on in").check();
   await page.waitForFunction(async () => (await chrome.storage.sync.get("settings")).settings?.workspaceSettings?.in?.pinnedApps?.length === 2);
-  await page.getByLabel("New windows on in ask for a workspace").uncheck();
-  await page.waitForFunction(async () => (await chrome.storage.sync.get("settings")).settings?.workspaceSettings?.in?.askForName === false);
-  assert.deepEqual(await stored(), { in: { askForName: false, pinnedApps: ["app-chat", "app-calendar"] }, re: { askForName: true } });
+  await page.getByLabel("New windows on in ask for a workspace").check();
+  await page.waitForFunction(async () => (await chrome.storage.sync.get("settings")).settings?.workspaceSettings?.in?.askForName === true);
+  await page.getByLabel("New windows on re ask for a workspace").uncheck();
+  await page.waitForFunction(async () => (await chrome.storage.sync.get("settings")).settings?.workspaceSettings?.re?.askForName === false);
+  assert.deepEqual(await stored(), { in: { pinnedApps: ["app-chat", "app-calendar"], askForName: true }, re: { askForName: false } });
   // A standing workspace added gets its own boxes.
   await page.locator("#standing-name").fill("docs");
   await page.locator("#standing-name").press("Enter");
@@ -419,7 +421,7 @@ test("each standing workspace's asking and pinned apps are edited, saved and kep
 
   await page.reload();
   await page.waitForSelector("#workspace-settings fieldset");
-  assert.deepEqual(await asks(), [false, true, false, false, false]);
+  assert.deepEqual(await asks(), [true, false, false, false, false]);
   assert.deepEqual(await page.locator('#workspace-settings fieldset[data-name="in"] .pinned input:checked').evaluateAll((l) => l.map((i) => i.dataset.command)), ["app-chat", "app-calendar"]);
   assert.deepEqual(errors, []);
   assert.equal(await page.locator("#errors").isHidden(), true, await page.locator("#errors").innerText());

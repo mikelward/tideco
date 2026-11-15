@@ -1,7 +1,7 @@
 // Tests for floating.js, the float rules (SPEC.md §5.4).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { askBounds, askFloat, askText, checkFloating, checkSite, coveringRule, floatingNow, MAX_RULES, movedRule, newlyCovered, ruleable, siteName, siteOf, withoutRule, withRule } from "./floating.js";
+import { askBounds, askFloat, askText, checkFloating, checkSite, coveringRule, floatedByOS, floatingNow, floatsBuiltIn, MAX_RULES, movedRule, newlyCovered, ruleable, siteName, siteOf, withoutRule, withRule } from "./floating.js";
 
 const MEET = "https://meet.google.com";
 const CHAT = "https://chat.google.com";
@@ -101,6 +101,33 @@ test("Floating now lists the floating app windows no rule covers, one per site",
     { id: 4, site: CHAT, title: "title 4" },
   ]);
   assert.deepEqual(floatingNow(undefined, windows, []), [], "no state yet");
+});
+
+test("Floating now lists a window on no website by its title, with no site", () => {
+  const state = { windows: { 1: { floating: true }, 2: { floating: true } } };
+  const settings = { id: 1, type: "app", tabs: [{ id: 10, active: true, url: "chrome://os-settings/", title: "Settings" }] };
+  const hidden = { id: 2, type: "app", tabs: [{ id: 20, active: true }] };
+  assert.deepEqual(floatingNow(state, [settings, hidden], []), [{ id: 1, site: null, title: "Settings" }], "one Chrome hides can't be named");
+});
+
+test("chromeOS's Settings floats without a rule, but its other apps and websites don't", () => {
+  assert.equal(floatsBuiltIn(win(1, "chrome://os-settings/bluetooth")), true);
+  assert.equal(floatsBuiltIn(win(1, "chrome://file-manager/")), false);
+  assert.equal(floatsBuiltIn(win(1, "chrome://os-settings/", { type: "normal" })), false, "a tab, not the app");
+  assert.equal(floatsBuiltIn({ id: 1, type: "app", tabs: [{ id: 10, active: true }] }), false, "Chrome hides the address");
+});
+
+test("chromeOS's float or snap reads as one, an edge or corner drag doesn't", () => {
+  const placed = { left: 1056, top: 0, width: 864, height: 1032 };
+  assert.equal(floatedByOS(placed, null, { left: 1400, top: 700, width: 500, height: 320 }), true, "native float");
+  assert.equal(floatedByOS(placed, null, { left: 0, top: 0, width: 960, height: 1032 }), true, "snapped to the left half");
+  assert.equal(floatedByOS(placed, null, { left: 900, top: 0, width: 1020, height: 1032 }), false, "the left edge dragged");
+  assert.equal(floatedByOS(placed, null, { left: 1056, top: 0, width: 700, height: 800 }), false, "a corner dragged");
+  assert.equal(floatedByOS(placed, null, { left: 1000, top: 40, width: 864, height: 1032 }), false, "moved, the same size");
+  assert.equal(floatedByOS(placed, null, placed), false, "where tide put it");
+  const held = { left: 1420, top: 700, width: 500, height: 332 };
+  assert.equal(floatedByOS(placed, held, held), true, "back where tide moved it from, though the right edge stayed");
+  assert.equal(floatedByOS({ left: 0, width: 864 }, null, held), false, "a placement from before tide kept its top");
 });
 
 test("tide asks about a site once, and never about one a rule covers", () => {

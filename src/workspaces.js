@@ -524,6 +524,22 @@ export function setSingleWidth(state, name, displayId, width) {
   return s;
 }
 
+// Workspace `name`'s share on `displayId` back to `share`, {mode, mfact}
+// or {singleWidth}, null for none, as layoutOf gave it before a resize set
+// it (§5.3). Stored, so null, which JSON keeps, not undefined.
+export function restoreShare(state, name, displayId, share) {
+  if (!(name in state.workspaces)) return state;
+  const single = share && "singleWidth" in share;
+  if (!single && !(share?.mode in layoutOf(state, name, displayId).modes)) return state;
+  const s = clone(state);
+  const part = settingsOf(s, name, displayId);
+  if (single) {
+    if (share.singleWidth === null) delete part.singleWidth;
+    else part.singleWidth = share.singleWidth;
+  } else part.modes[share.mode].mfact = share.mfact;
+  return s;
+}
+
 // After a browser restart (§14.2), each window in `renames` (old ID to new)
 // keeps its workspace, place in the stack, and everything else tide knows.
 export function renameWindows(state, renames) {

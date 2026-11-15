@@ -6,7 +6,7 @@
 import { appOf, appOfUrl, DEFAULT_APPS, homeAppOf } from "./apps.js";
 import { DEFAULT_SETTINGS, load as loadSettings, workspaceSetting } from "./settings.js";
 import { overlay } from "./dim.js";
-import { ASK_PAGE, askBounds, askFloat, ASKED_KEY, coveringRule, newlyCovered, ruleable, siteOf } from "./floating.js";
+import { ASK_PAGE, askBounds, askFloat, ASKED_KEY, coveringRule, floatedByOS, floatsBuiltIn, newlyCovered, ruleable, siteOf } from "./floating.js";
 import { Pictures } from "./pictures.js";
 import { toggle as toggleKeepAwake } from "./keepawake.js";
 import { matchWindows, windowUrls } from "./restart.js";
@@ -203,6 +203,11 @@ export class Tide {
       const can = ruleable(w, appPopups);
       const site = can ? siteOf(w) : null;
       if (!info.ruled) {
+        if (floatsBuiltIn(w)) {
+          info.ruled = true;
+          info.floating = true;
+          continue;
+        }
         if (can && site === null) continue;
         info.ruled = true;
         if (coveringRule(rules, site) >= 0) info.floating = true;
@@ -478,9 +483,33 @@ export class Tide {
         const last = before.windows[w.id].on ?? was;
         const d = displayFor(w, this.displays);
         if (last !== null && ids.includes(last) && last !== d) s = ws.movedToDisplay(s, w.id, d);
-        else if (w.state === "normal" && was === d && last === d && s.windows[w.id]?.display === was) resized ??= this.resized(before, w, d);
+        else if (w.state === "normal" && was === d && last === d && s.windows[w.id]?.display === was) {
+          // chromeOS's own float or snap takes it out of tiling, rather
+          // than tide fighting chromeOS for it (§5.3).
+          if (this.floatedByOS(before.windows[w.id], w, d)) {
+            s = ws.toggleFloating(s, w.id);
+            // chromeOS floated it with one side edge where it was, read as
+            // a drag last time: the share that drag set goes back.
+            const undo = before.shareUndo;
+            if (undo?.id === w.id) s = ws.restoreShare(s, undo.n, undo.display, undo.share);
+          } else if (!resized) {
+            resized = this.resized(before, w, d);
+            if (resized) resized.id = w.id;
+          }
+        }
       }
       if (w.focused) s = ws.focused(s, w.id);
+    }
+    // The share a resize replaced, for one step, should chromeOS turn out
+    // to have floated the window rather than you dragging its edge.
+    // It lasts while tide holds that window where it put it back, which
+    // Chrome may report before chromeOS floats it again.
+    const undo = before?.shareUndo;
+    if (!undo || !s.windows[undo.id]?.movedFrom || s.windows[undo.id].floating) delete s.shareUndo;
+    if (resized) {
+      const part = ws.layoutOf(s, resized.n, resized.display);
+      const share = resized.singleWidth !== undefined ? { singleWidth: part.singleWidth ?? null } : { mode: resized.mode, mfact: part.modes[resized.mode].mfact };
+      s.shareUndo = { id: resized.id, n: resized.n, display: resized.display, share };
     }
     if (resized?.singleWidth !== undefined) s = ws.setSingleWidth(s, resized.n, resized.display, resized.singleWidth);
     else if (resized) s = ws.setMfact(s, resized.n, resized.display, resized.mode, resized.mfact);
@@ -694,6 +723,15 @@ export class Tide {
     const x = edge === "left" ? w.left : w.left + w.width;
     const mfact = geometry.mfactFor(p.mode, p.area, p.count, part.modes[p.mode], this.singleRules(part), p.index, edge, x);
     return mfact === null ? null : { n, display, mode: p.mode, mfact };
+  }
+
+  // Whether chromeOS floated or snapped tiled window `w` on `display` since
+  // tide placed it, on a work area that hasn't changed, which would have
+  // moved it too.
+  floatedByOS(info, w, display) {
+    const d = this.displays.find((x) => x.id === display);
+    if (info.floating || !info.placed || !d || JSON.stringify(area(d)) !== JSON.stringify(info.placed.area)) return false;
+    return floatedByOS(info.placed, info.movedFrom, w);
   }
 
   // The single-window rule for a workspace's part: the width you dragged a
@@ -1099,7 +1137,14 @@ export class Tide {
 
     // Only windows tiled now have a placement to judge a resize by; one
     // that's floating, hidden or maximized gets a new one when it tiles.
-    for (const info of Object.values(this.state.windows)) delete info.placed;
+    // Where tide put each tiled window last time, to tell a change it's
+    // undoing from one it's making.
+    const placedBefore = new Map(Object.entries(this.state.windows).map(([id, info]) => [Number(id), info.placed]));
+    const movedFromBefore = new Map(Object.entries(this.state.windows).map(([id, info]) => [Number(id), info.movedFrom]));
+    for (const info of Object.values(this.state.windows)) {
+      delete info.placed;
+      delete info.movedFrom;
+    }
     for (const display of this.displays) {
       const n = ws.showing(s, display.id);
       if (n === null) continue;
@@ -1110,11 +1155,32 @@ export class Tide {
       const boxes = geometry.arrange(mode, area(display), ids.length, part.modes[mode], this.singleRules(part));
       await Promise.all(ids.map(async (id, i) => {
         const b = boxes[i];
+        const was = this.windows.get(id);
         const w = await update(id, { left: b.x, top: b.y, width: b.w, height: b.h });
         // Where it ended up, which a minimum size can make differ from the
         // box, so that only your own resize reads as one.
         const info = this.state.windows[id];
-        if (info) info.placed = { left: w?.left ?? b.x, width: w?.width ?? b.w, area: area(display), mode, index: i, count: ids.length };
+        if (!info) return;
+        info.placed = {
+          left: w?.left ?? b.x,
+          top: w?.top ?? b.y,
+          width: w?.width ?? b.w,
+          height: w?.height ?? b.h,
+          area: area(display),
+          mode,
+          index: i,
+          count: ids.length,
+        };
+        // Where it was when tide put back a change it didn't make, should
+        // chromeOS put it straight back there (§5.3). A layout change of
+        // tide's own moves it from where tide put it, which says nothing.
+        const sides = ["left", "top", "width", "height"];
+        const before = placedBefore.get(id);
+        const undone = was && before?.top !== undefined && sides.some((k) => was[k] !== before[k]);
+        if (undone && sides.some((k) => was[k] !== info.placed[k])) info.movedFrom = { left: was.left, top: was.top, width: was.width, height: was.height };
+        // Still where tide put it, as when Chrome reports tide's own move
+        // before chromeOS floats it again: what it was moved from stands.
+        else if (!undone && before && sides.every((k) => info.placed[k] === before[k]) && movedFromBefore.get(id)) info.movedFrom = movedFromBefore.get(id);
       }));
     }
     await this.placeFloating(update);

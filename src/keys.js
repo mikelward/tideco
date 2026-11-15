@@ -3,6 +3,8 @@
 // Chrome binds only the four suggested keys at install; the rest are set by hand at
 // chrome://extensions/shortcuts, and this list says which are still to do.
 
+import { APP_COMMANDS, appKeyTitle } from "./apps.js";
+
 // The key a manifest description names, in its closing parentheses.
 export function intendedKey(description) {
   return /\(([^)]*)\)$/.exec(description ?? "")?.[1] ?? "";
@@ -10,18 +12,19 @@ export function intendedKey(description) {
 
 // `manifest` is the manifest's `commands`; `bound` is commands.getAll()'s
 // list of {name, shortcut}; `suggested` is a preset's suggestions
-// (src/presets.js), by name, where the spec's key is left out. Returns a row
+// (src/presets.js), by name, where the spec's key is left out; `apps` is
+// the settings' apps, which name the app keys. Returns a row
 // per command, in manifest order: {name, title, intended, suggestion,
 // bound, state}, where suggestion is the preset's {key, why, ...}, and state
 // is "bound" (on the key suggested), "other" (bound to a different key) or
 // "unbound".
-export function checklist(manifest, bound, suggested = {}) {
+export function checklist(manifest, bound, suggested = {}, apps = undefined) {
   const shortcuts = new Map(bound.map((c) => [c.name, c.shortcut ?? ""]));
   return Object.entries(manifest).map(([name, c]) => {
     const suggestion = suggested[name] ?? { key: intendedKey(c.description), why: "spec" };
     const intended = suggestion.key;
     const key = shortcuts.get(name) ?? "";
-    const title = (c.description ?? name).replace(/\s*\([^)]*\)$/, "");
+    const title = APP_COMMANDS.includes(name) ? appKeyTitle(name, apps) : (c.description ?? name).replace(/\s*\([^)]*\)$/, "");
     const state = !key ? "unbound" : sameKey(key, intended) ? "bound" : "other";
     return { name, title, intended, suggestion, bound: key, state };
   });

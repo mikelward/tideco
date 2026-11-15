@@ -2,7 +2,7 @@
 // to chrome.storage.sync; a bad one is reported, naming the setting, and
 // isn't saved.
 
-import { APP_COMMANDS, appLabel, withHomeApp } from "./apps.js";
+import { APP_COMMANDS, appLabel, DEFAULT_APPS, withHomeApp } from "./apps.js";
 import { checklist } from "./keys.js";
 import { loadPreset, PRESET_NAMES, PRESETS, savePreset, suggestions } from "./presets.js";
 import { MOUSE_PAGE } from "./mouse.js";
@@ -460,10 +460,18 @@ function toForm(settings) {
   renderWatched();
   renderPermissions();
   appRows.replaceChildren(...APP_COMMANDS.map((c) => appRow(c, settings.apps.find((a) => a.command === c))));
+  renameKeys(settings.apps);
   for (const [k, ids] of Object.entries(HOURS)) ids.forEach((id, i) => ($(id).value = settings[k][i]));
   for (const [k, id] of Object.entries(START)) $(id).value = settings.defaultMode[k];
   modeRows.replaceChildren(...Object.entries(settings.modes).map(([mode, o]) => modeRow(mode, o)));
   json.value = JSON.stringify(pick(settings, SHARED), null, 2);
+}
+
+// The checklist follows the apps' names as they're saved.
+function renameKeys(apps) {
+  if (JSON.stringify(apps) === JSON.stringify(keyApps)) return;
+  keyApps = apps;
+  renderKeys().catch((e) => console.error("tide: couldn't list the keys:", e));
 }
 
 // Saves the shared settings on the page, or says why not.
@@ -474,6 +482,7 @@ async function save(value = fromForm()) {
   await chrome.storage.sync.set({ [SETTINGS_KEY]: pick(settings, SHARED) });
   json.value = JSON.stringify(pick(settings, SHARED), null, 2);
   nameHomeApps(settings.apps);
+  renameKeys(settings.apps);
   if (JSON.stringify([settings.standing, APP_COMMANDS.map((c) => appLabel(c, settings.apps))]) !== drawnFor) renderWorkspaceSettings(settings);
   return true;
 }
@@ -671,6 +680,9 @@ $("zones").replaceChildren(
 // The page edits the shared settings alone, so saving never copies this
 // machine's overrides to the others. What's stored may predate a check, so
 // say what was wrong with it.
+// The apps the checklist names the app keys by, as last saved or shown.
+let keyApps = DEFAULT_APPS;
+
 // The keys checklist, refreshed when you come back from the shortcuts page.
 async function renderKeys() {
   const bound = await chrome.commands.getAll();
@@ -680,7 +692,7 @@ async function renderKeys() {
   const manifest = chrome.runtime.getManifest().commands;
   const preset = await loadPreset(chrome.storage.local);
   $("keys-preset").value = preset;
-  const all = checklist(manifest, bound, suggestions(preset, manifest));
+  const all = checklist(manifest, bound, suggestions(preset, manifest), keyApps);
   const titles = Object.fromEntries(all.map((r) => [r.name, r.title]));
   const rows = all.filter((r) => tiling || worksUntiled(r.name));
   // A command on another key is your choice (or Chrome's default off

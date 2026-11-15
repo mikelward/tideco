@@ -1230,7 +1230,10 @@ Tabs scope (§9.4) or `Search+A` (§10.3):
 - **The four app keys are slots.** Chrome fixes an extension's commands in
   its manifest, so `app-calendar`, `app-chat`, `app-meet` and `app-music`
   are named for their defaults, and the options page gives each any website
-  (a name and an address), or none, which turns the key off.
+  (a name and an address), or none, which turns the key off. Their
+  descriptions on `chrome://extensions/shortcuts` stay the manifest's, but
+  the options page's keys checklist names each by its app ("Open Slack"),
+  or "App 3, off".
 - **Browser windows**, for `Search+G`: a new `type: "normal"` window, with
   `windows.create({})`. Profiles (`Search+F`, `Search+Shift+G`) follow
   §9.2.

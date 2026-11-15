@@ -15,7 +15,8 @@ export const PRESET_KEY = "keysPreset";
 
 // tide for Linux's binding names, as conf names them, and the command here
 // that does the same. A name with none here (the terminal, close, quit,
-// fullscreen, focus left and right, resize mode, reload) is left out.
+// fullscreen, focus left and right, the window above and below, reload) is
+// left out: chromeOS keeps Search with an arrow (§7.2).
 export const COMMANDS = Object.freeze({
   launcher: "popup",
   focus_down: "focus-next",

@@ -60,7 +60,7 @@ test("bindings with no command here are dropped", () => {
   const fromPreset = Object.keys(s).filter((n) => s[n].why === "preset").sort();
   assert.deepEqual(fromPreset, ["float", "focus-next", "focus-prev", "grow", "master-add", "master-remove", "monocle", "popup", "shrink"]);
   assert.equal(s["layout-prev"].key, "Search+,", "dwm's Super+, takes nothing from it");
-  assert.equal(s["app-chat"].key, "Search+Shift+C", "nor its Super+Shift+C");
+  assert.equal(s["app-calendar"].key, "Search+Shift+C", "nor its Super+Shift+C");
   assert.equal(Object.keys(s).length, Object.keys(manifest).length, "a suggestion for each command, nothing else");
 });
 
@@ -121,4 +121,16 @@ test("the choice is kept per Chromebook, and tide's is the default", async () =>
   assert.deepEqual(area.stored, {});
   await assert.rejects(savePreset(area, "awesome"), /isn't a preset/);
   assert.equal(await loadPreset(fakeArea({ [PRESET_KEY]: "awesome" })), "tide", "an unknown one is ignored");
+});
+
+test("up and down in i3, sway and bspwm suggest nothing here", () => {
+  // Their K/L or J/K and the arrows are the window above and below, as in
+  // tide for Linux, not the stack's next and previous; chromeOS keeps
+  // Search with an arrow, so nothing here does them.
+  for (const name of ["i3", "sway", "bspwm"]) {
+    const s = suggestions(name, manifest);
+    assert.notEqual(s["focus-next"].why, "preset", `${name}'s down isn't the stack's next`);
+    assert.notEqual(s["move-prev"].why, "preset", `${name}'s move up isn't the stack's`);
+  }
+  assert.equal(suggestions("dwm", manifest)["focus-next"].why, "preset", "dwm's J is the stack's next");
 });

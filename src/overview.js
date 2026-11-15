@@ -5,7 +5,7 @@
 // launcher's fuzzy match.
 
 import { appOf } from "./apps.js";
-import { fuzzyScore } from "./launcher.js";
+import { fuzzyScore, iconOf } from "./launcher.js";
 import { barOrder } from "./workspaces.js";
 
 function host(url) {
@@ -43,7 +43,7 @@ export function card(w, info, { apps = [], pictures = {} } = {}) {
     title: title || app,
     app,
     detail: [title ? app : null, tabs, minimized ? "minimized" : null].filter(Boolean).join(" · "),
-    icon: tab?.favIconUrl || null,
+    icon: iconOf(tab),
     picture: pictures[w.id]?.url ?? null,
     minimized,
   };

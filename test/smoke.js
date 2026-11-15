@@ -308,7 +308,7 @@ test("the standing workspaces and home's apps are edited, saved and kept", async
   const stored = async () => (await worker.evaluate(() => chrome.storage.sync.get("settings"))).settings;
   assert.deepEqual(await names(), ["in", "re", "oc", "me"]);
   assert.deepEqual(await homeMark(), ["home", "", "", ""]);
-  assert.deepEqual(await page.locator("#home-apps label").allInnerTexts(), ["Google Chat", "Google Calendar", "Google Meet", "YouTube Music"]);
+  assert.deepEqual(await page.locator("#home-apps label").allInnerTexts(), ["Google Chat", "Google Calendar", "Google Meet", "YouTube Music", "Secure Shell", "App 6, off", "App 7, off", "App 8, off"]);
   // Added at the end, with Enter.
   await page.locator("#standing-name").fill(" docs ");
   await page.locator("#standing-name").press("Enter");

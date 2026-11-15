@@ -2,24 +2,41 @@
 // or tab belongs to an app by its origin, which the launcher's tab search
 // uses to find a tab by its app's name (§9.4).
 
-// The manifest's app keys, which settings can give any web app.
-export const APP_COMMANDS = ["app-chat", "app-calendar", "app-meet", "app-music"];
+// The manifest's app keys, which settings can give any web app or
+// extension page. The first four are named for their defaults; Chrome keeps
+// a command's name with its key, so they stay.
+export const APP_COMMANDS = ["app-chat", "app-calendar", "app-meet", "app-music", "app-5", "app-6", "app-7", "app-8"];
+
+// Secure Shell's terminal page, app 5's default: chromeOS's Terminal app is
+// a chrome-untrusted:// page, which Chrome won't let an extension open.
+export const SECURE_SHELL = "chrome-extension://iodihamcpbpeioajjeobimgagajmlibd/html/nassh.html";
 
 export const DEFAULT_APPS = [
   { command: "app-chat", name: "Google Chat", url: "https://chat.google.com/" },
   { command: "app-calendar", name: "Google Calendar", url: "https://calendar.google.com/" },
   { command: "app-meet", name: "Google Meet", url: "https://meet.google.com/" },
   { command: "app-music", name: "YouTube Music", url: "https://music.youtube.com/" },
+  { command: "app-5", name: "Secure Shell", url: SECURE_SHELL },
 ];
 
-function origin(url) {
+// The schemes an app's address may have: a website's, or an extension's
+// page, which a popup window opens as well.
+export const APP_SCHEMES = ["https:", "http:", "chrome-extension:"];
+
+// The site `url` belongs to: a website's origin, or an extension's
+// "chrome-extension://<id>", or null for anything else (chrome:// pages,
+// blank tabs), which no app is.
+export function appOrigin(url) {
   try {
-    return new URL(url).origin;
+    const u = new URL(url);
+    if (!APP_SCHEMES.includes(u.protocol) || !u.host) return null;
+    return u.protocol === "chrome-extension:" ? `${u.protocol}//${u.host}` : u.origin;
   } catch {
-    // chrome:// pages and blank tabs have no origin worth matching
+    // An address that doesn't parse names no site.
     return null;
   }
 }
+const origin = appOrigin;
 
 // The app a URL belongs to, by its origin, or null.
 export function appOfUrl(url, apps = DEFAULT_APPS) {

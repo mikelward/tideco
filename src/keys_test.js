@@ -60,3 +60,11 @@ test("the manifest's Page Up, Page Down, period and comma keys show as bound", (
   const rows = checklist(manifest, uses.map(([name, c]) => ({ name, shortcut: asChrome(intendedKey(c.description)) })));
   for (const [name] of uses) assert.equal(rows.find((r) => r.name === name).state, "bound", name);
 });
+
+test("an app key is named by its app, not the manifest's default", () => {
+  const manifest = { "app-chat": { description: "Open app 1, Google Chat unless changed in tide's options (Search+C)" }, "app-meet": { description: "Open app 3, Google Meet unless changed in tide's options (Search+M)" } };
+  const apps = [{ command: "app-chat", name: "Slack", url: "https://app.slack.com/" }];
+  const rows = checklist(manifest, [], {}, apps);
+  assert.deepEqual(rows.map((r) => [r.title, r.intended]), [["Open Slack", "Search+C"], ["App 3, off", "Search+M"]]);
+  assert.equal(checklist(manifest, [])[0].title, "Open Google Chat", "the defaults without settings");
+});

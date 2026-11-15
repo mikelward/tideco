@@ -45,6 +45,14 @@ export function appLabel(command, apps = DEFAULT_APPS) {
   return apps.find((a) => a.command === command)?.name ?? `App ${APP_COMMANDS.indexOf(command) + 1}, off`;
 }
 
+// What the keys checklist and the launcher call app key `command`'s
+// command: "Open" and its app's name, or its number while it has none. The
+// manifest's description can't follow the settings (§9.1).
+export function appKeyTitle(command, apps = DEFAULT_APPS) {
+  const app = apps.find((a) => a.command === command);
+  return app ? `Open ${app.name}` : `${appLabel(command, apps)}`;
+}
+
 // `homeApps` with app key `command` in or out, as its box on the options
 // page is ticked: one put in goes last, and the rest keep their order, so a
 // list you imported isn't reordered.

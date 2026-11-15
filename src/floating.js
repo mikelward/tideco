@@ -79,6 +79,33 @@ export function ruleable(win, appPopups) {
   return win?.type === "app" || appPopups.has(win?.id);
 }
 
+// chromeOS's own Settings app floats, with no rule (§5.4): a rule names
+// a website, and its page is a chrome:// one.
+const FLOATED_PAGES = ["chrome://os-settings/"];
+
+// Whether window `win` floats without a rule, as chromeOS's Settings does.
+// Without tab search Chrome hides its address, so none can tell.
+export function floatsBuiltIn(win) {
+  const tab = win?.tabs?.find((t) => t.active) ?? win?.tabs?.[0];
+  const url = tab?.url || tab?.pendingUrl || "";
+  return win?.type === "app" && FLOATED_PAGES.some((p) => url.startsWith(p));
+}
+
+// Whether chromeOS took tiled window `w` out of its tile, by native float
+// or snap (§5.3): tide `placed` it ({left, top, width, height}), and since
+// then both its side edges moved and its size changed, which no drag of an
+// edge or a corner does, or it's back where tide last moved it `from`,
+// which is chromeOS holding it there. Either way, putting it back would
+// fight chromeOS, which floats it again at once.
+export function floatedByOS(placed, from, w) {
+  if (placed?.top === undefined) return false;
+  const same = (a, b) => a.left === b.left && a.top === b.top && a.width === b.width && a.height === b.height;
+  if (same(w, placed)) return false;
+  if (from && same(w, from)) return true;
+  const resized = w.width !== placed.width || w.height !== placed.height;
+  return resized && w.left !== placed.left && w.left + w.width !== placed.left + placed.width;
+}
+
 // The place (from 0) of the rule for `site` among `rules`, or -1.
 export function coveringRule(rules, site) {
   return site === null ? -1 : rules.findIndex((r) => r.site === site);
@@ -128,17 +155,19 @@ export function withoutRule(rules, index, site) {
 // The Floating page's Floating now (§13): the app windows floating that no
 // rule covers, one per site, in the order given, each {id, site, title}.
 // `state` is tide's stored state, which says which windows float; `windows`
-// are Chrome's, with their tabs. A window whose site Chrome hides can't be
-// named, so it isn't listed.
+// are Chrome's, with their tabs. A window on no website, such as chromeOS's
+// Settings, is listed by its title with a null site, since no rule can name
+// it; one whose address and title Chrome hides can't be named at all.
 export function floatingNow(state, windows, rules) {
   const appPopups = new Set((state?.appPopups ?? []).map(Number));
   const out = [];
   for (const w of windows) {
     if (!state?.windows?.[w.id]?.floating || !ruleable(w, appPopups)) continue;
     const site = siteOf(w);
-    if (site === null || coveringRule(rules, site) >= 0 || out.some((o) => o.site === site)) continue;
     const tab = w.tabs?.find((t) => t.active) ?? w.tabs?.[0];
-    out.push({ id: w.id, site, title: tab?.title ?? "" });
+    const title = tab?.title ?? "";
+    if (site === null ? title === "" : coveringRule(rules, site) >= 0 || out.some((o) => o.site === site)) continue;
+    out.push({ id: w.id, site, title });
   }
   return out;
 }

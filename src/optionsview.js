@@ -384,7 +384,7 @@ function renderFloatRules() {
   renderFloatingNow();
 }
 
-// Floating now: the app windows floated by hand that no rule covers, read
+// Floating now: the app windows floating that no rule covers, read
 // from tide's state and Chrome's windows, each with Always float.
 async function renderFloatingNow() {
   try {
@@ -395,6 +395,11 @@ async function renderFloatingNow() {
     $("floating-now").replaceChildren(
       ...now.map(({ site, title }) => {
         const li = document.createElement("li");
+        // A window on no website (chromeOS's Settings) has no rule to add.
+        if (site === null) {
+          li.append(Object.assign(document.createElement("strong"), { textContent: title }));
+          return li;
+        }
         const name = siteName(site);
         li.append(Object.assign(document.createElement("strong"), { textContent: name }));
         if (title) li.append(" ", Object.assign(document.createElement("span"), { className: "muted", textContent: title }));

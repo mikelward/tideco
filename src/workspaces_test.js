@@ -613,3 +613,17 @@ test("migration from a workspace per display puts each window on its display", (
   assert.deepEqual([10, 20, 30].map((id) => s.windows[id].display), ["a", "b", null], "a hidden one's is found where it is");
   assert.equal(ws.migrate(s), s, "and only once");
 });
+
+test("a share goes back to what it was, a lone window's width included", () => {
+  let s = ws.create(["hd"]);
+  const n = s.current;
+  const was = ws.layoutOf(s, n, "hd").modes.tile.mfact;
+  s = ws.setMfact(s, n, "hd", "tile", 0.8);
+  s = ws.restoreShare(s, n, "hd", { mode: "tile", mfact: was });
+  assert.equal(ws.layoutOf(s, n, "hd").modes.tile.mfact, was);
+  s = ws.setSingleWidth(s, n, "hd", 0.5);
+  s = ws.restoreShare(s, n, "hd", JSON.parse(JSON.stringify({ singleWidth: null })));
+  assert.equal(ws.layoutOf(s, n, "hd").singleWidth, undefined, "back to the rule, after a save");
+  assert.equal(ws.restoreShare(s, n, "hd", {}), s, "a record that names no share");
+  assert.equal(ws.restoreShare(s, "gone", "hd", { singleWidth: 0.5 }), s, "a workspace since gone");
+});

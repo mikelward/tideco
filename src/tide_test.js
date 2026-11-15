@@ -1083,6 +1083,18 @@ test("chromeOS's system apps on home never ask, but an installed web app does", 
   assert.deepEqual(prompts(chrome).map((w) => w.url), [`${MOVE_PROMPT}&name=Example`]);
 });
 
+test("chromeOS's Settings opens floating, and Search+Shift+F tiles it", async () => {
+  const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true })]);
+  await opens(chrome, tide, 2, { type: "app", url: "chrome://os-settings/", title: "Settings" });
+  assert.equal(tide.state.windows[2].floating, true);
+  assert.deepEqual(chrome.box(1), { x: 0, y: 0, w: 1920, h: 1032 }, "the rest tile without it");
+  chrome.focus(2);
+  await tide.command("float");
+  assert.equal(tide.state.windows[2].floating, false);
+  await tide.event();
+  assert.equal(tide.state.windows[2].floating, false, "decided once");
+});
+
 test("a workspace whose askForName is on asks for a new window there, and home's apps still go home", async () => {
   const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true })]);
   chrome.syncStore.settings = { workspaceSettings: { RE: { askForName: true } } };
@@ -1784,6 +1796,73 @@ test("a resize the share can't follow is put back", async () => {
   await tide.event();
   assert.equal(ws.layoutOf(tide.state, "in", "hd").modes.tile.mfact, 0.55);
   assert.deepEqual(chrome.box(1), { x: 0, y: 0, w: 1056, h: 1032 });
+});
+
+test("chromeOS's own float takes a tiled window out of tiling, leaving the share", async () => {
+  const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true }), on(HD, 2)]);
+  Object.assign(chrome.win(2), { left: 1400, top: 700, width: 500, height: 320 });
+  chrome.updates.length = 0;
+  await tide.event();
+  assert.equal(tide.state.windows[2].floating, true);
+  assert.equal(ws.layoutOf(tide.state, "in", "hd").modes.tile.mfact, 0.55);
+  assert.deepEqual(chrome.box(2), { x: 1400, y: 700, w: 500, h: 320 }, "left where chromeOS put it");
+  assert.deepEqual(chrome.box(1), { x: 0, y: 0, w: 1920, h: 1032 });
+  chrome.updates.length = 0;
+  await tide.event();
+  assert.deepEqual(chrome.updates.filter((u) => u.id === 2), [], "no fight for it");
+});
+
+test("a window chromeOS puts straight back where tide moved it from floats", async () => {
+  const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true }), on(HD, 2)]);
+  // chromeOS floats the stack window in the corner, its right edge where
+  // it was, so it reads as a drag of its left edge at first.
+  const held = { left: 1420, top: 700, width: 500, height: 332 };
+  Object.assign(chrome.win(2), held);
+  await tide.event();
+  assert.equal(tide.state.windows[2].floating, false);
+  Object.assign(chrome.win(2), held);
+  await tide.event();
+  assert.equal(tide.state.windows[2].floating, true, "chromeOS holds it there");
+  assert.deepEqual(chrome.box(2), { x: 1420, y: 700, w: 500, h: 332 });
+  assert.equal(ws.layoutOf(tide.state, "in", "hd").modes.tile.mfact, 0.55, "the share the first read set goes back");
+});
+
+test("chromeOS floating a window again after tide's own move reported floats it", async () => {
+  const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true }), on(HD, 2)]);
+  const held = { left: 1420, top: 700, width: 500, height: 332 };
+  Object.assign(chrome.win(2), held);
+  await tide.event();
+  // Chrome reports tide putting it back before chromeOS floats it again.
+  await tide.event();
+  Object.assign(chrome.win(2), held);
+  await tide.event();
+  assert.equal(tide.state.windows[2].floating, true);
+  assert.equal(ws.layoutOf(tide.state, "in", "hd").modes.tile.mfact, 0.55);
+});
+
+test("a lone window chromeOS floats keeps the rule's width across a restart", async () => {
+  const { chrome } = await setup([HD], [on(HD, 1, { focused: true })]);
+  // chromeOS floats it with its right edge where it was.
+  const held = { left: 1420, top: 700, width: 500, height: 332 };
+  let tide = new Tide(chrome);
+  Object.assign(chrome.win(1), held);
+  await tide.event();
+  chrome.store.state = JSON.parse(JSON.stringify(chrome.store.state));
+  tide = new Tide(chrome);
+  Object.assign(chrome.win(1), held);
+  await tide.event();
+  assert.equal(tide.state.windows[1].floating, true);
+  assert.equal(ws.layoutOf(tide.state, "in", "hd").singleWidth, undefined);
+});
+
+test("dragging a share back to where it was isn't read as chromeOS holding a window", async () => {
+  const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true }), on(HD, 2)]);
+  chrome.win(1).width = 1200;
+  await tide.event();
+  Object.assign(chrome.win(2), { left: 1056, width: 864 });
+  await tide.event();
+  assert.equal(tide.state.windows[2].floating, false);
+  assert.equal(ws.layoutOf(tide.state, "in", "hd").modes.tile.mfact, 0.55);
 });
 
 test("dragging a lone window's edge keeps its width, centered", async () => {

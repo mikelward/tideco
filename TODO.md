@@ -53,6 +53,17 @@ FakeChrome and the smoke test.
 
 Guesses made on autopilot (2026-10-24), each cheap to undo.
 
+- **chromeOS's Settings floats by default** (2026-11-15), by its
+  `chrome://os-settings` address in a built-in list, since a float rule
+  names only a website. Files, Camera and the rest still tile. The
+  alternative is a float rule that can name a system app. Reversible:
+  `FLOATED_PAGES` in `src/floating.js`.
+- **A window chromeOS floats or snaps is read from its bounds**
+  (2026-11-15): both side edges moved and the size changed, or it's back
+  where tide last moved it from. A snap that keeps one side edge reads as
+  a drag of the other, setting the share. Reversible: `floatedByOS` in
+  `src/floating.js`.
+
 - **Search+. and Search+, step through monocle too** (2026-11-14), where
   tide for Linux's cycle is tile, three columns and two columns, with
   monocle on its own key. Found by `make check-tide-defaults`, which

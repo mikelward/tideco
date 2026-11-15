@@ -471,7 +471,12 @@ tide for Linux's Lua layout is the reference; the two share test fixtures (§15)
   - The move-to-swap above isn't built: a window dragged within its
     display goes back to its tile.
   - A window dragged to native snap or float is left floating until it's
-    tiled again with `Search+Shift+F`.
+    tiled again with `Search+Shift+F`, and keeps its workspace's share.
+    Chrome reports native float as `normal`, so tide for Chrome reads it
+    from the bounds: both side edges moved and the size changed, which no
+    edge or corner drag does, or the window is back where tide for Chrome
+    last moved it from, which is chromeOS holding it there. Putting it
+    back would only fight chromeOS, which floats it again at once.
 - Margin is 0, as in tide for Linux. A setting for chrometile's 2 px is
   planned (TODO.md).
 
@@ -513,6 +518,9 @@ tide for Linux's Lua layout is the reference; the two share test fixtures (§15)
     last good value.
   - chrometile's URL rules (Chrome Remote Desktop's among them) aren't
     built in; a site of theirs is one rule away.
+- **chromeOS's Settings app** (`chrome://os-settings`), which no rule can
+  name, as tide for Linux floats settings windows. Its other system apps
+  tile. Without tab search Chrome hides its address, so it tiles too.
 - Anything you float with `Search+Shift+F`, remembered by window ID and
   persisted.
   - **Asking to always float.** Floating an app window by hand, when no
@@ -532,7 +540,8 @@ tide for Linux's Lua layout is the reference; the two share test fixtures (§15)
   - Only `Search+Shift+F` asks. A window a rule floats, or one dragged to
     native float, never does.
 - The Floating page's **Floating now** lists the app windows floating
-  that no rule covers, one per site, each with **Always float**. It reads
+  that no rule covers, one per site, each with **Always float**. A window
+  on no website, such as Settings, is listed by its title alone. It reads
   tide for Chrome's stored state and Chrome's windows. A window whose
   site Chrome hides can't be named, so it isn't listed. tide for Linux's
   *Also floating* and *More about this window* aren't ported: Chrome
@@ -825,7 +834,7 @@ Beyond Android and Linux apps, from Chromium's and Secure Shell's source
 | **Secure Shell**, from its toolbar popup | A `popup` window. Tiled by tide for Chrome's Secure Shell rule (§5.4); tide for Chrome's keys work. | Fine as is. |
 | **Secure Shell**, from "New session" (Ctrl+Shift+N) | An app popup: tiled, but the terminal swallows every Ctrl, Alt and Search combo, so tide for Chrome's keys go dead while it has focus. | Open connections from the toolbar popup or as tabs, or add pass-through keybindings in Secure Shell's options. |
 | **Secure Shell**, Shift-click or as a tab | A normal window or tab: tiles, keys work. | Fine. |
-| **chromeOS's system apps** (Files, Settings, Camera) | Report as `app`, so they tile like web apps, with the page-first keys of §2.2. One opening on home doesn't ask for a workspace (§6.1). | Fine; expect the odd key to be eaten. |
+| **chromeOS's system apps** (Files, Settings, Camera) | Report as `app`, so they tile like web apps, except Settings, which floats (§5.4), with the page-first keys of §2.2. One opening on home doesn't ask for a workspace (§6.1). | Fine; expect the odd key to be eaten. |
 | **The Terminal system app** | The same terminal as Secure Shell: it tiles, and tide for Chrome's keys go dead in it. | Use Secure Shell from its popup, or Crostini's terminal (§12). |
 | **Document picture-in-picture** (a call's pop-out) | Always on top, refuses minimizing; tide for Chrome leaves it alone on every workspace. | Fine; it floats over everything, as it should. |
 | **Video picture-in-picture** | Invisible to tide for Chrome; floats over everything. | Fine. |

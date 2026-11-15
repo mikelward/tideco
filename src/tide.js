@@ -6,7 +6,7 @@
 import { appOf, appOfUrl, DEFAULT_APPS, homeAppOf } from "./apps.js";
 import { DEFAULT_SETTINGS, load as loadSettings, workspaceSetting } from "./settings.js";
 import { overlay } from "./dim.js";
-import { ASK_PAGE, askBounds, askFloat, ASKED_KEY, coveringRule, floatedByOS, floatsBuiltIn, newlyCovered, ruleable, siteOf } from "./floating.js";
+import { ASK_PAGE, askBounds, askFloat, ASKED_KEY, coveringRule, floatBounds, floatedByOS, floatsBuiltIn, newlyCovered, ruleable, siteOf } from "./floating.js";
 import { Pictures } from "./pictures.js";
 import { toggle as toggleKeepAwake } from "./keepawake.js";
 import { matchWindows, windowUrls } from "./restart.js";
@@ -206,16 +206,23 @@ export class Tide {
         if (floatsBuiltIn(w)) {
           info.ruled = true;
           info.floating = true;
+          info.place = Boolean(info.tiled);
           continue;
         }
         if (can && site === null) continue;
         info.ruled = true;
-        if (coveringRule(rules, site) >= 0) info.floating = true;
+        if (coveringRule(rules, site) >= 0) {
+          info.floating = true;
+          info.place = Boolean(info.tiled);
+        }
         continue;
       }
       if (can) sweep.push({ id: w.id, site, floating: info.floating, big: w.state === "maximized" || w.state === "fullscreen" });
     }
-    for (const id of newlyCovered(sweep, before?.floatRules, rules)) s.windows[id].floating = true;
+    for (const id of newlyCovered(sweep, before?.floatRules, rules)) {
+      s.windows[id].floating = true;
+      s.windows[id].place = Boolean(s.windows[id].tiled);
+    }
     s.floatRules = rules;
   }
 
@@ -223,6 +230,9 @@ export class Tide {
   // may ask about a rule (§5.4).
   async toggleFloating(id) {
     this.state = ws.toggleFloating(this.state, id);
+    // Out of its tile, so you see it float; one that wasn't tiled stays put.
+    const info = this.state.windows[id];
+    if (info?.floating && info.tiled) info.place = true;
     await this.askAlways(id);
   }
 
@@ -462,6 +472,8 @@ export class Tide {
       if (!(w.id in s.windows) || !before || !(w.id in before.windows)) {
         const ask = asks && asksByKind(w) && !appPopups.has(w.id);
         s = this.join(s, w.id, displayFor(w, this.displays), { homeApp: this.homeApp(w), ask });
+        // The size it opened at, for when it floats (§5.4).
+        if (s.windows[w.id] && w.state === "normal") s.windows[w.id].opened = { width: w.width, height: w.height };
         // A window already minimized when tide first sees it stays so.
         if (w.state === "minimized") s = ws.userMinimized(s, w.id);
         if (w.focused) s = ws.focused(s, w.id);
@@ -770,6 +782,17 @@ export class Tide {
     for (const [key, info] of Object.entries(s.windows)) {
       const id = Number(key);
       const w = this.windows.get(id);
+      // One tide just floated leaves its tile for the middle of its display
+      // (§5.4), at the size it opened at.
+      if (info.place && info.floating && w?.state === "normal" && ws.isShown(s, id)) {
+        const d = this.displays.find((x) => x.id === info.display);
+        delete info.place;
+        delete info.tiled;
+        if (d) {
+          await update(id, floatBounds(d.workArea, info.opened));
+          continue;
+        }
+      }
       if (!info.floating || !w || w.state !== "normal" || !ws.isShown(s, id)) continue;
       const target = this.displays.find((d) => d.id === info.display);
       const source = this.displays.find((d) => d.id === displayFor(w, this.displays));
@@ -1021,6 +1044,9 @@ export class Tide {
     const w = await this.api.windows.create({ focused: true, ...props });
     this.windows.set(w.id, w);
     this.state = this.join(this.state, w.id, display, how);
+    // The size it opened at, for when it floats (§5.4).
+    const info = this.state.windows[w.id];
+    if (info && w.state === "normal") info.opened = { width: w.width, height: w.height };
     return w;
   }
 
@@ -1161,6 +1187,8 @@ export class Tide {
         // box, so that only your own resize reads as one.
         const info = this.state.windows[id];
         if (!info) return;
+        // Tiled, for good until it floats, hidden or not (§5.4).
+        info.tiled = true;
         info.placed = {
           left: w?.left ?? b.x,
           top: w?.top ?? b.y,

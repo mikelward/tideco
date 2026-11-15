@@ -106,6 +106,22 @@ export function floatedByOS(placed, from, w) {
   return resized && w.left !== placed.left && w.left + w.width !== placed.left + placed.width;
 }
 
+// Where a window tide floats goes, out of its tile (§5.4): centered in
+// work area `area` ({left, top, width, height}), at the size it opened at,
+// `opened` ({width, height}), if tide saw it, else two thirds of the area.
+// One that opened as big as the area, or bigger, takes two thirds too.
+export function floatBounds(area, opened) {
+  const fits = opened && opened.width > 0 && opened.height > 0 && (opened.width < area.width || opened.height < area.height);
+  const width = Math.round(fits ? Math.min(opened.width, area.width) : (area.width * 2) / 3);
+  const height = Math.round(fits ? Math.min(opened.height, area.height) : (area.height * 2) / 3);
+  return {
+    left: area.left + Math.round((area.width - width) / 2),
+    top: area.top + Math.round((area.height - height) / 2),
+    width,
+    height,
+  };
+}
+
 // The place (from 0) of the rule for `site` among `rules`, or -1.
 export function coveringRule(rules, site) {
   return site === null ? -1 : rules.findIndex((r) => r.site === site);

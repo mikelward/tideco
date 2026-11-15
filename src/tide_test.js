@@ -2332,6 +2332,57 @@ const MEET = "https://meet.google.com/abc-defg";
 const ASK = "chrome-extension://tide/src/floatask.html";
 const asks = (chrome) => chrome.created.filter((c) => c.url?.startsWith(ASK));
 
+test("Search+Shift+F takes a tiled window out of its tile, centered at the size it opened at", async () => {
+  const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true })]);
+  await opens(chrome, tide, 2, { width: 800, height: 600 });
+  assert.deepEqual(chrome.box(2), { x: 1056, y: 0, w: 864, h: 1032 }, "tiled");
+  await tide.command("float");
+  assert.deepEqual(chrome.box(2), { x: 560, y: 216, w: 800, h: 600 });
+  assert.deepEqual(chrome.box(1), { x: 0, y: 0, w: 1920, h: 1032 });
+  // A window tide saw only tiled floats at two thirds of the display.
+  delete tide.state.windows[1].opened;
+  chrome.focus(1);
+  await tide.command("float");
+  assert.deepEqual(chrome.box(1), { x: 320, y: 172, w: 1280, h: 688 });
+  // Dragged, it stays where you put it.
+  Object.assign(chrome.win(1), { left: 0, top: 0 });
+  await tide.event();
+  assert.deepEqual(chrome.box(1), { x: 0, y: 0, w: 1280, h: 688 });
+});
+
+test("a window tide opened floats at the size it opened at", async () => {
+  const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true })]);
+  await tide.command("app-browser");
+  const [{ id }] = chrome.created.filter((c) => c.type === "normal");
+  await tide.event();
+  await tide.command("float");
+  assert.deepEqual(chrome.box(id), { x: 560, y: 216, w: 800, h: 600 }, "the fake opens windows at 800x600");
+});
+
+test("a tiled window a new rule covers on a hidden workspace leaves its tile when it shows", async () => {
+  const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true })]);
+  await opens(chrome, tide, 2, { type: "app", url: MEET, width: 800, height: 600 });
+  assert.deepEqual(chrome.box(2), { x: 1056, y: 0, w: 864, h: 1032 });
+  await tide.command("workspace-2");
+  chrome.syncStore.settings = { floating: [{ site: "meet.google.com" }] };
+  await tide.event();
+  assert.equal(tide.state.windows[2].floating, true);
+  await tide.command("workspace-1");
+  assert.deepEqual(chrome.box(2), { x: 560, y: 216, w: 800, h: 600 });
+});
+
+test("chromeOS's Settings, tiled before it floated by itself, leaves its tile", async () => {
+  const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true })]);
+  // Without tab search tide can't tell it's Settings, so it tiles.
+  chrome.grantedPermissions.delete("tabs");
+  await opens(chrome, tide, 2, { type: "app", url: "chrome://os-settings/", title: "Settings", width: 900, height: 700 });
+  assert.deepEqual(chrome.box(2), { x: 1056, y: 0, w: 864, h: 1032 });
+  chrome.grantedPermissions.add("tabs");
+  await tide.event();
+  assert.equal(tide.state.windows[2].floating, true);
+  assert.deepEqual(chrome.box(2), { x: 510, y: 166, w: 900, h: 700 });
+});
+
 test("a rule floats its site's app windows as they open, but not its tab windows", async () => {
   const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true })]);
   chrome.syncStore.settings = { floating: [{ site: "meet.google.com" }] };

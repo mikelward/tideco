@@ -300,8 +300,7 @@ function nameHomeApps(apps) {
 
 // Each standing workspace's own settings (§6.1): whether a new window there
 // asks for a workspace, and its pinned apps, boxes as home's apps have.
-// Kept as stored, null while unset, until a box changes, so an unset
-// default keeps following home.
+// Kept as stored, null while unset, until a box changes.
 let workspaceSettings = DEFAULT_SETTINGS.workspaceSettings;
 // What the boxes were drawn for, so a save that changes neither the
 // standing names nor the apps' names leaves them, and their focus, be.

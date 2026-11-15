@@ -179,11 +179,11 @@
     "app-browser": {
       "description": "Open a new browser window (Search+G)"
     },
-    "app-calendar": {
-      "description": "Open app 1, Google Calendar unless changed in tide's options (Search+C)"
-    },
     "app-chat": {
-      "description": "Open app 2, Google Chat unless changed in tide's options (Search+Shift+C)"
+      "description": "Open app 1, Google Chat unless changed in tide's options (Search+C)"
+    },
+    "app-calendar": {
+      "description": "Open app 2, Google Calendar unless changed in tide's options (Search+Shift+C)"
     },
     "app-meet": {
       "description": "Open app 3, Google Meet unless changed in tide's options (Search+M)"

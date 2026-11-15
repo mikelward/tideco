@@ -33,7 +33,8 @@ test("an app key is called by its app's name, or its number while it has none", 
   assert.equal(appLabel("app-music"), "YouTube Music");
   const apps = [{ command: "app-meet", name: "Gmail", url: "https://mail.google.com/" }];
   assert.equal(appLabel("app-meet", apps), "Gmail");
-  assert.equal(appLabel("app-calendar", apps), "App 1, off");
+  assert.equal(appLabel("app-chat", apps), "App 1, off");
+  assert.equal(appLabel("app-calendar", apps), "App 2, off");
   assert.equal(appLabel("app-music", apps), "App 4, off");
 });
 

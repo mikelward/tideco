@@ -774,6 +774,7 @@ export class Tide {
     if (name === "overview") return this.dashboard(display, "overview");
     if (name === "app-browser") return this.browser(display);
     if (name === "attention") return this.dashboard(display, "attention");
+    if (name === "attention-next") return this.nextAttention();
     if (name === "keep-awake") {
       await toggleKeepAwake(this.api);
       return null;
@@ -937,6 +938,13 @@ export class Tide {
       const focus = windowId in this.state.windows ? this.activate(windowId) : windowId;
       await this.apply(focus);
     });
+  }
+
+  // The next-attention command (§10.3): the newest mark, the top row of
+  // Search+A's list, so pressing again goes to the next. With none, nothing.
+  nextAttention() {
+    const newest = this.state.marks.at(-1);
+    return newest === undefined ? null : this.activate(newest);
   }
 
   // Bring up a window, with its workspace (§6.1 Activate). Going there

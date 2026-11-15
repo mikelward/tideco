@@ -59,6 +59,9 @@
         "default": "Alt+Shift+U"
       }
     },
+    "attention-next": {
+      "description": "Go to the next window wanting attention"
+    },
     "layout-next": {
       "description": "Next layout (Search+.)"
     },

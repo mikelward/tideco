@@ -1348,6 +1348,46 @@ test("going to one window from Search+A's list leaves the others marked, newest 
   assert.deepEqual(tide.state.marks, [2]);
 });
 
+// The next-attention command (§10.3), unbound unless you give it a key,
+// goes straight to the newest mark, as Enter on the top row of Search+A's
+// list would.
+test("the next-attention command goes to the newest mark, on any workspace, and clears it", async () => {
+  const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true }), on(HD, 2), on(HD, 3)]);
+  await tide.command("send-3");
+  chrome.focus(2);
+  await tide.event();
+  await tide.command("send-4");
+  chrome.focus(1);
+  await tide.event();
+  // Window 2 sits alone on hidden workspace me; window 3 is beside 1.
+  await tide.title(20, 2, "Chat");
+  await tide.title(30, 3, "Inbox - Gmail");
+  await tide.title(30, 3, "Inbox (1) - Gmail");
+  await tide.title(20, 2, "Chat (1)");
+  assert.deepEqual(tide.state.marks, [3, 2]);
+  await tide.command("attention-next");
+  assert.equal(chrome.wins.some((w) => w.url?.startsWith(DASHBOARD)), false, "no list opens");
+  assert.equal(tide.state.current, "me", "the newest mark's workspace comes up");
+  assert.equal(chrome.win(2).focused, true);
+  assert.deepEqual(tide.state.marks, [3], "going there clears its mark");
+  await tide.command("attention-next");
+  assert.equal(chrome.win(3).focused, true, "the next press goes to the next");
+  assert.deepEqual(tide.state.marks, []);
+});
+
+test("with nothing marked, the next-attention command does nothing", async () => {
+  const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true }), on(HD, 2)]);
+  chrome.focus(2);
+  await tide.event();
+  chrome.focus(1);
+  await tide.event();
+  const before = JSON.stringify([tide.state, chrome.wins]);
+  chrome.updates.length = 0;
+  await tide.command("attention-next");
+  assert.equal(JSON.stringify([tide.state, chrome.wins]), before, "not even to the last window");
+  assert.equal(chrome.updates.some((u) => u.focused), false);
+});
+
 test("going to a marked window yourself clears its mark", async () => {
   const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true }), on(HD, 2)]);
   await tide.title(20, 2, "Chat");

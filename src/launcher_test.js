@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { actions, arrowStep, attentionRows, barAtBottom, BAR_SECTIONS, emptyText, footerKeys, footerText, fuzzyScore, items, limitFor, logoTapped, nextScope, opening, rank, sectionToShow, settingsSections, SETTINGS_SECTIONS, TOP, workspaceRows } from "./launcher.js";
+import { actions, arrowStep, attentionRows, barAtBottom, iconOf, BAR_SECTIONS, emptyText, footerKeys, footerText, fuzzyScore, items, limitFor, logoTapped, nextScope, opening, rank, sectionToShow, settingsSections, SETTINGS_SECTIONS, TOP, workspaceRows } from "./launcher.js";
 
 test("a fuzzy match needs every query letter in order", () => {
   assert.equal(fuzzyScore("cal", "Google Calendar") > 0, true);
@@ -268,8 +268,8 @@ const marked = {
   windows: { 2: { ws: "me" }, 3: { ws: "in" }, 4: { ws: "oc" } },
   unread: { 20: { windowId: 2, count: 3 }, 21: { windowId: 2, count: 1 }, 30: { windowId: 3, count: 0 } },
   tabs: [
-    { id: 20, windowId: 2, title: "Chat (3)", active: false, favIconUrl: "chat.png" },
-    { id: 22, windowId: 2, title: "Spaces", active: true, favIconUrl: "spaces.png" },
+    { id: 20, windowId: 2, title: "Chat (3)", active: false, favIconUrl: "https://chat.google.com/chat.png" },
+    { id: 22, windowId: 2, title: "Spaces", active: true, favIconUrl: "https://chat.google.com/spaces.png" },
     { id: 30, windowId: 3, title: "Inbox - Gmail", active: true },
     { id: 40, windowId: 4, active: true },
     { id: 41, windowId: 4, title: "Calendar - Week", active: false },
@@ -284,7 +284,7 @@ test("Attention lists every marked window, most recent first, on any workspace",
     ["Inbox - Gmail", "window on in", 3],
     ["Spaces", "window on me · 3 unread", 2],
   ], "a closed window's mark (9) is left out, a closed tab's count (21) too, and a count of 0 isn't said");
-  assert.equal(attentionRows({ ...marked, query: "" })[2].icon, "spaces.png", "the active tab's icon");
+  assert.equal(attentionRows({ ...marked, query: "" })[2].icon, "https://chat.google.com/spaces.png", "the active tab's icon");
 });
 
 test("an Attention row counts only the unread of tabs still in its window", () => {
@@ -372,4 +372,15 @@ test("the arrow pointing away from the field goes on to the next result", () => 
   // With the bar at the bottom the results run up from the field.
   assert.equal(arrowStep("ArrowUp", true), 1);
   assert.equal(arrowStep("ArrowDown", true), -1);
+});
+
+test("a favicon Chrome won't load in tide's pages is left for the kind's icon", () => {
+  assert.equal(iconOf({ favIconUrl: "https://mail.google.com/favicon.ico" }), "https://mail.google.com/favicon.ico");
+  assert.equal(iconOf({ favIconUrl: "data:image/png;base64,AAAA" }), "data:image/png;base64,AAAA");
+  assert.equal(iconOf({ favIconUrl: "chrome://personalization/hub_icon_192.png" }), null, "a system app's");
+  assert.equal(iconOf({ favIconUrl: "chrome-untrusted://media-app/icon.png" }), null);
+  assert.equal(iconOf({}), null);
+  assert.equal(iconOf(undefined), null);
+  const [tab] = items({ tabs: [{ id: 1, windowId: 1, title: "Wallpaper", url: "chrome://personalization/", favIconUrl: "chrome://personalization/hub_icon_192.png" }] }).filter((i) => i.kind === "tab");
+  assert.equal(tab?.icon ?? null, null, "the launcher's tab row");
 });

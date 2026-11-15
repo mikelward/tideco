@@ -235,6 +235,15 @@ export function workspaceRows({ bar = [], counts = {}, made = bar, current = nul
 // out. Typing filters by title, or for less by workspace, best first.
 // Each row is {kind: "window", title, detail, icon, windowId}, and Enter
 // goes to `windowId`. A host that gives no marks lists none.
+// A tab's favicon, if a page of tide's may load it: a website's or a data
+// URL. chromeOS's system apps give chrome:// ones, which Chrome refuses an
+// extension ("Not allowed to load local resource"), so they get the icon
+// for their kind instead.
+export function iconOf(tab) {
+  const url = tab?.favIconUrl;
+  return typeof url === "string" && /^(https?|data):/.test(url) ? url : null;
+}
+
 export function attentionRows({ marks = [], windows = {}, unread = {}, tabs = [], query = "" }) {
   const typed = query.trim();
   const scored = [];
@@ -243,7 +252,7 @@ export function attentionRows({ marks = [], windows = {}, unread = {}, tabs = []
     if (!info) return;
     const mine = tabs.filter((t) => t.windowId === id);
     const titled = [...mine.filter((t) => t.active), ...mine.filter((t) => !t.active)].find((t) => t.title);
-    const icon = (mine.find((t) => t.active) ?? titled)?.favIconUrl ?? null;
+    const icon = iconOf(mine.find((t) => t.active) ?? titled);
     // Only the tabs in the window now: a closed or moved tab's last count
     // stays in tide's state until its window goes.
     let count = 0;
@@ -331,7 +340,7 @@ export function items({ tabs = [], apps = [], sections = [], actions = [], comma
       recency: t.lastAccessed ?? 0,
       tabId: t.id,
       windowId: t.windowId,
-      icon: t.favIconUrl ?? null,
+      icon: iconOf(t),
     });
   }
   for (const a of apps) out.push({ kind: "app", title: a.name, detail: "app", key: a.key ?? "", command: a.command });

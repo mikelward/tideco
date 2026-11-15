@@ -308,7 +308,7 @@ test("the standing workspaces and home's apps are edited, saved and kept", async
   const stored = async () => (await worker.evaluate(() => chrome.storage.sync.get("settings"))).settings;
   assert.deepEqual(await names(), ["in", "re", "oc", "me"]);
   assert.deepEqual(await homeMark(), ["home", "", "", ""]);
-  assert.deepEqual(await page.locator("#home-apps label").allInnerTexts(), ["Google Calendar", "Google Chat", "Google Meet", "YouTube Music"]);
+  assert.deepEqual(await page.locator("#home-apps label").allInnerTexts(), ["Google Chat", "Google Calendar", "Google Meet", "YouTube Music"]);
   // Added at the end, with Enter.
   await page.locator("#standing-name").fill(" docs ");
   await page.locator("#standing-name").press("Enter");
@@ -420,7 +420,7 @@ test("each standing workspace's asking and pinned apps are edited, saved and kep
   await page.reload();
   await page.waitForSelector("#workspace-settings fieldset");
   assert.deepEqual(await asks(), [false, true, false, false, false]);
-  assert.deepEqual(await page.locator('#workspace-settings fieldset[data-name="in"] .pinned input:checked').evaluateAll((l) => l.map((i) => i.dataset.command)), ["app-calendar", "app-chat"]);
+  assert.deepEqual(await page.locator('#workspace-settings fieldset[data-name="in"] .pinned input:checked').evaluateAll((l) => l.map((i) => i.dataset.command)), ["app-chat", "app-calendar"]);
   assert.deepEqual(errors, []);
   assert.equal(await page.locator("#errors").isHidden(), true, await page.locator("#errors").innerText());
   await worker.evaluate(() => chrome.storage.sync.remove("settings"));

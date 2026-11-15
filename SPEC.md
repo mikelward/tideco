@@ -73,8 +73,8 @@ Contents:
 - The tide for Linux **key map**, with Search as Super, for every action chromeOS lets
   tide for Chrome or the OS bind.
 - **Inactive windows dimmed** as the focus cue.
-- **App keys**: `Search+G` browser, `Search+T` terminal, `Search+C` Calendar,
-  `Search+M` Meet, `Search+Y` YouTube Music, and the rest of tide for Linux's letters.
+- **App keys**: `Search+G` browser, `Search+T` terminal, `Search+C` Chat,
+  `Search+Shift+C` Calendar, `Search+M` Meet, `Search+Y` YouTube Music, and the rest of tide for Linux's letters.
 - **Clocks** for SF, NYC and LON beside local time.
 - Dialogs and popups **float**; nothing steals focus.
 
@@ -617,7 +617,7 @@ them over their parent, which is what tide for Linux's §6.4 asks for.
   showing, as a window moved there is.
 
 **The home workspace's apps** are the web apps you keep open all day: the
-app keys' Calendar, Chat and YouTube Music by default. §9.1 has no mail
+app keys' Chat, Calendar and YouTube Music by default. §9.1 has no mail
 key, so mail is one only once an app key is given its site. A window is
 one of them when its active tab's URL is on that app's site, as the app
 keys find an existing window (§9.1). Without tab search, none is
@@ -1019,7 +1019,7 @@ Search+Alt and Search+Ctrl are allowed too, and untried unless listed.
 |---|---|---|---|
 | A | tide for Chrome: attention | OS: assign to all desks | |
 | B | | | |
-| C | tide for Chrome: app 1 (Calendar); OS calendar panel, removable | tide for Chrome: app 2 (Chat) | |
+| C | tide for Chrome: app 1 (Chat); OS calendar panel, removable | tide for Chrome: app 2 (Calendar) | |
 | D | tide for Chrome: remove a master; OS dictation, removable (Accessibility) | OS: minimize Snap Group (§7.2) | |
 | E | | | |
 | F | OS: Quick Insert, removable; tide for Chrome planned: second profile (§9.2) | tide for Chrome: toggle floating | OS: float |
@@ -1203,8 +1203,8 @@ Tabs scope (§9.4) or `Search+A` (§10.3):
 | `Search+G` | browser | §9.1, browser windows |
 | `Search+F` | browser, second profile | §9.2 |
 | `Search+Shift+G` | browser, third profile | §9.2 |
-| `Search+C` | Google Calendar | installed web app |
-| `Search+Shift+C` | Google Chat | installed web app |
+| `Search+C` | Google Chat | installed web app |
+| `Search+Shift+C` | Google Calendar | installed web app |
 | `Search+M` | Google Meet | installed web app |
 | `Search+Y` | YouTube Music | installed web app |
 | *unassigned* | IRC | installed web app, or the Linux client by shelf slot; Search+I went to add a master (§7.1) |

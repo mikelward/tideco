@@ -3,11 +3,11 @@
 // uses to find a tab by its app's name (§9.4).
 
 // The manifest's app keys, which settings can give any web app.
-export const APP_COMMANDS = ["app-calendar", "app-chat", "app-meet", "app-music"];
+export const APP_COMMANDS = ["app-chat", "app-calendar", "app-meet", "app-music"];
 
 export const DEFAULT_APPS = [
-  { command: "app-calendar", name: "Google Calendar", url: "https://calendar.google.com/" },
   { command: "app-chat", name: "Google Chat", url: "https://chat.google.com/" },
+  { command: "app-calendar", name: "Google Calendar", url: "https://calendar.google.com/" },
   { command: "app-meet", name: "Google Meet", url: "https://meet.google.com/" },
   { command: "app-music", name: "YouTube Music", url: "https://music.youtube.com/" },
 ];
@@ -35,9 +35,9 @@ export function appOf(win, apps = DEFAULT_APPS) {
   return appOfUrl(tab?.url || tab?.pendingUrl, apps);
 }
 
-// Home's apps by default (§6.1): the app keys' Calendar, Chat and YouTube
+// Home's apps by default (§6.1): the app keys' Chat, Calendar and YouTube
 // Music, the apps you keep open all day. Meet's calls come and go.
-export const DEFAULT_HOME_APPS = ["app-calendar", "app-chat", "app-music"];
+export const DEFAULT_HOME_APPS = ["app-chat", "app-calendar", "app-music"];
 
 // What the options page calls app key `command`: its app's name, or its
 // number among the keys (as the manifest's "Open app 1") while it has none.

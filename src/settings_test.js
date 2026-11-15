@@ -77,7 +77,7 @@ test("each app key can be given any website, or none", () => {
 test("a bad app is an error naming it", () => {
   const errors = (apps) => resolve({ apps }).errors;
   assert.deepEqual(errors([{ command: "app-mail", name: "Mail", url: "https://mail.google.com/" }]), [
-    "apps: app 1's command must be one of app-calendar, app-chat, app-meet, app-music",
+    "apps: app 1's command must be one of app-chat, app-calendar, app-meet, app-music",
   ]);
   assert.deepEqual(errors([{ command: "app-meet", name: "Meet", url: "meet" }]), [`apps: app 1's address "meet" isn't a URL`]);
   assert.deepEqual(errors([{ command: "app-meet", name: "Files", url: "file:///home" }]), ["apps: app 1's address must be a website"]);
@@ -217,9 +217,9 @@ test("each standing name's problem is its own, a repeat marking the later one", 
   assert.deepEqual(standingProblems([]), [], "an empty list is the setting's to refuse");
 });
 
-test("home's apps are shared, the app keys' Calendar, Chat and YouTube Music by default", () => {
+test("home's apps are shared, the app keys' Chat, Calendar and YouTube Music by default", () => {
   assert.ok(SHARED.includes("homeApps"));
-  assert.deepEqual(DEFAULT_SETTINGS.homeApps, ["app-calendar", "app-chat", "app-music"]);
+  assert.deepEqual(DEFAULT_SETTINGS.homeApps, ["app-chat", "app-calendar", "app-music"]);
   const { settings, errors } = resolve({ homeApps: ["app-meet"] });
   assert.deepEqual(errors, []);
   assert.deepEqual(settings.homeApps, ["app-meet"]);
@@ -229,7 +229,7 @@ test("home's apps are shared, the app keys' Calendar, Chat and YouTube Music by 
 test("home's apps refuse a name that's no app key, and one listed twice", () => {
   const bad = (homeApps) => resolve({ homeApps }).errors;
   assert.deepEqual(bad("app-chat"), ["homeApps: must be a list"]);
-  assert.deepEqual(bad(["app-chat", "gmail"]), ['homeApps: app 2, "gmail", isn\'t one of app-calendar, app-chat, app-meet, app-music']);
+  assert.deepEqual(bad(["app-chat", "gmail"]), ['homeApps: app 2, "gmail", isn\'t one of app-chat, app-calendar, app-meet, app-music']);
   assert.deepEqual(bad(["app-chat", "app-chat"]), ["homeApps: app 2, app-chat, is listed already"]);
   assert.deepEqual(resolve({ homeApps: ["gmail"] }).settings.homeApps, DEFAULT_SETTINGS.homeApps, "it keeps its default");
 });
@@ -265,7 +265,7 @@ test("the workspace settings refuse a bad name, a name twice, and a bad field", 
   assert.deepEqual(bad({ "a@b": {} }), ['workspaceSettings: "a@b": a workspace\'s name can\'t have quotes, backslashes, @ or control characters']);
   assert.deepEqual(bad({ in: { ask: true } }), ['workspaceSettings: "in": ask isn\'t one of askForName, pinnedApps']);
   assert.deepEqual(bad({ in: { askForName: "yes" } }), ['workspaceSettings: "in".askForName must be true or false']);
-  assert.deepEqual(bad({ in: { pinnedApps: ["gmail"] } }), ['workspaceSettings: "in".pinnedApps: app 1, "gmail", isn\'t one of app-calendar, app-chat, app-meet, app-music']);
+  assert.deepEqual(bad({ in: { pinnedApps: ["gmail"] } }), ['workspaceSettings: "in".pinnedApps: app 1, "gmail", isn\'t one of app-chat, app-calendar, app-meet, app-music']);
   assert.equal(resolve({ workspaceSettings: [] }).settings.workspaceSettings, null, "it keeps its default");
 });
 

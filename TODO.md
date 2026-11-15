@@ -74,6 +74,11 @@ Guesses made on autopilot (2026-10-24), each cheap to undo.
   update is unverified; if not, the keys checklist shows attention on
   another key, and `Search+Tab`, which the shortcuts page can't capture,
   can't be bound by hand. Reversible: `attention` in `manifest.json`.
+- **Next window wanting attention is `attention-next`** (2026-11-15), a
+  command with no key, mapped from tide for Linux's `next_attention` for
+  the keys checklist's presets. Like every command it's on Launch and
+  Actions too, and off chromeOS, as `Search+A`, it does nothing.
+  Reversible: `attention-next` in `manifest.json`.
 - **tide for Linux's defaults, adopted as they are** (2026-11-14): clocks
   SF, NYC and LON (SF's city "San Francisco", for the clock panel and the
   DST note), the main share from 10% to 90%, and a lone window 60% wide

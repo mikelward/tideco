@@ -104,6 +104,14 @@ test("attention is on Search+A, as tide for Linux's is on Super+A", () => {
   assert.equal(c.suggested_key.chromeos, "Search+A");
 });
 
+// The maintainer wants it on every platform with no key by default
+// (2026-11-15): you give it one at chrome://extensions/shortcuts.
+test("the next-attention command has no key until you give it one", () => {
+  const c = manifest.commands["attention-next"];
+  assert.equal(c.description, "Go to the next window wanting attention");
+  assert.equal(c.suggested_key, undefined);
+});
+
 // chromeOS turns Search+arrows into Home, End, Page Up and Page Down before
 // Chrome sees them, so chrome://extensions/shortcuts refuses them (§7.2).
 test("no command's key is a Search+arrow", () => {
@@ -117,7 +125,7 @@ test("no command's key is a Search+arrow", () => {
 // as workspace-move does, and for rare actions (§7.3).
 test("frequent actions take no modifier but Search, and no two commands share a key", () => {
   const keyOf = (c) => /\(([^)]*)\)$/.exec(c.description ?? "")?.[1] ?? "";
-  const frequent = /^(focus-|grow|shrink|master-|monocle|layout-|workspace-(?!move)|popup|attention)/;
+  const frequent = /^(focus-|grow|shrink|master-|monocle|layout-|workspace-(?!move)|popup|attention$)/;
   const seen = new Map();
   for (const [name, c] of Object.entries(manifest.commands)) {
     const key = keyOf(c);
@@ -165,10 +173,16 @@ test("every command in the manifest does something", async () => {
     chrome.syncStore.settings = { standing: ["in", "re", "oc", "me", "w5", "w6", "w7", "w8", "w9"] };
     const tide = new Tide(chrome);
     await tide.event();
-    // Removing a master needs a second one to remove; going or sending to
+    // Removing a master needs a second one to remove; going to the next
+    // window wanting attention needs one marked; going or sending to
     // home, or back a step, needs to start somewhere else; and going to the
     // last workspace needs one shown before.
     if (name === "master-remove") await tide.command("master-add");
+    // Going to the next window wanting attention needs one marked.
+    if (name === "attention-next") {
+      await tide.title(20, 2, "Chat");
+      await tide.title(20, 2, "Chat (1)");
+    }
     if (name === "workspace-last") {
       await tide.command("workspace-2");
       await tide.command("workspace-1");

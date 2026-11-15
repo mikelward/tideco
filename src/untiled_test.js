@@ -67,7 +67,7 @@ test("a dashboard you closed yourself opens again", async () => {
 test("the app keys open their app and place nothing; tiling keys do nothing", async () => {
   const api = fake();
   const u = new Untiled(api);
-  for (const c of ["focus-next", "workspace-2", "send-3", "monocle", "float", "grow", "attention"]) await u.command(c);
+  for (const c of ["focus-next", "workspace-2", "send-3", "monocle", "float", "grow", "attention", "attention-next"]) await u.command(c);
   assert.deepEqual(api.calls, []);
   await u.command("app-browser");
   await u.command("app-calendar");

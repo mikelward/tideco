@@ -51,6 +51,12 @@ test("a preset suggests its keys for the commands that do the same", () => {
   assert.deepEqual(s["workspace-1"], { key: "Search+1", why: "spec" }, "what it doesn't name keeps the spec's key");
 });
 
+test("a preset's key for the next window wanting attention goes to its command", () => {
+  const presets = { mine: { keys: { next_attention: ["SUPER + U"] } } };
+  assert.deepEqual(suggestions("mine", manifest, presets)["attention-next"], { key: "Search+U", why: "preset" });
+  assert.deepEqual(suggestions("tide", manifest)["attention-next"], { key: "", why: "spec" }, "unbound unless a preset binds it");
+});
+
 test("bindings with no command here are dropped", () => {
   // dwm's terminal (Super+Shift+Return), close (Super+Shift+C), quit,
   // Super+Tab, focus and move left and right (Super+, and .) and the

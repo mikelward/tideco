@@ -927,7 +927,9 @@ key is bound, and the keys that differ, with why.
   `Alt+Shift+U`, `J`, `K` and `Space`. Attention was `Search+Tab` until
   2026-11-14; whether Chrome moves an install's binding to the new
   suggestion on update is *(unverified)*. You bind the rest once at
-  `chrome://extensions/shortcuts`. The keys checklist (§7.4, on the
+  `chrome://extensions/shortcuts`; some, like the overview and going to
+  the next window wanting attention (§10.3), have no key until you give
+  them one. The keys checklist (§7.4, on the
   Keyboard page) lists every unbound command and opens that page.
 - **chromeOS's own:** tap Search for the launcher, `Search+L` to lock,
   `Search+Alt+M` to move the window to the other display, `Alt+=` to
@@ -1394,6 +1396,12 @@ notifications; tide for Chrome derives it from **page titles** instead:
   §8.1): every marked window, on any workspace, most recent first. Enter
   activates one (§6.1), which clears its mark. With nothing marked, the
   list says so. The key again closes it (maintainer, 2026-11-14).
+- "Go to the next window wanting attention" (`attention-next`) goes
+  straight to the newest mark, on any workspace, as Enter on the top row
+  of `Search+A`'s list would, and clears it, so the next press goes to the
+  next. With nothing marked it does nothing. It has no key until you give
+  it one, on every platform, as tide for Linux's `next_attention` has
+  none (maintainer, 2026-11-15).
 - A mark clears when the window is focused.
 - **Counting an unread count as attention is deliberate.** tide for Linux
   and tide for macOS don't (tide for Linux §14.4), since a count rises with
@@ -1762,7 +1770,8 @@ each event, since Chrome answers at once.
     where the desktop puts it.
   - The dashboard's bar shows no workspaces, and says tiling and
     workspaces work only on chromeOS. Its launcher has no Workspaces or
-    Attention scope, and `Search+A` does nothing. Launch and Actions list only the commands that place no
+    Attention scope, and `Search+A` and the next-attention command do
+    nothing. Launch and Actions list only the commands that place no
     window: the dashboard, the app keys and keep awake. Actions has no
     dimming, and Launch finds only the settings pages shown there.
   - The settings hide what only tiling uses: the setup checklist, Start at

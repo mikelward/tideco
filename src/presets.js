@@ -41,6 +41,7 @@ export const COMMANDS = Object.freeze({
   go_to_workspace: "workspace-go",
   move_to_workspace: "workspace-move",
   attention: "attention",
+  next_attention: "attention-next",
   keep_awake: "keep-awake",
   browser: "app-browser",
 });

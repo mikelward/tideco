@@ -523,6 +523,13 @@ tide for Linux's Lua layout is the reference; the two share test fixtures (§15)
   tile. Without tab search Chrome hides its address, so it tiles too.
 - Anything you float with `Search+Shift+F`, remembered by window ID and
   persisted.
+- **Where a floated window goes.** A tiled window that floats, by
+  `Search+Shift+F`, a rule or as Settings, leaves its tile for the middle
+  of its display, at the size it opened at, or two thirds of the display
+  if tide for Chrome never saw it untiled or it opened filling it. One
+  that opens floating stays where it opened, and one dragged to native
+  float stays where chromeOS put it. Chrome can't keep a window on top,
+  so a floating window is only untiled: one you click behind covers it.
   - **Asking to always float.** Floating an app window by hand, when no
     rule covers its site, asks once: *Always float meet.google.com?*,
     with **Always float**, which adds the rule at once, **Edit rule…**,

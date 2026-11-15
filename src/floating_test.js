@@ -1,7 +1,7 @@
 // Tests for floating.js, the float rules (SPEC.md §5.4).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { askBounds, askFloat, askText, checkFloating, checkSite, coveringRule, floatedByOS, floatingNow, floatsBuiltIn, MAX_RULES, movedRule, newlyCovered, ruleable, siteName, siteOf, withoutRule, withRule } from "./floating.js";
+import { askBounds, askFloat, askText, checkFloating, checkSite, coveringRule, floatBounds, floatedByOS, floatingNow, floatsBuiltIn, MAX_RULES, movedRule, newlyCovered, ruleable, siteName, siteOf, withoutRule, withRule } from "./floating.js";
 
 const MEET = "https://meet.google.com";
 const CHAT = "https://chat.google.com";
@@ -154,4 +154,12 @@ test("a host with a port is a site, not a scheme, so the question's Edit rule ad
   assert.equal(checkSite("localhost:8080/").site, "https://localhost:8080");
   assert.ok(checkSite("ftp://example.com").error, "a scheme that isn't the web's is still refused");
   assert.ok(checkSite("mailto:someone").error);
+});
+
+test("a floated window goes to the middle of the work area, at the size it opened at", () => {
+  const area = { left: 1920, top: 0, width: 1920, height: 1032 };
+  assert.deepEqual(floatBounds(area, { width: 800, height: 600 }), { left: 2480, top: 216, width: 800, height: 600 });
+  assert.deepEqual(floatBounds(area, undefined), { left: 2240, top: 172, width: 1280, height: 688 }, "a size tide never saw");
+  assert.deepEqual(floatBounds(area, { width: 1920, height: 1032 }), { left: 2240, top: 172, width: 1280, height: 688 }, "one that opened filling it");
+  assert.deepEqual(floatBounds(area, { width: 2400, height: 500 }), { left: 1920, top: 266, width: 1920, height: 500 }, "never past it");
 });

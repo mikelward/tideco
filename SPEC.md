@@ -1457,6 +1457,9 @@ All native, set from the setup checklist (§3.4). tide for Chrome owns none of i
     keep on) on charger and on battery. The display-off and lock delays are
     fixed by the OS *(unverified)*, so tide for Linux's 2:30 / 5:00 / 5:30 / 30:00
     timeline is approximated, not matched.
+  - **Not there:** tide for Linux's On AC power and On battery power
+    profiles (its SPEC.md §16). chromeOS gives an extension no power
+    profile to set, and Settings › Power has none.
   - "Lock when sleeping" on, as tide for Linux locks before sleep.
   - **Keep awake** is tide for Chrome's: `Search+S`, a click on the cup on the
     bar of the dashboard and the home page, or the launcher's Keep awake,

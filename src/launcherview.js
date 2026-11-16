@@ -366,12 +366,37 @@ try {
   console.debug("tide: couldn't read the bar's layout:", e);
   arrangeBar(undefined);
 }
+// The bar's background in light and dark mode (§8.1), as launcher.css's
+// --bar-light and --bar-dark, or the page's own without them.
+// Kept in localStorage, as the layout is, so the page opens in them.
+const BAR_COLORS_KEY = "tide.barColors";
+function colorBar(s) {
+  for (const [mode, key] of [["light", "lightBarColor"], ["dark", "darkBarColor"]]) {
+    if (s?.[key]) document.documentElement.style.setProperty(`--bar-${mode}`, s[key]);
+    else document.documentElement.style.removeProperty(`--bar-${mode}`);
+  }
+}
+try {
+  colorBar(JSON.parse(localStorage.getItem(BAR_COLORS_KEY) ?? "null"));
+} catch (e) {
+  console.debug("tide: couldn't read the bar's colors:", e);
+}
+function keepBarColors(s) {
+  try {
+    localStorage.setItem(BAR_COLORS_KEY, JSON.stringify({ lightBarColor: s.lightBarColor, darkBarColor: s.darkBarColor }));
+  } catch (e) {
+    // Only the first frame needs them; the settings color the bar anyway.
+    console.debug("tide: couldn't keep the bar's colors:", e);
+  }
+}
 // The options page reports bad settings; here the defaults stand in.
 async function loadClocks() {
   settings = (await loadSettings(chrome.storage)).settings;
   placeBar(barAtBottom(settings));
   arrangeBar(settings.barLayout);
   keepBarLayout(settings.barLayout);
+  colorBar(settings);
+  keepBarColors(settings);
   renderTime();
 }
 function toggleDetail() {

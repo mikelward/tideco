@@ -3,6 +3,7 @@
 // isn't saved.
 
 import { APP_COMMANDS, appLabel, DEFAULT_APPS, withHomeApp } from "./apps.js";
+import { DEFAULT_BAR } from "./barcolor.js";
 import { byZone, layoutList, moved as movedItem, stored as storedLayout, switched, ZONE_LABELS } from "./barlayout.js";
 import { checklist } from "./keys.js";
 import { loadPreset, PRESET_NAMES, PRESETS, savePreset, suggestions } from "./presets.js";
@@ -444,7 +445,7 @@ function fromForm() {
     return [tr.dataset.mode, { mfact: Number((num(share) / 100).toPrecision(12)), nmaster: num(count) }];
   }));
   const standing = standingFields().map((f) => f.value.trim());
-  return { clocks, ...hours, apps, dimStrength: Number((strength / 100).toPrecision(12)), barPosition: $("bar-position").value, barLayout: storedLayout(barLayout), watched: [...watchedSites], defaultMode, modes, standing, homeApps: [...homeApps], workspaceSettings, floating: floatRules.map((r) => ({ ...r })) };
+  return { clocks, ...hours, apps, dimStrength: Number((strength / 100).toPrecision(12)), barPosition: $("bar-position").value, barLayout: storedLayout(barLayout), ...barColors, watched: [...watchedSites], defaultMode, modes, standing, homeApps: [...homeApps], workspaceSettings, floating: floatRules.map((r) => ({ ...r })) };
 }
 
 function toForm(settings) {
@@ -453,6 +454,8 @@ function toForm(settings) {
   $("bar-position").value = settings.barPosition;
   barLayout = layoutList(settings.barLayout);
   renderBarLayout();
+  barColors = { lightBarColor: settings.lightBarColor, darkBarColor: settings.darkBarColor };
+  renderBarColors();
   watchedSites = [...settings.watched];
   standingRows.replaceChildren(...settings.standing.map(standingRow));
   markStanding();
@@ -488,6 +491,34 @@ async function save(value = fromForm()) {
   renameKeys(settings.apps);
   if (JSON.stringify([settings.standing, APP_COMMANDS.map((c) => appLabel(c, settings.apps))]) !== drawnFor) renderWorkspaceSettings(settings);
   return true;
+}
+
+// The bar's colors (§8.1): each mode's swatch, its color or the page's own,
+// and Default, which takes it out. A color the text can't be read on is
+// refused, and the swatch goes back.
+let barColors = { lightBarColor: null, darkBarColor: null };
+const BAR_COLOR_FIELDS = [
+  ["light", "lightBarColor"],
+  ["dark", "darkBarColor"],
+];
+
+function renderBarColors() {
+  for (const [mode, key] of BAR_COLOR_FIELDS) {
+    $(`bar-${mode}`).value = barColors[key] ?? DEFAULT_BAR[mode];
+    $(`bar-${mode}-default`).disabled = barColors[key] === null;
+  }
+}
+
+async function changeBarColor(key, value) {
+  const previous = barColors;
+  barColors = { ...barColors, [key]: value };
+  if (!(await save())) barColors = previous;
+  renderBarColors();
+}
+
+for (const [mode, key] of BAR_COLOR_FIELDS) {
+  $(`bar-${mode}`).addEventListener("change", (e) => changeBarColor(key, e.target.value));
+  $(`bar-${mode}-default`).addEventListener("click", () => changeBarColor(key, null));
 }
 
 // The bar's layout (§8.1): its items by zone, each with ↑ and ↓, which move

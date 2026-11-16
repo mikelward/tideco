@@ -617,6 +617,37 @@ test("the Bar page's Layout centers the workspaces and hides the name, live", as
   }
 });
 
+// The Bar page's colors (§8.1): a dark background colors the bar in dark
+// mode at once, one the text can't be read on is refused, and Default
+// takes it out.
+test("the Bar page's Dark background colors the bar, live, and refuses one too light", async () => {
+  const { page, errors } = await open("src/launcher.html?mode=home");
+  const settings = await open("src/options.html");
+  try {
+    await page.emulateMedia({ colorScheme: "dark" });
+    await page.waitForSelector("#clocks li");
+    await settings.page.waitForSelector("#sidebar button");
+    await turnTo(settings.page, "bar");
+    const bar = () => page.evaluate(() => getComputedStyle(document.getElementById("bar")).backgroundColor);
+    const before = await bar();
+    await settings.page.locator("#bar-dark").fill("#13303a");
+    await settings.page.waitForFunction(async () => (await chrome.storage.sync.get("settings")).settings?.darkBarColor === "#13303a");
+    await page.waitForFunction(() => getComputedStyle(document.getElementById("bar")).backgroundColor === "rgb(19, 48, 58)");
+
+    await settings.page.locator("#bar-dark").fill("#ffffff");
+    await settings.page.waitForFunction(() => document.body.textContent.includes("darkBarColor: is too light"));
+    assert.equal(await settings.page.locator("#bar-dark").inputValue(), "#13303a", "the swatch goes back");
+
+    await settings.page.locator("#bar-dark-default").click();
+    await page.waitForFunction((was) => getComputedStyle(document.getElementById("bar")).backgroundColor === was, before);
+    assert.deepEqual(errors, []);
+  } finally {
+    await worker.evaluate(() => chrome.storage.sync.remove("settings"));
+    await page.close();
+    await settings.page.close();
+  }
+});
+
 // The overview (§6.5) groups the windows by workspace, the one showing
 // first; typing filters, and Esc closes it. Without all-sites access it
 // says why there are no pictures.

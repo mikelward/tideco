@@ -129,7 +129,7 @@ test("layouts are set per Chromebook, and checked", () => {
 
 test("pick keeps the shared settings apart from this Chromebook's", () => {
   const all = resolve().settings;
-  assert.deepEqual(Object.keys(pick(all, SHARED)), ["clocks", "day", "work", "apps", "dimStrength", "barPosition", "barLayout", "watched", "defaultMode", "modes", "standing", "homeApps", "workspaceSettings", "floating"]);
+  assert.deepEqual(Object.keys(pick(all, SHARED)), ["clocks", "day", "work", "apps", "dimStrength", "barPosition", "barLayout", "lightBarColor", "darkBarColor", "watched", "defaultMode", "modes", "standing", "homeApps", "workspaceSettings", "floating"]);
   assert.deepEqual(Object.keys(pick(all, PER_MACHINE)), ["singleRules", "ultrawideAspect", "wheelStep", "startup"]);
 });
 
@@ -152,6 +152,16 @@ test("the bar's layout is today's unless barLayout says otherwise, shared and ch
   assert.match(bad.errors[0], /^barLayout: must be a list like/);
   assert.equal(bad.settings.barLayout.length, 4, "the default kept");
   assert.ok(SHARED.includes("barLayout"));
+});
+
+test("the bar's colors are the page's own unless set, shared and checked", () => {
+  assert.equal(resolve().settings.lightBarColor, null);
+  assert.equal(resolve().settings.darkBarColor, null);
+  assert.equal(resolve({ darkBarColor: "#13303A" }).settings.darkBarColor, "#13303a");
+  const bad = resolve({ darkBarColor: "#ffffff" });
+  assert.match(bad.errors[0], /^darkBarColor: is too light/);
+  assert.equal(bad.settings.darkBarColor, null);
+  assert.ok(SHARED.includes("lightBarColor") && SHARED.includes("darkBarColor"));
 });
 
 test("the bar is at the top unless barPosition puts it at the bottom, shared and checked", () => {

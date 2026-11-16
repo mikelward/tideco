@@ -8,7 +8,8 @@
   /* A click target under the pointer: the bar a shade darker, as if half
      pressed. */
   --hover: rgba(0, 0, 0, 0.08);
-  --bar: rgba(255, 255, 255, 0.92);
+  /* The bar's own, or lightBarColor (§8.1). */
+  --bar: var(--bar-light, rgba(255, 255, 255, 0.92));
   --accent: #3584e4;
   --on-accent: #ffffff;
   --urgent: #e5a50a;
@@ -21,7 +22,7 @@
     --surface: #1e1e1e;
     --raised: #303030;
     --hover: rgba(255, 255, 255, 0.1);
-    --bar: rgba(16, 18, 20, 0.92);
+    --bar: var(--bar-dark, rgba(16, 18, 20, 0.92));
     --accent: #78aeed;
     --on-accent: #1e1e1e;
     --urgent: #f8e45c;

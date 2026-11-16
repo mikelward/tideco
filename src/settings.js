@@ -2,6 +2,7 @@
 // overrides in chrome.storage.local, merged key by key. A bad value is an
 // error naming the setting, and that setting keeps its default.
 
+import { checkBarColor } from "./barcolor.js";
 import { checkBarLayout, layoutList, stored } from "./barlayout.js";
 import { APP_COMMANDS, APP_SCHEMES, appOrigin, DEFAULT_APPS, DEFAULT_HOME_APPS } from "./apps.js";
 import { checkZone, DAY, DEFAULT_CLOCKS, WORK } from "./clocks.js";
@@ -13,7 +14,7 @@ export const SETTINGS_KEY = "settings";
 
 // What follows you to every Chromebook, in storage.sync, and what each one
 // keeps for its own displays, in storage.local.
-export const SHARED = ["clocks", "day", "work", "apps", "dimStrength", "barPosition", "barLayout", "watched", "defaultMode", "modes", "standing", "homeApps", "workspaceSettings", "floating"];
+export const SHARED = ["clocks", "day", "work", "apps", "dimStrength", "barPosition", "barLayout", "lightBarColor", "darkBarColor", "watched", "defaultMode", "modes", "standing", "homeApps", "workspaceSettings", "floating"];
 export const PER_MACHINE = ["singleRules", "ultrawideAspect", "wheelStep", "startup"];
 
 export function pick(settings, keys) {
@@ -32,6 +33,10 @@ export const DEFAULT_SETTINGS = {
   // Where the bar's items go, left, center or right, and whether each
   // shows (§8.1), as tide's appearance.json has it.
   barLayout: stored(layoutList(undefined)),
+  // The bar's background in light and dark mode (§8.1), as #rrggbb, or null
+  // for the page's own, as tide's appearance.json has them.
+  lightBarColor: null,
+  darkBarColor: null,
   // Sites whose unread counts tide shows (§10.3).
   watched: DEFAULT_SITES,
   // The layout a workspace starts in, by its display's aspect (§5.2), and
@@ -337,7 +342,7 @@ function checkModes(value, current) {
   return modes;
 }
 
-const CHECKS = { clocks: checkClocks, day: checkHours, work: checkHours, apps: checkApps, singleRules: checkSingleRules, ultrawideAspect: (a) => checkAspect(a), dimStrength: checkStrength, barPosition: checkBarPosition, barLayout: checkBarLayout, watched: checkWatched, defaultMode: checkDefaultMode, modes: checkModes, wheelStep: checkWheelStep, startup: checkStartup, standing: checkStanding, homeApps: checkHomeApps, workspaceSettings: checkWorkspaceSettings, floating: checkFloating };
+const CHECKS = { clocks: checkClocks, day: checkHours, work: checkHours, apps: checkApps, singleRules: checkSingleRules, ultrawideAspect: (a) => checkAspect(a), dimStrength: checkStrength, barPosition: checkBarPosition, barLayout: checkBarLayout, lightBarColor: checkBarColor(false), darkBarColor: checkBarColor(true), watched: checkWatched, defaultMode: checkDefaultMode, modes: checkModes, wheelStep: checkWheelStep, startup: checkStartup, standing: checkStanding, homeApps: checkHomeApps, workspaceSettings: checkWorkspaceSettings, floating: checkFloating };
 
 // Settings from what's stored: `sync` then `local`, each an object or
 // undefined. Returns {settings, errors}, an error for each bad or unknown

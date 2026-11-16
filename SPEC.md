@@ -1182,6 +1182,17 @@ Instead:
   is on top. The page keeps the last place it drew the bar in
   `localStorage`, so it opens there rather than moving once the settings
   load. Tooltips are Chrome's own and go where Chrome puts them.
+- **The bar's color is yours to set,** in light and dark mode, as tide
+  for Linux's is (`lightBarColor` and `darkBarColor`, the same keys and
+  values as its `appearance.json`): `#rrggbb` or `#rgb`, or `null` for
+  the page's own. The bar's text stays the mode's, so a color must
+  contrast with it by at least 7:1 (WCAG's AAA): a light color for light
+  mode, a dark one for dark. Anything else is an error naming the
+  setting. The Bar page's **Light background** and **Dark background**
+  each have a color picker and Default, which takes the color out. A
+  color the text can't be read on is refused, and the picker goes back.
+  Both are shared, and an open dashboard or home page follows at once.
+  The page keeps the last colors in `localStorage`, so it opens in them.
 - **The bar's items go left, center or right,** as tide for Linux's do
   (tide for Linux §7.1; `barLayout`, the same key and values as its
   `appearance.json`): the logo, the workspaces (with the layout symbol),
@@ -1568,7 +1579,8 @@ Crostini runs kitty, the shell config and the terminal tools, so `conf` and
   Chromebook's too (§7.4). Objects merge key by key; lists replace whole.
 - **Setting names** are tide for Linux's where the setting is the same
   (`clocks`, `standing`, `workspaceSettings`, `defaultMode`, `modes`,
-  `ultrawideAspect`, `dimStrength`, `barPosition`, `barLayout`). Two differ:
+  `ultrawideAspect`, `dimStrength`, `barPosition`, `barLayout`, `lightBarColor`,
+  `darkBarColor`). Two differ:
   `homeApps` is tide for Linux's `inApps`, naming app keys rather than
   programs, and `singleRules` is its `single`, the same list of
   `{minAspect, width}`. "Mode" in a name means the layout.

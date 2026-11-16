@@ -1227,7 +1227,6 @@ Tabs scope (§9.4) or `Search+A` (§10.3):
 | `Search+Y` | YouTube Music | installed web app |
 | `Search+T` | Secure Shell, as the terminal | its extension page, app 5 |
 | *unbound* | apps 6 to 8 | off until you give each an app |
-| *unassigned* | IRC | installed web app, or the Linux client by shelf slot; Search+I went to add a master (§7.1) |
 
 - **The eight app keys are slots.** Chrome fixes an extension's commands in
   its manifest, so `app-calendar`, `app-chat`, `app-meet` and `app-music`
@@ -1278,8 +1277,8 @@ tide for Chrome binds the keys to whichever works, decided in M3.
 ### 9.3 Linux apps and the terminal
 
 An extension can't start a Linux app. The keys that run Linux apps (`T`
-terminal, `W` terminal on the workstation, `E` files, `N` notepad, `R`
-remote desktop, `B` headphones) use the **shelf**: pinned
+terminal, `W` terminal on the workstation, `E` files, `N` notepad, `B`
+headphones) use the **shelf**: pinned
 in a fixed order, by hand (not a setup checklist item, as it's personal), and **Alt+1…8** launches shelf item N *(unverified on
 current builds)*. If the Shortcuts app lets "launch shelf item N" take an
 extra combo, `Search+T` and the rest map there; that's

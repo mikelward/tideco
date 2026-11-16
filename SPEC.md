@@ -1182,6 +1182,22 @@ Instead:
   is on top. The page keeps the last place it drew the bar in
   `localStorage`, so it opens there rather than moving once the settings
   load. Tooltips are Chrome's own and go where Chrome puts them.
+- **The bar's items go left, center or right,** as tide for Linux's do
+  (tide for Linux §7.1; `barLayout`, the same key and values as its
+  `appearance.json`): the logo, the workspaces (with the layout symbol),
+  the title, and keep awake with the clocks as one group, each in a zone
+  in the order given, or hidden. By default the bar is as it was: the
+  logo and the workspaces left, the title centered, keep awake and the
+  clocks right. The center zone sits on the bar's true middle: the bar is
+  a grid of two equal sides and the center, so the center moves over only
+  when a side needs more than its half (`launcher.css`'s `.zone`). The
+  Bar page's **Layout** table lists the items by zone, Left, Center, then
+  Right, each with a Show box and ↑ and ↓, which move it, past its
+  zone's end into the next (`barlayout.js`, after tide for Linux's
+  `shell/lib/barlayout.mjs`). It's shared, and an open dashboard or home
+  page follows at once. The page keeps the last layout it drew in
+  `localStorage`, as it keeps the bar's edge. A bar without zones, such as
+  an older page's, gets them when the page loads.
 
 ### 8.2 Clocks
 
@@ -1552,7 +1568,7 @@ Crostini runs kitty, the shell config and the terminal tools, so `conf` and
   Chromebook's too (§7.4). Objects merge key by key; lists replace whole.
 - **Setting names** are tide for Linux's where the setting is the same
   (`clocks`, `standing`, `workspaceSettings`, `defaultMode`, `modes`,
-  `ultrawideAspect`, `dimStrength`, `barPosition`). Two differ:
+  `ultrawideAspect`, `dimStrength`, `barPosition`, `barLayout`). Two differ:
   `homeApps` is tide for Linux's `inApps`, naming app keys rather than
   programs, and `singleRules` is its `single`, the same list of
   `{minAspect, width}`. "Mode" in a name means the layout.

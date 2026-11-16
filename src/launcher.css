@@ -56,10 +56,47 @@ body {
   font-size: 13px;
 }
 #title {
+  color: var(--muted);
+}
+.bar:not(.zoned) #title {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  color: var(--muted);
+}
+/* The bar's three zones (§8.1), each its items in order: left from the left
+   edge, right ending at the right edge, and center on the bar's true
+   middle. The sides share what's left equally, so the center moves over
+   only when a side needs more than its half. */
+.bar.zoned {
+  display: grid;
+  grid-template-columns: 1fr minmax(0, auto) 1fr;
+  column-gap: 8px;
+}
+/* A side is never narrower than its items (a title among them can still
+   shrink), so a crowded side moves the center over rather than running
+   into it. */
+.zone {
+  display: flex;
+  align-items: center;
+}
+.zone[data-zone="center"] {
+  justify-content: center;
+  min-width: 0;
+}
+.zone[data-zone="right"] {
+  justify-content: flex-end;
+}
+.zone > * + * {
+  margin-left: 8px;
+}
+.zone #title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.bar [hidden] {
+  display: none;
 }
 /* tide's wave logo, first on the left: the icon 12px from the bar's edge
    and 8px from the first workspace, in the accent blue. */
@@ -77,7 +114,6 @@ body {
   color: var(--accent);
   cursor: pointer;
 }
-/* The cup's auto margin pushes it and the clocks right. */
 #logo + nav {
   margin-left: 4px;
 }
@@ -214,7 +250,7 @@ nav button.current {
   justify-content: center;
   width: 26px;
   height: 26px;
-  margin: 0 10px 0 auto;
+  margin-right: 10px;
   padding: 0;
   border: none;
   border-radius: 6px;
@@ -222,6 +258,9 @@ nav button.current {
   color: var(--muted);
   opacity: 0.5;
   cursor: pointer;
+}
+#keep-awake + #clocks {
+  margin-left: 0;
 }
 #keep-awake[aria-pressed="true"] {
   color: var(--accent);
@@ -238,7 +277,9 @@ nav button.current {
   display: flex;
   align-items: baseline;
   gap: 14px;
-  margin: 0;
+  margin-top: 0;
+  margin-bottom: 0;
+  margin-right: 0;
   padding: 0;
   list-style: none;
   font-variant-numeric: tabular-nums;

@@ -576,6 +576,47 @@ test("the Bar setting puts the bar along the bottom, live, with the launcher abo
   }
 });
 
+// The Bar page's Layout (§8.1): moving the workspaces into the center puts
+// them on the bar's true middle at once, and turning the name off hides it.
+test("the Bar page's Layout centers the workspaces and hides the name, live", async () => {
+  const { page, errors } = await open("src/launcher.html?mode=home");
+  const settings = await open("src/options.html");
+  try {
+    await page.waitForSelector("#clocks li");
+    await page.waitForSelector("#workspaces button");
+    await settings.page.waitForSelector("#sidebar button");
+    await turnTo(settings.page, "bar");
+    const rows = settings.page.locator("#bar-layout tbody tr");
+    assert.deepEqual(await rows.locator("td:first-child").allInnerTexts(), ["Logo", "Workspaces", "Workspace name", "Keep awake and clocks"]);
+    await settings.page.getByRole("button", { name: "Move Workspaces down" }).click();
+    await settings.page.getByRole("checkbox", { name: "Show Workspace name" }).uncheck();
+    await settings.page.waitForFunction(async () => (await chrome.storage.sync.get("settings")).settings?.barLayout?.some((e) => e.id === "title" && !e.shown));
+    assert.deepEqual(await rows.locator("td:nth-child(2)").allInnerTexts(), ["Left", "Center", "Center", "Right"]);
+
+    await page.waitForFunction(() => document.getElementById("title").hidden);
+    const middle = await page.evaluate(() => {
+      const nav = document.getElementById("workspaces").getBoundingClientRect();
+      const bar = document.getElementById("bar").getBoundingClientRect();
+      return [nav.left + nav.width / 2, bar.left + bar.width / 2];
+    });
+    assert.ok(Math.abs(middle[0] - middle[1]) <= 1, `the workspaces (${middle[0]}) aren't on the bar's middle (${middle[1]})`);
+    // Too narrow for the clocks in their half: the workspaces move over
+    // rather than run under them.
+    await page.setViewportSize({ width: 560, height: 700 });
+    const [wsRight, cupLeft] = await page.evaluate(() => [
+      document.getElementById("workspaces").getBoundingClientRect().right,
+      document.getElementById("keep-awake").getBoundingClientRect().left,
+    ]);
+    assert.ok(wsRight <= cupLeft, `the workspaces (to ${wsRight}) run into keep awake (from ${cupLeft})`);
+    assert.deepEqual(errors, []);
+    assert.deepEqual(settings.errors, []);
+  } finally {
+    await worker.evaluate(() => chrome.storage.sync.remove("settings"));
+    await page.close();
+    await settings.page.close();
+  }
+});
+
 // The overview (§6.5) groups the windows by workspace, the one showing
 // first; typing filters, and Esc closes it. Without all-sites access it
 // says why there are no pictures.
@@ -1052,7 +1093,8 @@ test("a right-click on a bar item opens the settings at its section, and off the
     const bar = document.getElementById("bar").getBoundingClientRect();
     return [(title.right + cup.left) / 2, (bar.top + bar.bottom) / 2];
   });
-  assert.equal(await page.evaluate(([x, y]) => document.elementFromPoint(x, y).id, [x, y]), "bar");
+  // The bar itself, or one of its zones, which has no id of its own.
+  assert.equal(await page.evaluate(([x, y]) => document.elementFromPoint(x, y).closest("[id]").id, [x, y]), "bar");
   await page.mouse.click(x, y, { button: "right" });
   await showing("bar");
   assert.equal(await page.evaluate(() => window.prevented), true, "Chrome's menu shows on the bar");

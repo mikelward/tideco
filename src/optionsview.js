@@ -3,6 +3,7 @@
 // isn't saved.
 
 import { APP_COMMANDS, appLabel, DEFAULT_APPS, withHomeApp } from "./apps.js";
+import { byZone, layoutList, moved as movedItem, stored as storedLayout, switched, ZONE_LABELS } from "./barlayout.js";
 import { checklist } from "./keys.js";
 import { loadPreset, PRESET_NAMES, PRESETS, savePreset, suggestions } from "./presets.js";
 import { MOUSE_PAGE } from "./mouse.js";
@@ -443,13 +444,15 @@ function fromForm() {
     return [tr.dataset.mode, { mfact: Number((num(share) / 100).toPrecision(12)), nmaster: num(count) }];
   }));
   const standing = standingFields().map((f) => f.value.trim());
-  return { clocks, ...hours, apps, dimStrength: Number((strength / 100).toPrecision(12)), barPosition: $("bar-position").value, watched: [...watchedSites], defaultMode, modes, standing, homeApps: [...homeApps], workspaceSettings, floating: floatRules.map((r) => ({ ...r })) };
+  return { clocks, ...hours, apps, dimStrength: Number((strength / 100).toPrecision(12)), barPosition: $("bar-position").value, barLayout: storedLayout(barLayout), watched: [...watchedSites], defaultMode, modes, standing, homeApps: [...homeApps], workspaceSettings, floating: floatRules.map((r) => ({ ...r })) };
 }
 
 function toForm(settings) {
   rows.replaceChildren(...settings.clocks.map(clockRow));
   $("dim-strength").value = Number((settings.dimStrength * 100).toPrecision(12));
   $("bar-position").value = settings.barPosition;
+  barLayout = layoutList(settings.barLayout);
+  renderBarLayout();
   watchedSites = [...settings.watched];
   standingRows.replaceChildren(...settings.standing.map(standingRow));
   markStanding();
@@ -485,6 +488,43 @@ async function save(value = fromForm()) {
   renameKeys(settings.apps);
   if (JSON.stringify([settings.standing, APP_COMMANDS.map((c) => appLabel(c, settings.apps))]) !== drawnFor) renderWorkspaceSettings(settings);
   return true;
+}
+
+// The bar's layout (§8.1): its items by zone, each with ↑ and ↓, which move
+// it, past its zone's end into the next, and a Show box.
+let barLayout = layoutList(undefined);
+
+async function changeBarLayout(next) {
+  if (next === null) return;
+  const previous = barLayout;
+  barLayout = layoutList(next);
+  if (!(await save())) barLayout = previous;
+  renderBarLayout();
+}
+
+function renderBarLayout() {
+  $("bar-layout").tBodies[0].replaceChildren(
+    ...byZone(barLayout).map((item, i) => {
+      const tr = document.createElement("tr");
+      const show = Object.assign(document.createElement("input"), { type: "checkbox", checked: item.shown });
+      show.setAttribute("aria-label", `Show ${item.label}`);
+      show.addEventListener("change", () => changeBarLayout(switched(barLayout, i, show.checked)));
+      const order = Object.assign(document.createElement("td"), { className: "order" });
+      order.append(
+        button("↑", `Move ${item.label} up`, () => changeBarLayout(movedItem(barLayout, i, -1))),
+        button("↓", `Move ${item.label} down`, () => changeBarLayout(movedItem(barLayout, i, 1))),
+      );
+      const showCell = document.createElement("td");
+      showCell.append(show);
+      tr.append(
+        Object.assign(document.createElement("td"), { textContent: item.label }),
+        Object.assign(document.createElement("td"), { textContent: ZONE_LABELS[item.zone] }),
+        showCell,
+        order,
+      );
+      return tr;
+    }),
+  );
 }
 
 // Start at login (§13.1): this Chromebook's list of websites, in order.

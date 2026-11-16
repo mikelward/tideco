@@ -129,7 +129,7 @@ test("layouts are set per Chromebook, and checked", () => {
 
 test("pick keeps the shared settings apart from this Chromebook's", () => {
   const all = resolve().settings;
-  assert.deepEqual(Object.keys(pick(all, SHARED)), ["clocks", "day", "work", "apps", "dimStrength", "barPosition", "watched", "defaultMode", "modes", "standing", "homeApps", "workspaceSettings", "floating"]);
+  assert.deepEqual(Object.keys(pick(all, SHARED)), ["clocks", "day", "work", "apps", "dimStrength", "barPosition", "barLayout", "watched", "defaultMode", "modes", "standing", "homeApps", "workspaceSettings", "floating"]);
   assert.deepEqual(Object.keys(pick(all, PER_MACHINE)), ["singleRules", "ultrawideAspect", "wheelStep", "startup"]);
 });
 
@@ -142,6 +142,16 @@ test("the dim's strength is shared, and checked", () => {
   assert.equal(resolve({ dimStrength: 0.2 }).settings.dimStrength, 0.2);
   assert.deepEqual(resolve({ dimStrength: 0.9 }).errors, ["dimStrength: 0.9 isn't a strength from 0.02 to 0.5 (2% to 50%), like 0.12"]);
   assert.ok(SHARED.includes("dimStrength"));
+});
+
+test("the bar's layout is today's unless barLayout says otherwise, shared and checked", () => {
+  assert.deepEqual(resolve().settings.barLayout.map((e) => `${e.id}:${e.zone}`), ["logo:left", "workspaces:left", "title:center", "icons:right"]);
+  const mine = [{ id: "workspaces", zone: "center", shown: true }, { id: "title", zone: "center", shown: false }];
+  assert.deepEqual(resolve({ barLayout: mine }).settings.barLayout, mine);
+  const bad = resolve({ barLayout: "center" });
+  assert.match(bad.errors[0], /^barLayout: must be a list like/);
+  assert.equal(bad.settings.barLayout.length, 4, "the default kept");
+  assert.ok(SHARED.includes("barLayout"));
 });
 
 test("the bar is at the top unless barPosition puts it at the bottom, shared and checked", () => {

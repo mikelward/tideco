@@ -145,12 +145,12 @@ test("the dim's strength is shared, and checked", () => {
 });
 
 test("the bar's layout is today's unless barLayout says otherwise, shared and checked", () => {
-  assert.deepEqual(resolve().settings.barLayout.map((e) => `${e.id}:${e.zone}`), ["logo:left", "workspaces:left", "title:center", "icons:right"]);
+  assert.deepEqual(resolve().settings.barLayout.map((e) => `${e.id}:${e.zone}`), ["logo:left", "workspaces:left", "title:center", "icons:right", "clocks:right"]);
   const mine = [{ id: "workspaces", zone: "center", shown: true }, { id: "title", zone: "center", shown: false }];
   assert.deepEqual(resolve({ barLayout: mine }).settings.barLayout, mine);
   const bad = resolve({ barLayout: "center" });
   assert.match(bad.errors[0], /^barLayout: must be a list like/);
-  assert.equal(bad.settings.barLayout.length, 4, "the default kept");
+  assert.equal(bad.settings.barLayout.length, 5, "the default kept");
   assert.ok(SHARED.includes("barLayout"));
 });
 

@@ -1196,10 +1196,13 @@ Instead:
 - **The bar's items go left, center or right,** as tide for Linux's do
   (tide for Linux §7.1; `barLayout`, the same key and values as its
   `appearance.json`): the logo, the workspaces (with the layout symbol),
-  the title, and keep awake with the clocks as one group, each in a zone
-  in the order given, or hidden. By default the bar is as it was: the
-  logo and the workspaces left, the title centered, keep awake and the
-  clocks right. The center zone sits on the bar's true middle: the bar is
+  the title, keep awake, and the clocks, each in a zone in the order
+  given, or hidden. By default the bar is as it was: the logo and the
+  workspaces left, the title centered, keep awake and the clocks right.
+  The clocks are an item of their own, as on tide for Linux, so they can
+  sit left or in the center. They were once one item with keep awake: a
+  layout from then, which doesn't name them, keeps them where keep awake
+  is, shown or hidden with it. The center zone sits on the bar's true middle: the bar is
   a grid of two equal sides and the center, so the center moves over only
   when a side needs more than its half (`launcher.css`'s `.zone`). The
   Bar page's **Layout** table lists the items by zone, Left, Center, then

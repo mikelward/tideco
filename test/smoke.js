@@ -587,11 +587,11 @@ test("the Bar page's Layout centers the workspaces and hides the name, live", as
     await settings.page.waitForSelector("#sidebar button");
     await turnTo(settings.page, "bar");
     const rows = settings.page.locator("#bar-layout tbody tr");
-    assert.deepEqual(await rows.locator("td:first-child").allInnerTexts(), ["Logo", "Workspaces", "Workspace name", "Keep awake and clocks"]);
+    assert.deepEqual(await rows.locator("td:first-child").allInnerTexts(), ["Logo", "Workspaces", "Workspace name", "Keep awake", "Clocks"]);
     await settings.page.getByRole("button", { name: "Move Workspaces down" }).click();
     await settings.page.getByRole("checkbox", { name: "Show Workspace name" }).uncheck();
     await settings.page.waitForFunction(async () => (await chrome.storage.sync.get("settings")).settings?.barLayout?.some((e) => e.id === "title" && !e.shown));
-    assert.deepEqual(await rows.locator("td:nth-child(2)").allInnerTexts(), ["Left", "Center", "Center", "Right"]);
+    assert.deepEqual(await rows.locator("td:nth-child(2)").allInnerTexts(), ["Left", "Center", "Center", "Right", "Right"]);
 
     await page.waitForFunction(() => document.getElementById("title").hidden);
     const middle = await page.evaluate(() => {
@@ -608,6 +608,12 @@ test("the Bar page's Layout centers the workspaces and hides the name, live", as
       document.getElementById("keep-awake").getBoundingClientRect().left,
     ]);
     assert.ok(wsRight <= cupLeft, `the workspaces (to ${wsRight}) run into keep awake (from ${cupLeft})`);
+    // The clocks are an item of their own: up past keep awake, and up again
+    // into the center, while keep awake stays right.
+    await settings.page.getByRole("button", { name: "Move Clocks up" }).click();
+    await settings.page.getByRole("button", { name: "Move Clocks up" }).click();
+    await page.waitForFunction(() => document.getElementById("clocks").closest("[data-zone]")?.dataset.zone === "center");
+    assert.equal(await page.evaluate(() => document.getElementById("keep-awake").closest("[data-zone]").dataset.zone), "right");
     assert.deepEqual(errors, []);
     assert.deepEqual(settings.errors, []);
   } finally {

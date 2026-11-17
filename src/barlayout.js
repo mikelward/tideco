@@ -9,12 +9,16 @@ export const ZONE_LABELS = Object.freeze({ left: "Left", center: "Center", right
 
 // The items, in today's bar's order: each one's id (tide's), the name the
 // options page gives it, its zone and whether it shows unless you say, and
-// the bar's elements it moves.
+// the bar's elements it moves. The clocks are an item of their own, as on
+// tide, so they go left, center or right as the workspaces do. They were
+// once one item with keep awake (`from`): a stored list from then, which
+// doesn't name them, has them where keep awake is, shown as it is.
 export const ITEMS = Object.freeze([
   Object.freeze({ id: "logo", label: "Logo", zone: "left", shown: true, elements: ["logo"] }),
   Object.freeze({ id: "workspaces", label: "Workspaces", zone: "left", shown: true, elements: ["workspaces"] }),
   Object.freeze({ id: "title", label: "Workspace name", zone: "center", shown: true, elements: ["title"] }),
-  Object.freeze({ id: "icons", label: "Keep awake and clocks", zone: "right", shown: true, elements: ["keep-awake", "clocks"] }),
+  Object.freeze({ id: "icons", label: "Keep awake", zone: "right", shown: true, elements: ["keep-awake"] }),
+  Object.freeze({ id: "clocks", label: "Clocks", zone: "right", shown: true, elements: ["clocks"], from: "icons" }),
 ]);
 
 // A stored list (barLayout) as every item of ITEMS once, [{id, label, zone,
@@ -45,7 +49,8 @@ export function layoutList(stored) {
         break;
       }
     }
-    out.splice(at, 0, { id: e.id, label: e.label, zone: e.zone, shown: e.shown });
+    const was = e.from && out.find((o) => o.id === e.from);
+    out.splice(at, 0, { id: e.id, label: e.label, zone: was ? was.zone : e.zone, shown: was ? was.shown : e.shown });
   });
   return out;
 }

@@ -1194,7 +1194,13 @@ test("the float question adds the site's rule, or opens the Floating page with i
 
   const third = await ask("https://music.youtube.com");
   const gone = third.page.waitForEvent("close");
-  await third.page.getByRole("button", { name: "Not now" }).click();
+  // Not now closes the window at once, which can be before Playwright's
+  // click returns; the click then fails with the page closed, which is what
+  // it was for. Any other failure, or one with the page still open, stands.
+  await third.page.getByRole("button", { name: "Not now" }).click().catch((e) => {
+    if (!third.page.isClosed()) throw e;
+    console.debug("smoke: Not now closed the window before the click returned:", e.message);
+  });
   await gone;
   assert.equal((await worker.evaluate(() => chrome.storage.sync.get("settings"))).settings.floating.length, 2, "Not now adds nothing");
   await worker.evaluate(() => chrome.storage.sync.remove("settings"));

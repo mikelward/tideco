@@ -16,9 +16,22 @@ import { ACCESS as BRIDGE_ACCESS, TabsBridge } from "./tabsbridge.js";
 import { Untiled } from "./untiled.js";
 import { checkName } from "./workspaces.js";
 import { SECTION_KEY } from "./launcher.js";
+import { capture, CHANGES_KEY, LOG_KEY, Recent } from "./recent.js";
+import { Reporter } from "./bugreport.js";
 
-const tide = new Tide(chrome);
-const untiled = new Untiled(chrome);
+// Report a bug's ring buffers (§14.7): the worker's log, every line it
+// prints from here on, and each workspace and focus change with its cause.
+// A failed write says so on the console's own functions, which record
+// nothing, so it can't feed itself.
+const own = { warn: console.warn.bind(console) };
+const log = new Recent(chrome.storage.session, LOG_KEY, { warn: (...a) => own.warn(...a) });
+Object.assign(own, capture(console, log));
+const trail = new Recent(chrome.storage.session, CHANGES_KEY, { warn: (...a) => own.warn(...a) });
+const reporter = new Reporter(chrome, { log, changes: trail });
+console.info("tide: the worker started");
+
+const tide = new Tide(chrome, { trail, reporter });
+const untiled = new Untiled(chrome, { reporter });
 const bridge = new TabsBridge(chrome);
 // Asked afresh each time, which costs Chrome nothing to answer.
 const where = () => platform(chrome);
@@ -26,7 +39,9 @@ const where = () => platform(chrome);
 const on = (role, f) => (...args) => where().then((p) => (p.role === role ? f(...args) : undefined));
 const tiling = (f) => on(TILE, f);
 const tabs = (f) => on(TABS, f);
-const changed = tiling(() => tide.event());
+// A listener for a Chrome event that changes what tide shows, `cause`
+// saying which, from the event's own arguments if it's a function.
+const changed = (cause) => (...args) => tiling(() => tide.event(typeof cause === "function" ? cause(...args) : cause))();
 const tabsChanged = tabs(() => bridge.changed());
 where().then((p) => {
   if (p.role === TILE) return;
@@ -53,22 +68,27 @@ const report = serialized((tab, url, title, first) =>
 const commands = new Set(Object.keys(chrome.runtime.getManifest().commands));
 
 // Off chromeOS a command that would lay out or move a window does nothing,
-// and the toolbar's tooltip says why.
-const command = (name) => where().then((p) => (p.role === TILE ? tide.command(name) : untiled.command(name)));
-chrome.commands.onCommand.addListener(command);
-const windowChanged = (...args) => {
-  changed(...args);
-  tabsChanged();
+// and the toolbar's tooltip says why. `via` says what ran it, for Report a
+// bug: a key, the toolbar button or the launcher.
+const command = (name, via = "key") => where().then((p) => (p.role === TILE ? tide.command(name, via) : untiled.command(name)));
+chrome.commands.onCommand.addListener((name) => command(name));
+const windowChanged = (cause) => {
+  const f = changed(cause);
+  return (...args) => {
+    f(...args);
+    tabsChanged();
+  };
 };
-chrome.windows.onCreated.addListener(windowChanged);
-chrome.windows.onRemoved.addListener(windowChanged);
-chrome.windows.onFocusChanged.addListener(windowChanged);
-chrome.windows.onBoundsChanged.addListener(changed);
-chrome.system.display.onDisplayChanged.addListener(changed);
+chrome.windows.onCreated.addListener(windowChanged((w) => `window ${w?.id} opened`));
+chrome.windows.onRemoved.addListener(windowChanged((id) => `window ${id} closed`));
+// chrome.windows.WINDOW_ID_NONE is -1: no Chrome window has focus.
+chrome.windows.onFocusChanged.addListener(windowChanged((id) => (id === -1 ? "focus left Chrome" : `window ${id} took focus`)));
+chrome.windows.onBoundsChanged.addListener(changed((w) => `window ${w?.id} moved or resized`));
+chrome.system.display.onDisplayChanged.addListener(changed("a display changed"));
 // Startup is a login on chromeOS, after which the mouse lines need running
 // again (§19.2).
 chrome.runtime.onStartup.addListener(tiling(() => {
-  changed();
+  changed("Chrome started")();
   watch();
   tide.startAtLogin().catch((e) => console.error("tide: couldn't start the login list:", e));
   remind(chrome).catch((e) => console.error("tide: couldn't open the mouse reminder:", e));
@@ -77,7 +97,7 @@ chrome.runtime.onStartup.addListener(tiling(() => {
 // allowing (§14.1), on every platform: off chromeOS they say what tide does
 // there. The page is asked for as Launch asks for one (§9.4).
 chrome.runtime.onInstalled.addListener(({ reason }) => {
-  changed();
+  changed(`tide was ${reason === "install" ? "installed" : "updated or reloaded"}`)();
   watch();
   if (reason !== "install") return;
   chrome.storage.session
@@ -87,10 +107,7 @@ chrome.runtime.onInstalled.addListener(({ reason }) => {
 });
 // A newly active tab needs the dim if its window has it, and so does a
 // dimmed tab that loaded a new page.
-chrome.tabs.onActivated.addListener((...args) => {
-  changed(...args);
-  tabsChanged();
-});
+chrome.tabs.onActivated.addListener(windowChanged((info) => `a tab in window ${info?.windowId} came forward`));
 chrome.tabs.onUpdated.addListener((tabId, info) => {
   if (info.status === "complete") tiling(() => tide.tabLoaded(tabId))();
   if ("title" in info || "url" in info) tabsChanged();
@@ -102,13 +119,13 @@ for (const e of ["onCreated", "onRemoved", "onMoved", "onAttached", "onDetached"
 chrome.permissions.onAdded.addListener((granted) => {
   tiling(() => {
     if (DIM_ORIGINS.every((o) => granted.origins?.includes(o))) tide.setDim(true);
-    else changed();
+    else changed("access granted")();
     watch();
   })();
   tabs(() => bridge.start())();
 });
 chrome.permissions.onRemoved.addListener((removed) => {
-  changed();
+  changed("access taken away")();
   watch();
   tabs(() => {
     if (BRIDGE_ACCESS.permissions.some((p) => removed.permissions?.includes(p))) return bridge.stop();
@@ -118,11 +135,11 @@ chrome.permissions.onRemoved.addListener((removed) => {
 // window event; tide's own state writes aren't settings, so don't loop.
 chrome.storage.onChanged.addListener((changes) => {
   if (!settingsChanged(changes)) return;
-  changed();
+  changed("settings changed")();
   watch();
 });
 // The toolbar button opens the dashboard, as its key does (§8.1).
-chrome.action.onClicked.addListener(() => command("popup"));
+chrome.action.onClicked.addListener(() => command("popup", "toolbar button"));
 
 // The launcher runs commands too, but only ones the manifest declares, and
 // its bar and Workspaces scope show a workspace by name, and Search+Shift+W's
@@ -155,7 +172,7 @@ function handle(message, sender, respond) {
     return true;
   };
   // The launcher waits for each step before it closes itself (§9.4).
-  if (commands.has(message?.command)) return done(tide.command(message.command));
+  if (commands.has(message?.command)) return done(tide.command(message.command, "launcher"));
   const valid = (name) => typeof name === "string" && checkName(name).name === name;
   if (fromTide && valid(message?.workspace)) return done(tide.workspace(message.workspace));
   if (fromTide && valid(message?.moveTo)) return done(tide.moveTo(message.moveTo));

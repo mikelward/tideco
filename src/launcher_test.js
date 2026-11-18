@@ -235,30 +235,44 @@ test("the options page shows its address's section, else the one Launch asked fo
 });
 
 // The Actions scope (§9.4): tide's own actions, then its commands.
-test("Actions lists keep awake, the dim and reloading, saying which are on", () => {
+test("Actions lists keep awake, the dim, reporting a bug and reloading, saying which are on", () => {
   const rows = (opts) => actions(opts).map((a) => [a.title, a.detail]);
   assert.deepEqual(rows({ keepAwake: true, dim: { granted: true, on: false } }), [
     ["Keep awake", "on"],
     ["Dim inactive windows", "off"],
+    ["Report a bug", "copies a report and opens an issue"],
     ["Reload tide", "restarts the extension"],
   ]);
   assert.deepEqual(rows({ dim: { granted: false, on: true } })[1], ["Dim inactive windows", "off · Chrome asks first"]);
   // Off chromeOS there's no dim.
-  assert.deepEqual(rows({}).map(([title]) => title), ["Keep awake", "Reload tide"]);
+  assert.deepEqual(rows({}).map(([title]) => title), ["Keep awake", "Report a bug", "Reload tide"]);
   assert.equal(actions({ key: (c) => (c === "keep-awake" ? "Search+S" : "") })[0].key, "Search+S");
 });
 
-test("Actions lists every action and command with nothing typed; keep awake once", () => {
+test("Actions lists every action and command with nothing typed; keep awake and reporting a bug once", () => {
   const many = Object.fromEntries(Array.from({ length: 12 }, (_, i) => [`workspace-${i}`, { description: `Go to ${i} (Search+${i})` }]));
-  const list = items({ apps, actions: actions({ dim: { granted: true, on: true } }), commands: { ...many, "keep-awake": { description: "Toggle keep awake (Search+S)" } } });
+  const commands = { ...many, "keep-awake": { description: "Toggle keep awake (Search+S)" }, "report-bug": { description: "Report a bug (Search+Shift+B)" } };
+  const list = items({ apps, actions: actions({ dim: { granted: true, on: true } }), commands });
   const shown = rank("", list, { scope: "actions", limit: limitFor("actions", "") });
-  assert.deepEqual(shown.slice(0, 3).map((i) => i.title), ["Keep awake", "Dim inactive windows", "Reload tide"]);
-  assert.equal(shown.length, 15, "every one, past the usual eight");
+  assert.deepEqual(shown.slice(0, 4).map((i) => i.title), ["Keep awake", "Dim inactive windows", "Report a bug", "Reload tide"]);
+  assert.equal(shown.length, 16, "every one, past the usual eight");
   assert.equal(shown.filter((i) => /keep awake/i.test(i.title)).length, 1);
+  assert.equal(shown.filter((i) => /report a bug/i.test(i.title)).length, 1);
   assert.equal(limitFor("actions", "re"), 8, "a query shows the best eight");
   assert.equal(limitFor("launch", ""), 8);
   // Launch finds an action by name too.
   assert.equal(rank("reload", list, { scope: "launch" })[0].title, "Reload tide");
+});
+
+// Tap Search+Space, type "bug", Enter: Report a bug, on its key.
+test("typing bug finds Report a bug, which runs its command and shows its key", () => {
+  const key = (c) => (c === "report-bug" ? "Search+Shift+B" : "");
+  const list = items({ apps, actions: actions({ key }), commands: { "report-bug": { description: "Report a bug (Search+Shift+B)" } } });
+  const [top] = rank("bug", list, { scope: "launch" });
+  assert.equal(top.title, "Report a bug");
+  assert.equal(top.kind, "action", "the action, not only its command");
+  assert.equal(top.command, "report-bug");
+  assert.equal(top.key, "Search+Shift+B");
 });
 
 // Search+A's list (§10.3): the marked windows, from tide's state, with

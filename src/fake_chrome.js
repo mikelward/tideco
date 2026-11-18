@@ -95,7 +95,11 @@ export class FakeChrome {
         fake.wins = fake.wins.filter((w) => w.id !== id);
       },
     };
-    this.runtime = { getURL: (path) => `chrome-extension://tide/${path}` };
+    this.runtime = {
+      getURL: (path) => `chrome-extension://tide/${path}`,
+      getManifest: () => ({ version: "0" }),
+      getPlatformInfo: async () => ({ os: "cros", arch: "x86-64" }),
+    };
     // Each window has one tab, `id * 10`; `dimmed` is the set of tabs
     // showing the dim overlay.
     this.dimmed = new Set();
@@ -182,6 +186,7 @@ export class FakeChrome {
       },
       create: async (props) => {
         fake.createdTabs.push(props);
+        return { id: 1000 + fake.createdTabs.length, ...props };
       },
       update: async (id, props) => {
         fake.tabUpdates.push({ id, ...props });

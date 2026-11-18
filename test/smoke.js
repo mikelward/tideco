@@ -749,7 +749,8 @@ test("a click anywhere on the bar's logo, chips or clocks reaches one", async ()
   });
   assert.deepEqual(dead.slice(0, 10), [], `${dead.length} dead points`);
   // Under the pointer, even at the bar's corner outside the logo itself,
-  // the logo's whole target shows, and still takes the click there.
+  // the logo shows hovered, lit only over its own cell, and still takes
+  // the click there.
   await page.mouse.move(0, 0);
   const first = await page.evaluate(() => {
     const logo = document.getElementById("logo");
@@ -762,13 +763,19 @@ test("a click anywhere on the bar's logo, chips or clocks reaches one", async ()
     };
   });
   assert.notEqual(first.background, "rgba(0, 0, 0, 0)", "no hover shown");
-  assert.deepEqual([first.top, first.left], ["-5px", "-8px"], "the whole target, not the logo");
+  assert.deepEqual([first.top, first.left], ["-5px", "-4px"], "its own cell, not out to the bar's edge");
   assert.ok(first.corner, "hovering rounds the shape but loses no clicks");
   // Above the clocks' line of text, in their target.
   const row = await page.locator("#clocks").boundingBox();
   await page.mouse.move(row.x + row.width / 2, 1);
   const clocks = await page.evaluate(() => getComputedStyle(document.getElementById("clocks"), "::after").backgroundColor);
   assert.notEqual(clocks, "rgba(0, 0, 0, 0)", "the clocks row shows as one");
+  const [right, first0] = await page.evaluate(() => [
+    getComputedStyle(document.getElementById("clocks"), "::after").right,
+    getComputedStyle(document.querySelector("#workspaces button"), "::after").left,
+  ]);
+  assert.equal(right, "-4px", "the clocks light up to their own cell, not the bar's edge");
+  assert.equal(first0, "-3px", "the first chip after the logo lights only its cell");
   assert.deepEqual(errors, []);
 });
 

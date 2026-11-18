@@ -210,6 +210,22 @@ nav button:first-child::after {
   left: -7px;
   right: -10px;
 }
+/* The hover, though, is the item's own cell: at most 4px past each end,
+   never the rest of its target, as tide for Linux's (its barclick.mjs's
+   hoverRect). The first chip, the logo and the clocks reach the bar's
+   edge, but light up only their own cell. */
+#logo::after {
+  left: -4px;
+}
+nav button:first-child::after {
+  left: -4px;
+}
+#logo + nav button:first-child::after {
+  left: -3px;
+}
+#clocks::after {
+  right: -4px;
+}
 /* The scope chips are 6px apart. */
 .scopes button::before,
 .scopes button::after {

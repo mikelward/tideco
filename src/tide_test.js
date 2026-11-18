@@ -2,6 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { Tide } from "./tide.js";
+import { Recent } from "./recent.js";
 import { FakeChrome, HD, UW } from "./fake_chrome.js";
 import * as ws from "./workspaces.js";
 import { DEFAULT_MODE_SETTINGS } from "./workspaces.js";
@@ -2519,4 +2520,87 @@ test("no question for a site a rule covers, or one Chrome hides", async () => {
   await tide.command("float");
   await tide.command("float");
   assert.equal(asks(chrome).length, 1);
+});
+
+// Report a bug's record of workspace and focus changes, each with its cause.
+const texts = (trail) => trail.since(0).map((e) => `${e.text} (${e.cause})`);
+
+test("each workspace and focus change is recorded with what caused it", async () => {
+  const chrome = new FakeChrome({ displays: [HD], windows: [on(HD, 1, { focused: true, title: "One" }), on(HD, 2, { title: "Two" })] });
+  const trail = new Recent(null, "changes", { now: () => 0 });
+  const tide = new Tide(chrome, { trail });
+  await tide.event("Chrome started");
+  trail.items.length = 0;
+  await tide.command("focus-next");
+  chrome.focus(1);
+  await tide.event("window 1 took focus");
+  await tide.command("workspace-2", "launcher");
+  assert.deepEqual(texts(trail), [
+    'focus window 1 "One" → window 2 "Two" (key: focus-next)',
+    'focus window 2 "Two" → window 1 "One" (window 1 took focus)',
+    "workspace in → re (launcher: workspace-2)",
+    'focus window 1 "One" → none (launcher: workspace-2)',
+  ]);
+});
+
+test("a window brought back outside tide is named as why its workspace showed", async () => {
+  const chrome = new FakeChrome({ displays: [HD], windows: [on(HD, 1, { focused: true, title: "One" }), on(HD, 2, { title: "Two" })] });
+  const trail = new Recent(null, "changes", { now: () => 0 });
+  const tide = new Tide(chrome, { trail });
+  await tide.event();
+  chrome.focus(2);
+  await tide.event();
+  await tide.command("send-2");
+  assert.equal(chrome.win(2).state, "minimized");
+  trail.items.length = 0;
+  // The shelf, a notification or the app itself brings it back.
+  chrome.win(2).state = "normal";
+  chrome.focus(2);
+  await tide.event("window 2 took focus");
+  const [workspace] = texts(trail);
+  assert.equal(workspace, 'workspace in → re (window 2 took focus; window 2 "Two" came back outside tide)');
+});
+
+test("a worker woken by a change compares it with the state it stored", async () => {
+  const chrome = new FakeChrome({ displays: [HD], windows: [on(HD, 1, { focused: true, title: "One" }), on(HD, 2, { title: "Two" })] });
+  const first = new Tide(chrome);
+  await first.event();
+  chrome.focus(2);
+  await first.event();
+  await first.command("send-2");
+  // The worker slept; a new one wakes for the window coming back.
+  chrome.win(2).state = "normal";
+  chrome.focus(2);
+  const trail = new Recent(null, "changes", { now: () => 0 });
+  const woken = new Tide(chrome, { trail });
+  await woken.event("window 2 took focus");
+  assert.match(texts(trail)[0], /^workspace in → re \(window 2 took focus/);
+});
+
+test("Report a bug opens the report, with every workspace's windows", async () => {
+  const chrome = new FakeChrome({ displays: [HD], windows: [on(HD, 1, { focused: true, title: "One" }), on(HD, 2, { title: "Two" })] });
+  const tide = new Tide(chrome);
+  await tide.event();
+  await tide.command("report-bug");
+  assert.deepEqual(chrome.createdTabs, [{ url: "chrome-extension://tide/src/report.html" }]);
+  const { text } = chrome.sessionStore.bugReport;
+  assert.match(text, /Current workspace: in/);
+  assert.match(text, /in: window 1 "One", window 2 "Two"/);
+  assert.match(text, /re: empty/);
+  assert.match(text, /Tiling: on/);
+});
+
+test("a long title is redacted before it's shortened, so no address shows", async () => {
+  const title = "Inbox (123) - firstname.lastname@gmail.com - Gmail";
+  const chrome = new FakeChrome({ displays: [HD], windows: [on(HD, 1, { focused: true, title }), on(HD, 2, { title: "Two" })] });
+  const trail = new Recent(null, "changes", { now: () => 0 });
+  const tide = new Tide(chrome, { trail });
+  await tide.event();
+  trail.items.length = 0;
+  await tide.command("focus-next");
+  await tide.command("report-bug");
+  const { text } = chrome.sessionStore.bugReport;
+  assert.doesNotMatch(text, /firstname|lastname/);
+  assert.doesNotMatch(texts(trail).join("\n"), /firstname|lastname/);
+  assert.match(texts(trail)[0], /^focus window 1 "Inbox \(123\) - user@example\.com - Gmail" → window 2 "Two"/);
 });

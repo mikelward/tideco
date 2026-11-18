@@ -39,7 +39,7 @@ test("every icon the manifest names is a PNG of its size", () => {
 
 // The extension shows itself as tide; tide is only the repo's and the
 // code's name, which users never see.
-const PAGES = ["src/launcher.html", "src/overview.html", "src/options.html", "src/mouse.html", "src/floatask.html"];
+const PAGES = ["src/launcher.html", "src/overview.html", "src/options.html", "src/mouse.html", "src/floatask.html", "src/report.html"];
 const page = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
 test("the name Chrome shows, in chrome://extensions, the toolbar and the shortcuts, is tide", () => {
@@ -137,6 +137,20 @@ test("frequent actions take no modifier but Search, and no two commands share a 
   }
 });
 
+// Chrome refuses Alt with Search, as it refuses Ctrl+Alt, both in a
+// manifest and as a key you set (ui/base/accelerators/command.cc), so
+// Report a bug is Search+Shift+B, not tide for Linux's Super+Alt+B (§7.3).
+test("Report a bug is Search+Shift+B, set by hand, and no command's key has Search+Alt", () => {
+  const c = manifest.commands["report-bug"];
+  assert.equal(c.description, "Report a bug (Search+Shift+B)");
+  assert.equal(c.suggested_key, undefined, "the four suggested keys are taken");
+  for (const [name, cmd] of Object.entries(manifest.commands)) {
+    const key = /\(([^)]*)\)$/.exec(cmd.description ?? "")?.[1] ?? "";
+    const mods = key.split("+").slice(0, -1);
+    assert.ok(!(mods.includes("Search") && mods.includes("Alt")), `${name}: ${key}`);
+  }
+});
+
 // Tiling needs no permission with an install warning; tab access and each
 // site's are asked for on the options page (§14.1).
 test("every permission with an install warning is optional", () => {
@@ -197,7 +211,7 @@ test("every command in the manifest does something", async () => {
     chrome.updates.length = 0;
     await tide.command(name);
     const after = JSON.stringify([tide.state, chrome.wins]);
-    const acted = before !== after || chrome.updates.some((u) => u.focused) || chrome.awake !== null;
+    const acted = before !== after || chrome.updates.some((u) => u.focused) || chrome.awake !== null || chrome.createdTabs.length > 0;
     assert.ok(acted, `${name} changed nothing`);
   }
 });
@@ -227,6 +241,7 @@ function workerChrome(os) {
       ...events("tabs", ["onActivated", "onUpdated", "onCreated", "onRemoved", "onMoved", "onAttached", "onDetached", "onReplaced"]),
       update: call("tabs.update", {}),
       query: call("tabs.query", []),
+      create: call("tabs.create", {}),
     },
     action: { ...events("action", ["onClicked"]), setTitle: call("action.setTitle"), setBadgeText: call("action.setBadgeText"), setBadgeBackgroundColor: call("action.setBadgeBackgroundColor") },
     permissions: { ...events("permissions", ["onAdded", "onRemoved"]), contains: async () => false },
@@ -242,7 +257,7 @@ function workerChrome(os) {
       ...events("runtime", ["onStartup", "onInstalled", "onMessage"]),
       getManifest: () => manifest,
       getURL: (path) => `chrome-extension://tide/${path}`,
-      getPlatformInfo: async () => ({ os }),
+      getPlatformInfo: async () => ({ os, arch: "x86-64" }),
       openOptionsPage: call("runtime.openOptionsPage"),
     },
   };
@@ -418,3 +433,24 @@ test("the two name prompt commands are in the manifest, with their keys", () => 
   assert.equal(manifest.commands["workspace-go"].description, "Go to a workspace by name (Search+W)");
   assert.equal(manifest.commands["workspace-move"].description, "Move the window to a workspace by name (Search+Shift+W)");
 });
+
+// Report a bug (§14.7): its key or the launcher's action keeps the report
+// for its page and opens the page, on every platform, with the worker's
+// own recent log in it.
+for (const os of ["cros", "linux"]) {
+  test(`on ${os}, Report a bug opens the report, with the worker's log`, async () => {
+    const w = await startWorker(os);
+    console.info("tide: a line from the worker");
+    await fire(w, "commands.onCommand", "report-bug");
+    const opened = w.calls.filter(([name]) => name === "tabs.create");
+    assert.deepEqual(opened, [["tabs.create", { url: "chrome-extension://tide/src/report.html" }]]);
+    const kept = w.calls.find(([name, items]) => name === "storage.session.set" && items?.bugReport)?.[1].bugReport;
+    assert.match(kept.text, /tide: a line from the worker/);
+    assert.match(kept.text, os === "cros" ? /Tiling: on/ : /Tiling: off/);
+    let answer = "none";
+    const launcher = { url: "chrome-extension://tide/src/launcher.html?mode=dashboard" };
+    await fire(w, "runtime.onMessage", { command: "report-bug" }, launcher, (a) => (answer = a));
+    assert.equal(answer, true);
+    assert.equal(w.calls.filter(([name]) => name === "tabs.create").length, 2, "and so does the launcher's action");
+  });
+}

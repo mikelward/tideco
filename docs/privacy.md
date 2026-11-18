@@ -1,6 +1,6 @@
 # tide for Chrome privacy policy
 
-Effective 1 November 2026.
+Effective 18 November 2026.
 
 tide for Chrome tiles and arranges your Chrome and web app
 windows on chromeOS. This policy says what it reads, what it keeps, and
@@ -52,6 +52,10 @@ which Chrome Sync copies to your Google account if you have Sync turned on.
     ticks, and the mouse's input device number from its mouse page.
 
   This data never leaves the Chromebook. Removing tide for Chrome deletes it.
+- **While the browser runs**, in `chrome.storage.session`, for Report a
+  bug: the last 15 minutes of tide for Chrome's own log, and of which
+  workspace showed and which window had focus, with why. These name
+  windows by their app or title. Closing the browser deletes them.
 - **In your Chrome settings**, in `chrome.storage.sync`:
   - your clocks and working hours;
   - the names and addresses of the sites on tide for Chrome's app keys;
@@ -68,7 +72,12 @@ which Chrome Sync copies to your Google account if you have Sync turned on.
 
 ## What tide for Chrome sends
 
-Nothing over the network. tide for Chrome makes no network requests of its own. On
+Nothing over the network. tide for Chrome makes no network requests of its own.
+**Report a bug** copies a report of the last 30 seconds to your clipboard,
+with app names and window titles but no email addresses or home folders,
+and opens a new-issue page on GitHub whose address carries only tide for
+Chrome's version, your browser's and your OS's. Nothing more reaches GitHub
+unless you paste the report and submit the issue yourself. On
 Linux, with tide for Linux's tab list allowed, the tabs go to tide for Linux's helper on the
 same computer, through Chrome's native messaging, and no further. Showing a tab's site
 icon in the launcher loads that icon the way Chrome's own tab strip does.

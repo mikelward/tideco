@@ -43,8 +43,8 @@ export function actionTitle({ os, role }) {
 }
 
 // The commands that work off chromeOS too: none of them lays out or moves a
-// window. The dashboard, the launcher, the app keys and keep awake do;
-// every tiling, focus and workspace command needs chromeOS.
+// window. The dashboard, the launcher, the app keys, keep awake and Report
+// a bug do; every tiling, focus and workspace command needs chromeOS.
 export function worksUntiled(command) {
-  return command === "popup" || command === "keep-awake" || /^app-/.test(command);
+  return command === "popup" || command === "keep-awake" || command === "report-bug" || /^app-/.test(command);
 }

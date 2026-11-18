@@ -1,0 +1,39 @@
+/* Report a bug's page (SPEC.md §14.7): what it did, its buttons, and the
+   report itself to read, over options.css. */
+body {
+  display: block;
+  height: auto;
+  min-height: 100vh;
+  overflow: auto;
+}
+main {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 16px;
+}
+main > * {
+  max-width: none;
+}
+h1 {
+  margin: 8px 0;
+  font-size: 20px;
+}
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+#text {
+  display: block;
+  width: 100%;
+  min-height: 60vh;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+  font: 12px/1.4 ui-monospace, "DejaVu Sans Mono", monospace;
+  white-space: pre;
+  resize: vertical;
+}

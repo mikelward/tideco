@@ -13,7 +13,7 @@ test("only chromeOS tiles; Linux also lists tabs for tide", () => {
   assert.match(actionTitle({ os: "linux", role: TABS }), /only on chromeOS, not Linux; tide's switcher can list these tabs/);
   assert.equal(actionTitle({ os: "mac", role: INERT }), "tide · tiling and workspaces work only on chromeOS, not macOS");
   // Only the commands that place no window work off chromeOS.
-  for (const c of ["popup", "keep-awake", "app-browser", "app-chat"]) assert.ok(worksUntiled(c), c);
+  for (const c of ["popup", "keep-awake", "report-bug", "app-browser", "app-chat"]) assert.ok(worksUntiled(c), c);
   for (const c of ["focus-next", "workspace-1", "send-2", "monocle", "float", "attention", "layout-next"]) assert.ok(!worksUntiled(c), c);
 });
 

@@ -6,14 +6,18 @@ import { load as loadSettings } from "./settings.js";
 import { toggle as toggleKeepAwake } from "./keepawake.js";
 import { worksUntiled } from "./platform.js";
 import { displayFor } from "./tide.js";
+import { REPORT_COMMAND, Reporter } from "./bugreport.js";
 
 // The dashboard's window, in storage.session so a worker that slept still
 // closes it with the key that opened it.
 export const DASHBOARD_KEY = "untiledDashboard";
 
 export class Untiled {
-  constructor(api) {
+  // `reporter` makes Report a bug's report (§14.7), which has no
+  // workspaces here.
+  constructor(api, { reporter = null } = {}) {
     this.api = api;
+    this.reporter = reporter ?? new Reporter(api);
     this.queue = Promise.resolve();
   }
 
@@ -33,6 +37,7 @@ export class Untiled {
       }
       if (name === "popup") return this.dashboard();
       if (name === "keep-awake") return toggleKeepAwake(this.api);
+      if (name === REPORT_COMMAND) return this.reporter.open(null);
       if (name === "app-browser") return this.api.windows.create({ focused: true });
       const { settings } = await loadSettings(this.api.storage);
       const app = settings.apps.find((a) => a.command === name);

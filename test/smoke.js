@@ -208,7 +208,7 @@ test("off chromeOS, the settings and dashboard keep only what places no window",
   assert.deepEqual(await dash.page.locator(".scopes button:visible").allInnerTexts(), ["Launch", "Tabs", "Actions"], "no Workspaces scope");
   // Actions keeps to what works here: no dim.
   await dash.page.locator('[data-scope="actions"]').click();
-  assert.deepEqual((await dash.page.locator("#results .title").allInnerTexts()).slice(0, 2), ["Keep awake", "Reload tide"]);
+  assert.deepEqual((await dash.page.locator("#results .title").allInnerTexts()).slice(0, 2), ["Keep awake", "Report a bug"]);
   await dash.page.locator('[data-scope="launch"]').click();
   await dash.page.locator("#query").fill("work");
   assert.doesNotMatch(await dash.page.locator("#results").innerText(), /Go to workspace/);
@@ -803,7 +803,7 @@ test("the Workspaces scope lists the workspaces, and Enter on a new name shows i
   await page.locator("#query").press("Tab");
   assert.equal(await page.locator('.scopes [aria-selected="true"]').innerText(), "Actions");
   const acts = await page.locator("#results .title").allInnerTexts();
-  assert.deepEqual(acts.slice(0, 3), ["Keep awake", "Dim inactive windows", "Reload tide"]);
+  assert.deepEqual(acts.slice(0, 4), ["Keep awake", "Dim inactive windows", "Report a bug", "Reload tide"]);
   assert.ok(acts.length > 20, `every command too, not the best eight: ${acts.length}`);
   await page.locator("#query").press("Tab");
   assert.equal(await page.locator('.scopes [aria-selected="true"]').innerText(), "Launch");
@@ -1217,4 +1217,42 @@ test("the float question adds the site's rule, or opens the Floating page with i
   await gone;
   assert.equal((await worker.evaluate(() => chrome.storage.sync.get("settings"))).settings.floating.length, 2, "Not now adds nothing");
   await worker.evaluate(() => chrome.storage.sync.remove("settings"));
+});
+
+// Report a bug (SPEC.md §14.7): the launcher's action asks the worker,
+// which keeps the report and opens its page; the page shows it, copies it
+// and opens the issue page. The page's chrome.tabs.create is wrapped to
+// note the issue page's address rather than load GitHub.
+test("Report a bug shows the report, copies it, and opens the issue page", async () => {
+  await context.addInitScript(() => {
+    if (location.protocol !== "chrome-extension:" || !location.pathname.endsWith("/report.html")) return;
+    const create = chrome.tabs.create.bind(chrome.tabs);
+    chrome.tabs.create = (props) => {
+      if (!props.url?.startsWith("https://github.com/")) return create(props);
+      globalThis.issueOpened = props.url;
+      return Promise.resolve({ id: -1, ...props });
+    };
+  });
+  const { page: from, errors: fromErrors } = await open("src/launcher.html?mode=home");
+  const opened = context.waitForEvent("page", (p) => p.url().endsWith("src/report.html"));
+  assert.equal(await from.evaluate(() => chrome.runtime.sendMessage({ command: "report-bug" })), true);
+  const page = await opened;
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.waitForFunction(() => /^tide for Chrome bug report/.test(document.getElementById("text").value));
+  const text = await page.locator("#text").inputValue();
+  assert.match(text, /Tiling: on/);
+  assert.match(text, /Workspace and focus changes, last 30 seconds/);
+  // A page that opened without focus can't copy until you click.
+  await page.waitForFunction(() => document.getElementById("status").textContent !== "");
+  if (!/on your clipboard/.test(await page.locator("#status").textContent())) await page.locator("#copy").click();
+  await page.waitForFunction(() => /on your clipboard/.test(document.getElementById("status").textContent));
+  const url = new URL(await page.evaluate(() => globalThis.issueOpened));
+  assert.equal(url.origin + url.pathname, "https://github.com/mikelward/tideco/issues/new");
+  assert.match(url.searchParams.get("title"), /^Bug in tide for Chrome /);
+  assert.match(url.searchParams.get("body"), /paste it below/);
+  assert.deepEqual(errors, []);
+  assert.deepEqual(fromErrors, []);
+  await page.close();
+  await from.close();
 });

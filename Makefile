@@ -2,6 +2,7 @@
 # src/ or scripts/ isn't listed, since an unlisted test never runs.
 TESTS = \
 	src/apps_test.js \
+	src/bugreport_test.js \
 	src/barcolor_test.js \
 	src/barlayout_test.js \
 	src/calendar_test.js \
@@ -13,6 +14,7 @@ TESTS = \
 	src/keys_test.js \
 	src/launcher_test.js \
 	src/presets_test.js \
+	src/recent_test.js \
 	src/mouse_test.js \
 	src/optionspages_test.js \
 	src/overview_test.js \

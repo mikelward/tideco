@@ -179,6 +179,9 @@
     "keep-awake": {
       "description": "Toggle keep awake (Search+S)"
     },
+    "report-bug": {
+      "description": "Report a bug (Search+Shift+B)"
+    },
     "app-browser": {
       "description": "Open a new browser window (Search+G)"
     },

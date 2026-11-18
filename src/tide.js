@@ -12,6 +12,7 @@ import { toggle as toggleKeepAwake } from "./keepawake.js";
 import { matchWindows, windowUrls } from "./restart.js";
 import * as geometry from "./geometry.js";
 import { unreadCount } from "./unread.js";
+import { redact, REPORT_COMMAND, Reporter } from "./bugreport.js";
 import * as ws from "./workspaces.js";
 
 // Window types tide manages. Popups and devtools float untracked (§5.4),
@@ -85,8 +86,18 @@ export function displayFor(win, displays) {
   return (hit || displays[0]).id;
 }
 
+// A window's title in a report, at most this long.
+const LABEL = 40;
+
 export class Tide {
-  constructor(api) {
+  // `trail` is the ring buffer (recent.js) each workspace and focus change
+  // goes to, with its cause, for Report a bug (§14.7); `reporter` makes the
+  // report.
+  constructor(api, { trail = null, reporter = null } = {}) {
+    this.trail = trail;
+    this.reporter = reporter ?? new Reporter(api);
+    // Why the step under way changed what it did, beyond its cause.
+    this.notes = [];
     this.apps = DEFAULT_APPS;
     this.api = api;
     this.settings = DEFAULT_SETTINGS;
@@ -104,20 +115,74 @@ export class Tide {
   }
 
   // Run one step at a time: events arrive faster than Chrome answers, and
-  // each step reads what the one before it did.
-  run(step) {
-    const done = this.queue.then(step);
+  // each step reads what the one before it did. A step that changes the
+  // workspace or the focused window says so in the trail, with `cause`.
+  run(step, cause = "") {
+    const done = this.queue.then(async () => {
+      const before = this.glance();
+      this.notes = [];
+      try {
+        return await step();
+      } finally {
+        this.trace(before ?? this.atLoad, cause);
+      }
+    });
     this.queue = done.catch((e) => console.error("tide:", e));
     return done;
   }
 
+  // The workspace showing and the window focused on it, as tide knows them.
+  glance(s = this.state) {
+    return s ? { current: s.current, focus: s.workspaces[s.current]?.focused ?? null } : null;
+  }
+
+  // A window as a report names it: its ID, and its app's name or its title.
+  label(id) {
+    if (id === null || id === undefined) return "none";
+    const app = this.state?.windows[id]?.app;
+    // Redacted whole, as shortening could cut an address the pattern then misses.
+    const name = redact((app && this.apps.find((a) => a.command === app)?.name) || this.all?.get(id)?.tabs?.find((t) => t.active)?.title || "");
+    const short = name.length > LABEL ? `${name.slice(0, LABEL - 1)}…` : name;
+    return short ? `window ${id} "${short}"` : `window ${id}`;
+  }
+
+  // Each change since `before` goes to the trail, with why.
+  trace(before, cause) {
+    const after = this.glance();
+    if (!this.trail || !after) return;
+    const why = [cause, ...this.notes].filter(Boolean).join("; ") || "unknown";
+    if (before?.current !== after.current) this.trail.add(`workspace ${before?.current ?? "none"} → ${after.current}`, { cause: why });
+    if ((before?.focus ?? null) !== after.focus) this.trail.add(`focus ${this.label(before?.focus)} → ${this.label(after.focus)}`, { cause: why });
+  }
+
+  // Tide's workspaces now, for a report: the workspace showing, each
+  // display's, and each workspace's windows in bar order.
+  describe() {
+    const s = this.state;
+    const lines = [`Current workspace: ${s.current}`];
+    for (const d of this.displays) {
+      const n = ws.showing(s, d.id);
+      lines.push(`Display ${d.bounds.width}×${d.bounds.height}: ${n ?? "nothing"}${n === null ? "" : `, ${this.modeOf(n, d)}`}`);
+    }
+    for (const n of ws.barOrder(s)) {
+      const ids = s.workspaces[n]?.windows ?? [];
+      const each = ids.map((id) => {
+        const info = s.windows[id] ?? {};
+        const marks = [info.floating && "floating", info.minimizedByYou && "minimized by you"].filter(Boolean);
+        return marks.length > 0 ? `${this.label(id)} (${marks.join(", ")})` : this.label(id);
+      });
+      lines.push(`${n}: ${each.length > 0 ? each.join(", ") : "empty"}`);
+    }
+    return lines;
+  }
+
   // Something changed outside tide: a window opened, closed, moved or took
-  // focus, or a display came or went.
-  event() {
+  // focus, or a display came or went. `cause` says which.
+  event(cause = "a Chrome event") {
     return this.run(async () => {
       await this.sync();
       await this.apply();
-    });
+    }, cause);
   }
 
   // A watched page's title changed (§10.3): a rising unread count marks its
@@ -137,7 +202,7 @@ export class Tide {
         await this.api.windows.update(windowId, { drawAttention: true });
       }
       await this.apply();
-    });
+    }, "an unread count changed");
   }
 
   // The dim is on while tide holds all-sites access (§10.1) and you haven't
@@ -148,7 +213,7 @@ export class Tide {
       await this.sync();
       this.state.dimPaused = !on;
       await this.apply();
-    });
+    }, on ? "dimming turned on" : "dimming turned off");
   }
 
   // A tab finished loading a page. Any overlay went with the old page, and
@@ -160,12 +225,12 @@ export class Tide {
     // A window waiting on its site for a float rule (§5.4) needs the sync,
     // which decides it.
     const waiting = Object.values(this.state?.windows ?? {}).some((info) => !info.ruled);
-    if (this.state && !this.dimOn() && !waiting) return this.run(() => this.rememberUrls());
+    if (this.state && !this.dimOn() && !waiting) return this.run(() => this.rememberUrls(), "a page loaded");
     return this.run(async () => {
       await this.sync();
       this.state.dimmed = (this.state.dimmed ?? []).filter((id) => id !== tabId);
       await this.apply();
-    });
+    }, "a page loaded");
   }
 
   async rememberUrls() {
@@ -270,13 +335,13 @@ export class Tide {
     return this.dimGranted && !this.state.dimPaused;
   }
 
-  command(name) {
+  command(name, via = "key") {
     return this.run(async () => {
       await this.sync();
       this.restored();
       const focus = await this.perform(name);
       await this.apply(focus);
-    });
+    }, `${via}: ${name}`);
   }
 
   // A click on the bar's workspace `name` (§8.1): it shows on every
@@ -286,7 +351,7 @@ export class Tide {
       await this.sync();
       this.restored();
       await this.apply(this.showWorkspace(this.focusedDisplay(), name));
-    });
+    }, `bar or launcher: show ${name}`);
   }
 
   // Enter in Search+Shift+W's prompt (§6.1): the window the dashboard opened
@@ -304,7 +369,7 @@ export class Tide {
       this.state = ws.send(s, id, name);
       this.showWorkspace(this.focusedDisplay(), this.state.windows[id].ws);
       await this.apply(this.activate(id));
-    });
+    }, `name prompt: move the window to ${name}`);
   }
 
   // A key or a click means the browser has finished restoring (§14.2), so
@@ -379,6 +444,8 @@ export class Tide {
     if (this.state) return;
     const stored = await this.api.storage.local.get(STATE_KEY);
     this.state = ws.migrate(stored[STATE_KEY] || null, this.settings.standing);
+    // A woken worker's first step changes things from here.
+    this.atLoad = this.glance();
   }
 
   // The session counts as started only once a state from it is stored, so
@@ -429,6 +496,7 @@ export class Tide {
     // The state as the last step left the screen, before displays changed,
     // with windows renamed if the browser restarted.
     const { state: before, renamed, waiting } = this.restarted(this.state, all);
+    if (renamed.size > 0) this.notes.push(`the browser restarted, and ${renamed.size} windows took their old places`);
     if (all.length > 0 && !this.seenWindow) {
       await this.api.storage.session.set({ [SEEN_KEY]: true });
       this.seenWindow = true;
@@ -484,7 +552,10 @@ export class Tide {
       if (minimized && shouldShow) s = ws.userMinimized(s, w.id);
       // Before the first sync of a state from when each display showed its
       // own workspace, the others' windows are still up, and not by you.
-      else if (!minimized && !shouldShow && !before.spanned) s = ws.userRestored(s, w.id);
+      else if (!minimized && !shouldShow && !before.spanned) {
+        s = ws.userRestored(s, w.id);
+        this.notes.push(`${this.label(w.id)} came back outside tide`);
+      }
       else if (!minimized) {
         // A window you moved is on another display than when tide last
         // looked, maximized or not. One chromeOS moved off a display that's
@@ -494,7 +565,10 @@ export class Tide {
         const was = before.windows[w.id].display;
         const last = before.windows[w.id].on ?? was;
         const d = displayFor(w, this.displays);
-        if (last !== null && ids.includes(last) && last !== d) s = ws.movedToDisplay(s, w.id, d);
+        if (last !== null && ids.includes(last) && last !== d) {
+          s = ws.movedToDisplay(s, w.id, d);
+          this.notes.push(`${this.label(w.id)} moved to another display`);
+        }
         else if (w.state === "normal" && was === d && last === d && s.windows[w.id]?.display === was) {
           // chromeOS's own float or snap takes it out of tiling, rather
           // than tide fighting chromeOS for it (§5.3).
@@ -645,7 +719,7 @@ export class Tide {
       this.state.appPopups.push(w.id);
       this.state.windows[w.id].app = command;
       await this.apply();
-    });
+    }, `reopening ${command}, pinned on ${n}`);
   }
 
   // A browser restart gives every window a new ID, so none of the stored
@@ -840,6 +914,10 @@ export class Tide {
       await toggleKeepAwake(this.api);
       return null;
     }
+    if (name === REPORT_COMMAND) {
+      await this.reporter.open(this.describe());
+      return null;
+    }
     const app = this.apps.find((a) => a.command === name);
     if (app) return this.app(app, display);
     if (!tracked && name !== "layout-next" && name !== "layout-prev") return null;
@@ -987,7 +1065,7 @@ export class Tide {
       await this.sync();
       this.restored();
       await this.apply(id in this.state.windows ? this.activate(id) : null);
-    });
+    }, `overview or Attention: window ${id}`);
   }
 
   // A tab chosen in the launcher: its tab comes forward, and its window with
@@ -998,7 +1076,7 @@ export class Tide {
       await this.api.tabs.update(tabId, { active: true });
       const focus = windowId in this.state.windows ? this.activate(windowId) : windowId;
       await this.apply(focus);
-    });
+    }, `launcher: tab ${tabId}`);
   }
 
   // The next-attention command (§10.3): the newest mark, the top row of
@@ -1037,7 +1115,7 @@ export class Tide {
         }
       }
       await this.apply();
-    });
+    }, "login");
   }
 
   async open(props, display, how) {

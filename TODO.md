@@ -53,6 +53,29 @@ FakeChrome and the smoke test.
 
 Guesses made on autopilot (2026-10-24), each cheap to undo.
 
+- **Report a bug is `Search+Shift+B`, bound by hand** (2026-11-18), not
+  tide for Linux's `Super+Alt+B`: Chrome refuses Alt with Search, in a
+  manifest or at `chrome://extensions/shortcuts` (SPEC.md §7.3, read from
+  Chromium's source, untried on a device). Shift marks a rare action, and
+  the four suggested keys are taken. Reversible: its description in
+  `manifest.json`.
+- **Report a bug adds no permission** (2026-11-18): its page copies with
+  `navigator.clipboard` and says what it did, instead of an offscreen
+  document (`clipboardWrite`) and a notification (`notifications`), both
+  with install warnings. A page that opened without focus asks for a
+  click. Reversible: `src/reportview.js`.
+- **Report a bug's page opens as a tab** (2026-11-18), in the window
+  Chrome last focused, not a window of its own, which tide would tile.
+  From the full-screen dashboard on chromeOS, which window that is is
+  unverified. Reversible: `Reporter.open` in `src/bugreport.js`.
+- **Report a bug hides email addresses** (2026-11-18), as
+  `user@example.com`, since window titles such as Gmail's carry yours.
+  Reversible: `redact` in `src/bugreport.js`.
+- **Report a bug's buffers keep 200 entries or 15 minutes** (2026-11-18),
+  though a report shows 30 seconds (the maintainer's), so a later change
+  of span has the entries. Reversible: `LIMIT` and `KEEP` in
+  `src/recent.js`.
+
 - **App 5 is Secure Shell's terminal, for Search+T** (2026-11-15), since
   Chrome refuses an extension `chrome-untrusted://` pages such as
   chromeOS's Terminal app (unverified on a device). Apps 6 to 8 start
@@ -526,6 +549,14 @@ Guesses made on autopilot (2026-10-24), each cheap to undo.
   unchecked).
 
 ## Later
+
+- **Check Report a bug on a Chromebook** (SPEC.md §14.7): that
+  `Search+Shift+B` binds and Search+Alt+B doesn't, that the page copies
+  without a click from the key and from the dashboard, and which window
+  its tab opens in.
+- **Report a bug in the presets** (SPEC.md §7.4): once tide for Linux's
+  `keymaps.mjs` names the binding, copy it and map it to `report-bug` in
+  `src/presets.js`.
 
 - **Where a new window goes** (SPEC.md §5.2): tide for Linux's
   `newWindow` setting, the end of the stack, its top, after the focused

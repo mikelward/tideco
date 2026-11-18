@@ -1,5 +1,5 @@
 ---
-last_modified: 2026-11-14
+last_modified: 2026-11-18
 ---
 
 # tide for Chrome: design spec (milestone 1)
@@ -971,6 +971,7 @@ key is bound, and the keys that differ, with why.
 | the dashboard: tide for Chrome's bar and launcher, full screen (§8.1) | `Search+Space` | `Super+Space`, the launcher | tide for Chrome's launcher is the dashboard's |
 | the overview of every workspace's windows (§6.5) | none yet, bound by hand | none yet; tide for macOS: `Ctrl+Up` | its key isn't settled |
 | keep awake (§11), as the bar's cup does | `Search+S` | `Super+S` | the same key, once select to speak is removed (§7.2) |
+| report a bug (§14.7) | `Search+Shift+B`, bound by hand | `Super+Alt+B` | Chrome refuses Alt with Search (§7.3); Shift marks a rare action |
 
 The seven keys the Commands API can't carry (§2.2) move by §7.3's rule.
 tide for Linux's `Super+Shift+M` is mic mute, which has no tide for
@@ -1031,12 +1032,25 @@ reserved for the terminal.
 This is every Search combo, from tide for Chrome's manifest and from trying them on a
 Chromebook. **OS, removable** means chromeOS has it and the Shortcuts app
 (§7.2) can take it off; **OS, locked** means it can't; a blank is untried.
-Search+Alt and Search+Ctrl are allowed too, and untried unless listed.
+Search+Ctrl is allowed too, and untried unless listed.
+
+**Search+Alt can't be an extension key.** Chrome reads Search as its
+Command modifier, and refuses Alt with Command as it refuses Ctrl+Alt,
+"because of AltGr": `HasValidModifierCombination` in
+`ui/base/accelerators/command.cc`, whose `allow_ctrl_alt` defaults to
+false, which `extensions/common/command.cc` keeps both for a manifest's
+suggested key and for a key you set. So a manifest suggesting one fails to
+install, and one typed at `chrome://extensions/shortcuts`, whose widget
+lets it through on chromeOS, is saved as no key *(read from Chromium
+`main`, `chrome/VERSION` major 160, on 2026-11-18; untried on a device)*.
+The Search+Alt column is chromeOS's own. Those keys don't toggle Caps
+Lock, which needs Search and Alt pressed and let go with nothing between
+(`ash/accelerators/accelerator_capslock_state_machine.cc`).
 
 | Key | Search+key | Search+Shift+key | Search+Alt+key |
 |---|---|---|---|
 | A | tide for Chrome: attention | OS: assign to all desks | |
-| B | | | |
+| B | | tide for Chrome: report a bug (§14.7) | Chrome refuses it |
 | C | tide for Chrome: app 1 (Chat); OS calendar panel, removable | tide for Chrome: app 2 (Calendar) | |
 | D | tide for Chrome: remove a master; OS dictation, removable (Accessibility) | OS: minimize Snap Group (§7.2) | |
 | E | | | |
@@ -1358,9 +1372,10 @@ tabs and running tide for Chrome's commands.
 - **Actions** lists, with nothing typed, every action and then every
   command, not just the best eight: **Keep awake**, saying whether it's
   on; on chromeOS **Dim inactive windows**, on or off, which turns
-  dimming on or off, or, without its access, asks Chrome for it first; and
-  **Reload tide**, which restarts the extension. Keep awake's command is
-  this action, so it isn't listed twice. A query in Launch finds actions
+  dimming on or off, or, without its access, asks Chrome for it first;
+  **Report a bug** (§14.7); and **Reload tide**, which restarts the
+  extension. Keep awake's and Report a bug's commands are these actions,
+  so they aren't listed twice. A query in Launch finds actions
   and commands too.
 - **Workspaces** lists every workspace in bar order, the standing ones
   even before they're made, each under tide for Linux's switcher's words: "current"
@@ -1838,7 +1853,7 @@ each event, since Chrome answers at once.
     workspaces work only on chromeOS. Its launcher has no Workspaces or
     Attention scope, and `Search+A` and the next-attention command do
     nothing. Launch and Actions list only the commands that place no
-    window: the dashboard, the app keys and keep awake. Actions has no
+    window: the dashboard, the app keys, keep awake and Report a bug. Actions has no
     dimming, and Launch finds only the settings pages shown there.
   - The settings hide what only tiling uses: the setup checklist, Start at
     login, Notifications (unread counts), Appearance (dimming),
@@ -1879,6 +1894,61 @@ each event, since Chrome answers at once.
     lists no tabs, and the settings say why.
 - **Other platforms** (macOS, Windows): nothing more. The settings say
   tiling works only on chromeOS.
+
+### 14.7 Report a bug
+
+For a bug such as a workspace that jumps by itself, **Report a bug** makes
+a plain-text report of what tide for Chrome did just before, for an issue
+at `github.com/mikelward/tideco`. It's on `Search+Shift+B` and on the
+launcher's Actions (§9.4): tap `Search+Space`, type "bug", Enter. Every
+platform has it (§14.6).
+
+- **The key.** tide for Linux's is `Super+Alt+B`, but Chrome takes no
+  Search+Alt key (§7.3), so it's `Search+Shift+B`, Shift marking a rare
+  action. The four suggested keys are taken (§7.1), so you bind it by hand,
+  as the keys checklist says.
+- **What it says**, as of the key or the action:
+  - tide for Chrome's version and how it was installed
+    (`management.getSelf`, which needs no permission), the browser's
+    version and the OS's, from client hints (`navigator.userAgentData`),
+    else the user agent; its permissions and the displays.
+  - On chromeOS, tide's workspaces now: the one showing, each display's
+    layout, and each workspace's windows, by ID and app name or title.
+  - **Only the last 30 seconds** of the worker's log and of its workspace
+    and focus changes (maintainer, 2026-11-18). Each change names its
+    cause: the key or page that asked (`key: workspace-next`, `launcher:
+    report-bug`), or the Chrome event (`window 12 took focus`), plus what
+    tide made of it: a window that came back outside tide, so its
+    workspace showed; one moved to another display; a browser restart.
+- **Where that comes from.** Two ring buffers in the worker, each the last
+  200 entries or 15 minutes, more than a report takes: every line the
+  worker logs (its `console`, wrapped), and every change of the
+  workspace showing or the window focused on it, with its cause, written
+  as each step ends. A worker that stops at idle (§14.2) would lose them,
+  so each is written to `storage.session` too, one write at a time, and a
+  new worker starts from them. A browser restart empties them. The pages'
+  own logs aren't in it.
+- **What it does.** The worker keeps the report in `storage.session` and
+  opens it in a tab, `src/report.html`. The page copies it with
+  `navigator.clipboard`, which needs no permission in a page with focus,
+  then opens the issue page with a title and a short body: the privacy
+  note, the version, and "The full report is on your clipboard: paste it
+  below." The address stays far under ~6000 characters. A page that
+  opened without focus can't copy, so its **Copy and open the issue page**
+  button does both. **Save as a file** downloads it, a link with
+  `download`, which needs no permission either.
+- **No permission is added.** An offscreen document's copy needs
+  `clipboardWrite` and a notification `notifications`, both with install
+  warnings (`chrome_permission_message_rules.cc`), which an update would
+  have to ask for. So the page is the notice, and the issue body says the
+  report is on the clipboard.
+- **Privacy.** It names apps and window titles. Nothing is sent: you read
+  it and submit the issue. Email addresses become `user@example.com`, and
+  home folders (`/home/name`, `/Users/name`, chromeOS's
+  `/home/chronos/u-…`) `~`. An extension can't learn the machine's name.
+  The first line of the report and of the issue says so.
+- Cost: none. Two small writes to `storage.session` per step that logs or
+  changes something, coalesced while one is under way.
 
 ## 15. Where things live
 
@@ -1921,8 +1991,9 @@ each event, since Chrome answers at once.
     saves a setting and a setup checklist tick, that the Floating page and the
     question after floating a window add a float rule, that the home page and
     dashboard render the bar, clocks, launcher and calendar, and that the
-    overview renders, filters and closes and shrinks a picture, all with
-    no page errors. Content scripts aren't covered yet.
+    overview renders, filters and closes and shrinks a picture, and that
+    Report a bug shows its report, copies it and opens the issue page,
+    all with no page errors. Content scripts aren't covered yet.
   - Playwright is tide for Chrome's one dependency, a pinned dev dependency for tests
     only; the extension still loads `src/` as it is. CI caches npm and
     Chromium, and mikelward/npm-update batches its updates weekly.

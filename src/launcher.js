@@ -131,8 +131,8 @@ export function settingsSections({ tiling = true, linux = false } = {}) {
 }
 
 // The Actions scope's own rows (§9.4), before the commands: keep awake,
-// saying whether it's on; on chromeOS the dim, on, off, or to allow; and
-// reloading tide. chromeOS gives extensions no lock, log out or shut down.
+// saying whether it's on; on chromeOS the dim, on, off, or to allow;
+// reporting a bug (§14.7); and reloading tide. chromeOS gives extensions no lock, log out or shut down.
 // `keepAwake` is whether it's on, `dim` null off chromeOS, else
 // {granted, on}, and `key` names a command's key.
 export function actions({ keepAwake = false, dim = null, key = () => "" } = {}) {
@@ -141,6 +141,7 @@ export function actions({ keepAwake = false, dim = null, key = () => "" } = {}) 
     const on = dim.granted && dim.on;
     out.push({ kind: "action", title: "Dim inactive windows", detail: on ? "on" : dim.granted ? "off" : "off · Chrome asks first", act: "dim", on });
   }
+  out.push({ kind: "action", title: "Report a bug", detail: "copies a report and opens an issue", key: key("report-bug"), command: "report-bug" });
   out.push({ kind: "action", title: "Reload tide", detail: "restarts the extension", act: "reload" });
   return out;
 }
@@ -325,7 +326,8 @@ function host(url) {
 // tab on an app's site carries the app's name, so "calendar" finds
 // Calendar's tabs. `workspaceOf` names a window's workspace, or null. Off
 // chromeOS (`tiling` false) only the commands that place no window are
-// listed (§14.6). Keep awake is an action, so its command isn't listed too.
+// listed (§14.6). Keep awake and Report a bug are actions, so their
+// commands aren't listed too.
 export function items({ tabs = [], apps = [], sections = [], actions = [], commands = {}, workspaceOf = () => null, ownOrigin = "", tiling = true }) {
   const out = [];
   for (const t of tabs) {
@@ -350,7 +352,7 @@ export function items({ tabs = [], apps = [], sections = [], actions = [], comma
   for (const s of sections) out.push({ kind: "setting", title: s.name, app: SETTINGS_APP, extra: s.covers, detail: SETTINGS_APP, act: "settings", section: s.id });
   out.push(...actions);
   for (const [name, c] of Object.entries(commands)) {
-    if (name.startsWith("app-") || name === "keep-awake") continue;
+    if (name.startsWith("app-") || name === "keep-awake" || name === "report-bug") continue;
     if (!tiling && !worksUntiled(name)) continue;
     // Descriptions end with the key in parentheses, which shows on its own.
     const m = /^(.*?)\s*\(([^)]*)\)$/.exec(c.description ?? name);

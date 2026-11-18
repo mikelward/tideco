@@ -1155,10 +1155,13 @@ Instead:
   chip. Each chip's reaches the bar's top and bottom and halfway to the
   next chip. The clocks are one target, every zone's name and time
   and the gaps between them, the bar's height and out to its right edge.
-  The launcher's scope chips meet halfway too. Under the pointer, an
-  item's whole target shows as a rounded rect a shade darker than the bar
-  in light, lighter in dark (`--hover`), as if half pressed: a chip with
-  the space around it, the clocks as one row. The rounding is drawn, not
+  The launcher's scope chips meet halfway too. Under the pointer, the
+  item's own cell shows as a rounded rect a shade darker than the bar in
+  light, lighter in dark (`--hover`), as if half pressed: a chip with the
+  space around it, the clocks as one row. It reaches at most 4px past each
+  end, never the rest of the target, as tide for Linux's does, so the
+  first chip, the logo and the clocks don't light up to the bar's edge.
+  The rounding is drawn, not
   hit-tested, so it leaves no dead corners. tide for macOS's bar shares this
   stylesheet. Neither bar has an appearance (dark mode) button.
 - **A right-click on a bar item opens its settings page,** as tide for Linux's

@@ -14,6 +14,7 @@ import * as geometry from "./geometry.js";
 import { unreadCount } from "./unread.js";
 import { redact, REPORT_COMMAND, Reporter } from "./bugreport.js";
 import * as ws from "./workspaces.js";
+import * as heldswap from "./heldswap.js";
 
 // Window types tide manages. Popups and devtools float untracked (§5.4),
 // except the app popups tide opens itself (§9.1) and Secure Shell's.
@@ -108,6 +109,10 @@ export class Tide {
     // The clock and the timer, which the tests replace.
     this.now = () => Date.now();
     this.later = (f, ms) => setTimeout(f, ms);
+    // The held swap with the master under way (heldswap.js), and its
+    // presses so far, so a pause timer knows if another press came since.
+    this.cycle = null;
+    this.swapPresses = 0;
     // When each pinned app came back on each workspace, by "ws\napp".
     this.reopens = new Map();
     // The overview's pictures of windows (§6.5), on tide's clock.
@@ -339,6 +344,9 @@ export class Tide {
     return this.run(async () => {
       await this.sync();
       this.restored();
+      // Another key while choosing makes the choice at once, as the pause
+      // would.
+      if (name !== "swap-master") this.swapChoose();
       const focus = await this.perform(name);
       await this.apply(focus);
     }, `${via}: ${name}`);
@@ -881,17 +889,68 @@ export class Tide {
     }
   }
 
-  // Apply a command to the state. Returns the window to focus, if any.
-  async perform(name) {
+  // Where a command acts: the focused display, the workspace showing there,
+  // and the window. With the dashboard or another untracked window in
+  // front, that's the window you were last in on this workspace, if it's on
+  // this display: an empty display's home page has none.
+  aim() {
     const s = this.state;
     const display = this.focusedDisplay();
     const n = ws.showing(s, display);
-    // With the dashboard or another untracked window in front, a command acts
-    // on the window you were last in on this workspace, if it's on this
-    // display: an empty display's home page has none.
     const remembered = n === null ? null : s.workspaces[n].focused;
     const here = remembered !== null && ws.isShown(s, remembered) && ws.part(s, display).includes(remembered);
-    const win = this.focusedWindow() ?? (here ? remembered : null);
+    return { display, n, win: this.focusedWindow() ?? (here ? remembered : null) };
+  }
+
+  // Where focus is, as the held swap with the master reads it: the window,
+  // its workspace and display, and that part's tiled windows in layout
+  // order, the master first.
+  spot({ display, n, win }) {
+    return { win: win !== null && win in this.state.windows ? win : null, ws: n, display, order: ws.tiled(this.state, display) };
+  }
+
+  // A press of the swap with the master (§6.1): the first notes the window,
+  // each further one moves focus on, and the choice is made when the presses
+  // stop for heldswap.PAUSE. Returns the window to focus, if any.
+  swapPress(aim) {
+    const { cycle, focus } = heldswap.press(this.cycle, this.spot(aim));
+    this.cycle = cycle;
+    const token = ++this.swapPresses;
+    this.later(() => this.swapPause(token), heldswap.PAUSE);
+    return focus;
+  }
+
+  // The pause after the last press makes the choice, unless another press
+  // came since. A worker Chrome stopped in the pause forgets the cycle, so
+  // nothing moves.
+  swapPause(token) {
+    if (!this.cycle || token !== this.swapPresses) return Promise.resolve();
+    return this.run(async () => {
+      if (!this.cycle || token !== this.swapPresses) return;
+      await this.sync();
+      this.swapChoose();
+      await this.apply();
+    }, "pause: swap-master").catch((e) => console.error("tide: couldn't make the swap with the master:", e));
+  }
+
+  // End the cycle under way, swapping the focused window with the master if
+  // it chose one. It reads real focus, not aim()'s stand-in for a window
+  // that has none: focus that left Chrome or went to a window tide doesn't
+  // manage chose nothing.
+  swapChoose() {
+    const cycle = this.cycle;
+    this.cycle = null;
+    if (!cycle) return;
+    const display = this.focusedDisplay();
+    const aim = { display, n: ws.showing(this.state, display), win: this.focusedWindow() };
+    if (heldswap.commit(cycle, this.spot(aim)) === "swap") this.state = ws.swapMaster(this.state, aim.win);
+    else this.notes.push("the held swap with the master chose no window");
+  }
+
+  // Apply a command to the state. Returns the window to focus, if any.
+  async perform(name) {
+    const s = this.state;
+    const { display, n, win } = this.aim();
     const tracked = win !== null && win in s.windows;
     const disp = this.displays.find((d) => d.id === display);
     const mode = n === null || !disp ? null : this.modeOf(n, disp);
@@ -931,7 +990,7 @@ export class Tide {
     else if (name === "focus-prev") return ws.neighbor(s, win, -1);
     else if (name === "move-next") this.state = ws.moveInStack(s, win, 1);
     else if (name === "move-prev") this.state = ws.moveInStack(s, win, -1);
-    else if (name === "swap-master") this.state = ws.swapMaster(s, win);
+    else if (name === "swap-master") return this.swapPress({ display, n, win });
     else if (name === "float") await this.toggleFloating(win);
     else if (n === null || mode === null) return null;
     else if (name === "grow") this.state = ws.adjust(s, n, display, mode, { mfact: 0.025 });

@@ -11,6 +11,7 @@ TESTS = \
 	src/extras_test.js \
 	src/floating_test.js \
 	src/geometry_test.js \
+	src/heldswap_test.js \
 	src/keys_test.js \
 	src/launcher_test.js \
 	src/presets_test.js \

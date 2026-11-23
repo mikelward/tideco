@@ -607,6 +607,19 @@ them over their parent, which is what tide for Linux's §6.4 asks for.
   - A display with no window in the part showing gets a home page (§6.2).
   - The stack keys (`focus-next`, `move-next`, `swap-master`) work within
     the focused window's part.
+  - **Swap with the master, held,** chooses the window first, as tide for
+    Linux's `Alt+Tab` (tide for Linux §6.6). The first press notes the
+    focused window and moves nothing. Each further press moves focus to
+    the next tiled window in the part, in layout order, round from the end.
+    Chrome can't hear `Search` come up, so a half-second pause after the
+    last press makes the choice: the focused window becomes the master, or
+    stays if focus moved and it's the master already. A tap is the plain
+    swap, made after the pause. Another key in the pause makes the choice
+    first. Focus anywhere but where the presses left it by then (outside
+    Chrome, on a window tide doesn't manage or tile, on another workspace
+    or display, or moved some other way) moves nothing. The pause is a timer in the service
+    worker, which Chrome keeps awake well past half a second after a key;
+    a worker stopped in it forgets the choice, so nothing moves.
   - **Each part has its own layout,** `mfact` and master count, as tide for Linux's
     and tide for macOS's do: the layout keys change only the part on the display
     you're on. A part's layout left unset is its display's default. A
@@ -965,7 +978,7 @@ key is bound, and the keys that differ, with why.
 | add / remove a master | `Search+I` / `Search+D`, dwm's letters | `Super+=` / `Super+-` | Chrome can't bind `=` or `-`; `Search+D` once dictation's shortcut is removed (§7.2) |
 | monocle | `Search+O` alone | ``Super+` `` or `Super+O` | Chrome can't bind a backtick |
 | close the window | Chrome's `Ctrl+Shift+W` | `Super+Backspace` | Chrome can't bind Backspace |
-| swap with the master | `Search+Shift+M`, M for master | `Alt+Tab` | chromeOS keeps `Alt+Tab` for cycling windows |
+| swap with the master, held to choose the window (§6.1) | `Search+Shift+M`, M for master | `Alt+Tab` | chromeOS keeps `Alt+Tab` for cycling windows |
 | maximize / fullscreen | chromeOS's `Alt+=` / the fullscreen key | `Super+X` / `Super+Shift+X` | no command here; chromeOS's own work |
 | focus / move the window that way | none | `Super` and an arrow, with Shift | chromeOS keeps `Search` and an arrow (§7.2) |
 | the dashboard: tide for Chrome's bar and launcher, full screen (§8.1) | `Search+Space` | `Super+Space`, the launcher | tide for Chrome's launcher is the dashboard's |

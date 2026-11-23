@@ -227,13 +227,129 @@ test("Secure Shell's popup windows tile; other popups float", async () => {
   assert.equal(3 in tide.state.windows, false);
 });
 
+// Run the pause timers tide set: the swap with the master's choice.
+async function pause(pending) {
+  for (const f of pending.splice(0)) await f();
+}
+
+// Three tiled windows, 1 the master, focus on `focused`, and tide's timer
+// held for the test to run.
+async function stack(focused) {
+  const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: focused === 1 }), on(HD, 2, { focused: focused === 2 }), on(HD, 3, { focused: focused === 3 })]);
+  const pending = [];
+  tide.later = (f) => pending.push(f);
+  return { chrome, tide, pending };
+}
+
 test("focus-next and swap-master follow the stack", async () => {
-  const { chrome, tide } = await setup([HD], [on(HD, 1, { focused: true }), on(HD, 2), on(HD, 3)]);
+  const { chrome, tide, pending } = await stack(1);
   await tide.command("focus-next");
   assert.equal(chrome.win(2).focused, true);
   await tide.command("swap-master");
+  assert.deepEqual(tide.state.workspaces.in.windows, [1, 2, 3], "not until the pause");
+  await pause(pending);
   assert.deepEqual(tide.state.workspaces.in.windows, [2, 1, 3]);
   assert.equal(chrome.box(2).x, 0, "window 2 is the master now");
+});
+
+test("swap-master held moves focus round the stack, and the pause makes the window it stops on the master", async () => {
+  const { chrome, tide, pending } = await stack(3);
+  await tide.command("swap-master");
+  assert.equal(chrome.win(3).focused, true, "the first press moves nothing");
+  await tide.command("swap-master");
+  assert.equal(chrome.win(1).focused, true, "from the last, round to the master");
+  await tide.command("swap-master");
+  assert.equal(chrome.win(2).focused, true, "then on");
+  assert.deepEqual(tide.state.workspaces.in.windows, [1, 2, 3], "nothing moves while choosing");
+  await pause(pending);
+  assert.deepEqual(tide.state.workspaces.in.windows, [2, 1, 3]);
+  assert.equal(chrome.win(2).focused, true);
+  assert.equal(chrome.box(2).x, 0);
+});
+
+test("swap-master held that stops on the master leaves it", async () => {
+  const { tide, pending } = await stack(3);
+  await tide.command("swap-master");
+  await tide.command("swap-master");
+  await pause(pending);
+  assert.deepEqual(tide.state.workspaces.in.windows, [1, 2, 3]);
+});
+
+test("a swap-master tap on the master swaps it with the next window", async () => {
+  const { tide, pending } = await stack(1);
+  await tide.command("swap-master");
+  await pause(pending);
+  assert.deepEqual(tide.state.workspaces.in.windows, [2, 1, 3]);
+});
+
+test("only the last press's pause makes the choice", async () => {
+  const { chrome, tide, pending } = await stack(3);
+  await tide.command("swap-master");
+  const first = pending.shift();
+  await tide.command("swap-master");
+  await first();
+  assert.deepEqual(tide.state.workspaces.in.windows, [1, 2, 3], "a press came since");
+  await tide.command("swap-master");
+  assert.equal(chrome.win(2).focused, true, "still choosing");
+  await pause(pending);
+  assert.deepEqual(tide.state.workspaces.in.windows, [2, 1, 3]);
+});
+
+test("another key while choosing makes the choice first", async () => {
+  const { chrome, tide, pending } = await stack(3);
+  await tide.command("swap-master");
+  await tide.command("swap-master");
+  await tide.command("swap-master");
+  await tide.command("focus-next");
+  assert.deepEqual(tide.state.workspaces.in.windows, [2, 1, 3], "2 is the master");
+  assert.equal(chrome.win(1).focused, true, "and focus-next goes on from it");
+  await pause(pending);
+  assert.deepEqual(tide.state.workspaces.in.windows, [2, 1, 3], "the pause has nothing left to choose");
+});
+
+test("a pause after focus left for another workspace moves nothing", async () => {
+  const { tide, pending } = await stack(3);
+  await tide.command("swap-master");
+  await tide.workspace("re");
+  await pause(pending);
+  assert.deepEqual(tide.state.workspaces.in.windows, [1, 2, 3]);
+});
+
+test("a pause after focus left Chrome moves nothing", async () => {
+  const { chrome, tide, pending } = await stack(3);
+  await tide.command("swap-master");
+  for (const w of chrome.wins) w.focused = false;
+  await pause(pending);
+  assert.deepEqual(tide.state.workspaces.in.windows, [1, 2, 3]);
+});
+
+test("a pause after focus went to a popup tide doesn't manage moves nothing", async () => {
+  const { chrome, tide, pending } = await stack(3);
+  await tide.command("swap-master");
+  chrome.open({ id: 9, left: 100, top: 100, width: 300, height: 200, type: "popup" });
+  chrome.focus(9);
+  await pause(pending);
+  assert.deepEqual(tide.state.workspaces.in.windows, [1, 2, 3]);
+});
+
+test("a pause after focus moved some other way moves nothing", async () => {
+  const { chrome, tide, pending } = await stack(3);
+  await tide.command("swap-master");
+  await tide.command("swap-master");
+  chrome.focus(2);
+  await pause(pending);
+  assert.deepEqual(tide.state.workspaces.in.windows, [1, 2, 3], "the cycle left focus on 1, not 2");
+});
+
+test("a worker stopped before the pause forgets the choice, moving nothing", async () => {
+  const { chrome, tide } = await stack(3);
+  tide.later = () => {};
+  await tide.command("swap-master");
+  await tide.command("swap-master");
+  const again = new Tide(chrome);
+  await again.event();
+  assert.deepEqual(again.state.workspaces.in.windows, [1, 2, 3]);
+  assert.equal(chrome.win(1).focused, true, "focus stays where the last press put it");
 });
 
 test("monocle gives every window the area, and toggles back", async () => {

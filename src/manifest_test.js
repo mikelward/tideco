@@ -209,7 +209,11 @@ test("every command in the manifest does something", async () => {
     }
     const before = JSON.stringify([tide.state, chrome.wins]);
     chrome.updates.length = 0;
+    // The swap with the master is made after a pause (§6.1), on tide's timer.
+    const pending = [];
+    if (name === "swap-master") tide.later = (f) => pending.push(f);
     await tide.command(name);
+    for (const f of pending.splice(0)) await f();
     const after = JSON.stringify([tide.state, chrome.wins]);
     const acted = before !== after || chrome.updates.some((u) => u.focused) || chrome.awake !== null || chrome.createdTabs.length > 0;
     assert.ok(acted, `${name} changed nothing`);
